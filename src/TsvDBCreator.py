@@ -20,15 +20,19 @@ import csv
 from datetime import datetime
 
 DB="TsvDB"
+#TODO 
+ACCESSCODES=[]
 
 class SetUpTSVDB():
     #TODO this stuff belongs to env->getenv 
     #HOST="192.168.2.82" #"T410Arch.fritz.box"
     HOST="T410Arch.fritz.box"
-    DATABASE="TsvDB" 
+    DATABASE=DB 
     USER = "pyuser"
     PASSWORD = "bertiga7"
-    
+    MAINTABLE="Mitglieder"
+    TIMETABLE="Zugang"
+    GRACETIME="2" #two hours gracetime to prevent any double checking
 
     TABLE1= """
     CREATE OR REPLACE TABLE Mitglieder (
@@ -54,7 +58,11 @@ class SetUpTSVDB():
             self.db = Connector(self.HOST,self.USER,self.PASSWORD)
             self.db.connect(dbName)
         except Connector.DBError as sqlError:
+            self.db=None
             print(sqlError)
+
+    def isConnected(self):
+        return self.db.connected
 
     def resetDatabase(self):
         self.db.dropDatabase(DB)

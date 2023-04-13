@@ -4,7 +4,9 @@ Created on Apr 3, 2023
 @author: matze
 '''
 from DBTools import Connector
-from datetime import datetime, timedelta,date
+from datetime import datetime, timedelta
+from faker import Faker
+
 '''
 def setupDB():
     c=Connector()
@@ -117,6 +119,24 @@ def testSelectRowComplete():
         print(info)
     c.close()    
 
+
+def testTimeSpan():
+    table="Zugang"
+    key=str(1236)
+    test=datetime(2023, 4, 3, 23, 3, 32).isoformat()
+    
+    #stmt = "SELECT mitglied_id,access_date from "+table+" where mitglied_id="+key+" AND access_date <= Date_Sub(now(),interval 2 hour)"
+    #stmt = "SELECT mitglied_id,access_date from "+table+" where mitglied_id="+key+" AND access_date <= Date_Sub(NOW(),interval 3 day)"
+    stmt = "SELECT mitglied_id,access_date from "+table+" where mitglied_id="+key+" AND access_date >= DATE(NOW()) + INTERVAL -12 DAY"
+    print(stmt)
+    #stmt = "SELECT mitglied_id,access_date from "+table
+    c=openConnector()
+    rows = c.select(stmt)
+    for info in rows:
+        print(info)
+    c.close()    
+     
+
 '''
 def testGraph():
     import pandas as pd
@@ -147,8 +167,18 @@ def testGraph():
     plt.show()
 '''
 
+def rand_name():
+    fake = Faker('de_DE')
+    for n in range(1000):
+        data=[n+24,fake.first_name(),fake.last_name() ]
+        print(data)
+
+
+
 if __name__ == '__main__':
-    testSelectRowComplete()
+    #testSelectRowComplete()
+    testTimeSpan()
+    #rand_name()
     #testSelect()
     #testCreateAccessData()
     pass
