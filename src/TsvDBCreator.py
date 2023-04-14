@@ -18,21 +18,24 @@ print(os.environ.get('secretHost'))
 from DBTools import Connector
 import csv
 from datetime import datetime
+import json
 
-DB="TsvDB"
 #TODO 
 ACCESSCODES=[]
 
 class SetUpTSVDB():
-    #TODO this stuff belongs to env->getenv 
+    #TODO this stuff belongs to env->getenv or hidden file
     #HOST="192.168.2.82" #"T410Arch.fritz.box"
-    HOST="T410Arch.fritz.box"
-    DATABASE=DB 
-    USER = "pyuser"
-    PASSWORD = "bertiga7"
-    MAINTABLE="Mitglieder"
-    TIMETABLE="Zugang"
-    GRACETIME="2" #two hours gracetime to prevent any double checking
+    with open("data/.config.json","r") as jr:
+        dic = json.load(jr)
+        HOST=dic["HOST"]
+        DATABASE=dic["DB"]
+        USER = dic["USER"]             
+        PASSWORD = dic["PASSWORD"]        
+        MAINTABLE=dic["MAINTABLE"] 
+        TIMETABLE=dic["TIMETABLE"] 
+        GRACETIME=dic["GRACETIME"]   # hours gracetime to prevent any double check in
+        ACCESS=dic["ACCESSPOINT"] #Controlpoint
 
     TABLE1= """
     CREATE OR REPLACE TABLE Mitglieder (
@@ -65,14 +68,14 @@ class SetUpTSVDB():
         return self.db.connected
 
     def resetDatabase(self):
-        self.db.dropDatabase(DB)
+        self.db.dropDatabase(self.DATABASE)
         self.db.close()
         #finsihed - reconnect!
     
     def setupDatabase(self):
-        self.db.createDatabase(DB)
+        self.db.createDatabase(self.DATABASE)
         self.db.close()
-        self.db.connect(DB)
+        self.db.connect(self.DATABASE)
         self.db.createTable(self.TABLE1)
         self.db.createTable(self.TABLE2)
         self.db.close()    

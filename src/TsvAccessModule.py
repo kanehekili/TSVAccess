@@ -9,6 +9,7 @@ import subprocess,os,time
 from DBTools import OSTools
 from TsvDBCreator import SetUpTSVDB
 from datetime import datetime
+from threading import Timer
 
 try:
     import RPi.GPIO as GPIO #@UndefinedVariable
@@ -63,10 +64,15 @@ class Accessor():
             print("no valid tokens")
             return False
         print("Access to:",tokens)
+        #could be no number.
         key =tokens[0]
-        stmt="SELECT * from "+self.dbSystem.MAINTABLE+" where id="+key
-        row = self.db.select(stmt)
-        res=self.validateRow(key,row)
+        if key.isnumeric():
+            stmt="SELECT * from "+self.dbSystem.MAINTABLE+" where id="+key
+            row = self.db.select(stmt)
+            res=self.validateRow(key,row)
+        else:
+            res=False
+            print("Invalid card")
         if res:
             self.accessOK()
             return True
@@ -109,7 +115,7 @@ class RaspberryGPIO():
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(17, GPIO.OUT)
         GPIO.setup(18, GPIO.OUT)
-        
+        self.timer = Timer(5,self.reset)
         '''
         using GPIOS:
         o o
@@ -124,10 +130,22 @@ class RaspberryGPIO():
     def signalAccess(self):
         GPIO.output(18, True)
         GPIO.output(17, False)
+        self.timer.cancel()
+        self.timer.start()
+        
         
     def signalForbidden(self):
         GPIO.output(17, True)        
         GPIO.output(18, False)
+        self.timer.cancel()
+        self.timer.start()
+        
+    
+    #TODO needs timer
+    def reset(self):
+        GPIO.output(18, False)
+        GPIO.output(17, False)
+            
 
 class RaspberryFAKE():
     def signalAccess(self):

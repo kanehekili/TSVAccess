@@ -56,15 +56,6 @@ class Connector():
             cursor.execute(drop_table_query)
 
     def showTables(self):
-        '''
-        >>> show_table_query = "DESCRIBE movies"
-        >>> with connection.cursor() as cursor:
-        ...     cursor.execute(show_table_query)
-        ...     # Fetch rows from last executed query
-        ...     result = cursor.fetchall()
-        ...     for row in result:
-        ...         print(row)        
-        '''
         query="SHOW TABLES"
         with self.dbConnection.cursor() as cursor:
             cursor.execute(query)
@@ -80,8 +71,8 @@ class Connector():
     
     
     '''
-sql = "INSERT INTO updates (ID, insert_datetime, egroup, job_state) VALUES (%s,%s,%s,%s) ON DUPLICATE KEY UPDATE insert_datetime = VALUES(insert_datetime), egroup = VALUES(egroup), job_state = VALUES(job_state);"
-mycursor.executemany(sql, jobUpdatesList)
+    sql = "INSERT INTO updates (ID, insert_datetime, egroup, job_state) VALUES (%s,%s,%s,%s) ON DUPLICATE KEY UPDATE insert_datetime = VALUES(insert_datetime), egroup = VALUES(egroup), job_state = VALUES(job_state);"
+    mycursor.executemany(sql, jobUpdatesList)
     '''
     def insertMany(self,table,fields,dataArray):
         try:

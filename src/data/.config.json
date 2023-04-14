@@ -1,0 +1,1 @@
+{"HOST": "yourHost", "DB": "TsvDB", "USER": "user", "PASSWORD": "pwd", "MAINTABLE": "Mitglieder", "TIMETABLE": "Zugang", "GRACETIME": "2", "ACCESSPOINT": ["FF", "FC", "DE", "STH"]}

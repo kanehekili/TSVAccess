@@ -6,7 +6,7 @@ Created on Apr 3, 2023
 from DBTools import Connector
 from datetime import datetime, timedelta
 from faker import Faker
-
+import json
 '''
 def setupDB():
     c=Connector()
@@ -135,9 +135,23 @@ def testTimeSpan():
     for info in rows:
         print(info)
     c.close()    
-     
+
+def generateJsonConfig():
+    dic = {}
+    dic["HOST"]="The dbhost"
+    dic["DB"]="TsvDB"        
+    dic["USER"]= "someUser"
+    dic["PASSWORD"] = "passwort"
+    dic["MAINTABLE"]="Mitglieder"
+    dic["TIMETABLE"]="Zugang"
+    dic["GRACETIME"]= "2"      #two hours gracetime to prevent any double checking
+    dic["ACCESSPOINT"]=("FF","FC","DE","STH")
+    with open("../data/.config.json","w") as jf:
+        json.dump(dic,jf) 
+
 
 '''
+way to paint ?
 def testGraph():
     import pandas as pd
     from datetime import datetime, timedelta
@@ -176,8 +190,9 @@ def rand_name():
 
 
 if __name__ == '__main__':
+    generateJsonConfig()
     #testSelectRowComplete()
-    testTimeSpan()
+    #testTimeSpan()
     #rand_name()
     #testSelect()
     #testCreateAccessData()
