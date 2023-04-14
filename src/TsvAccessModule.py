@@ -115,7 +115,7 @@ class RaspberryGPIO():
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(17, GPIO.OUT)
         GPIO.setup(18, GPIO.OUT)
-        self.timer = Timer(5,self.reset)
+        self.timer = None
         '''
         using GPIOS:
         o o
@@ -130,15 +130,12 @@ class RaspberryGPIO():
     def signalAccess(self):
         GPIO.output(18, True)
         GPIO.output(17, False)
-        self.timer.cancel()
-        self.timer.start()
-        
+        self._restartTimer()        
         
     def signalForbidden(self):
         GPIO.output(17, True)        
         GPIO.output(18, False)
-        self.timer.cancel()
-        self.timer.start()
+        self._restartTimer()
         
     
     #TODO needs timer
@@ -146,6 +143,10 @@ class RaspberryGPIO():
         GPIO.output(18, False)
         GPIO.output(17, False)
             
+    def _restartTimer(self):
+        if self.timer:
+            self.timer.cancel()
+        self.timer=Timer(5,self.reset)        
 
 class RaspberryFAKE():
     def signalAccess(self):
