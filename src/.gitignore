@@ -1,1 +1,4 @@
 /TSVAccess.log
+*.py[cod]
+__pycache__/
+

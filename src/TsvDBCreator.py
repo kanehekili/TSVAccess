@@ -15,7 +15,7 @@ print(os.environ.get('secretKey'))
 print(os.environ.get('secretHost'))
 '''
 
-from DBTools import Connector
+from DBTools import Connector,OSTools
 import csv
 from datetime import datetime
 import json
@@ -26,7 +26,9 @@ ACCESSCODES=[]
 class SetUpTSVDB():
     #TODO this stuff belongs to env->getenv or hidden file
     #HOST="192.168.2.82" #"T410Arch.fritz.box"
-    with open("data/.config.json","r") as jr:
+    path = OSTools.getLocalPath(__file__)
+    cfg=OSTools.joinPathes(path,"data",".config.json")
+    with open(cfg,"r") as jr:
         dic = json.load(jr)
         HOST=dic["HOST"]
         DATABASE=dic["DB"]
@@ -35,7 +37,7 @@ class SetUpTSVDB():
         MAINTABLE=dic["MAINTABLE"] 
         TIMETABLE=dic["TIMETABLE"] 
         GRACETIME=dic["GRACETIME"]   # hours gracetime to prevent any double check in
-        ACCESS=dic["ACCESSPOINT"] #Controlpoint
+        ACCESS=dic["ACCESSPOINTS"] #Controlpoint
 
     TABLE1= """
     CREATE OR REPLACE TABLE Mitglieder (

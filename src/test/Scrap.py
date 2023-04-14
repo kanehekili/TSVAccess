@@ -7,6 +7,7 @@ from DBTools import Connector
 from datetime import datetime, timedelta
 from faker import Faker
 import json
+from TsvAccessModule import RaspberryFAKE
 '''
 def setupDB():
     c=Connector()
@@ -145,7 +146,7 @@ def generateJsonConfig():
     dic["MAINTABLE"]="Mitglieder"
     dic["TIMETABLE"]="Zugang"
     dic["GRACETIME"]= "2"      #two hours gracetime to prevent any double checking
-    dic["ACCESSPOINT"]=("FF","FC","DE","STH")
+    dic["ACCESSPOINTS"]=("FF","FC","DE","STH")
     with open("../data/.config.json","w") as jf:
         json.dump(dic,jf) 
 
@@ -187,10 +188,22 @@ def rand_name():
         data=[n+24,fake.first_name(),fake.last_name() ]
         print(data)
 
+def testTimer():
+    ok=True
+    tx=RaspberryFAKE()
+    while ok:
+        res=input("\n>>")
+        if 'g' in res:
+            tx.signalAccess()
+        if 'r' in res:
+            tx.signalForbidden()
+        if 'q' in res:
+            ok=False
 
 
 if __name__ == '__main__':
-    generateJsonConfig()
+    testTimer()
+    #generateJsonConfig()
     #testSelectRowComplete()
     #testTimeSpan()
     #rand_name()

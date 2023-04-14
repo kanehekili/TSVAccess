@@ -6,6 +6,7 @@ Reads some input, checks with remote db and gives a sign (RED=forbidden, GREEN=a
 '''
 import cv2
 import subprocess,os,time
+import DBTools
 from DBTools import OSTools
 from TsvDBCreator import SetUpTSVDB
 from datetime import datetime
@@ -21,9 +22,12 @@ except Exception:
 #import smtplib
 #from email.message import EmailMessage
 
+Log = DBTools.Log
+
 class Accessor():
     def __init__(self):
         OSTools.setupRotatingLogger("TSVAccess",True)
+        
         if RASPI:
             self.gate=RaspberryGPIO()
         else:
@@ -146,15 +150,31 @@ class RaspberryGPIO():
     def _restartTimer(self):
         if self.timer:
             self.timer.cancel()
-        self.timer=Timer(5,self.reset)        
+        self.timer=Timer(5,self.reset)
+        self.timer.start()        
 
 class RaspberryFAKE():
+    def __init__(self):
+        self.timer = None    
+    
     def signalAccess(self):
-        print("GREEN LIGHT")    
+        print("GREEN LIGHT") 
+        self._restartTimer()
 
     def signalForbidden(self):
         print("RED LIGHT")        
-    
+        self._restartTimer()
+
+    def reset(self):
+        print("RESET LIGHT")
+        
+            
+    def _restartTimer(self):
+        if self.timer:
+            self.timer.cancel()
+        self.timer=Timer(5,self.reset) 
+        self.timer.start()
+        
     '''
     Not working wih gmail
     def sendMail(self,msgtext):
