@@ -127,7 +127,7 @@ class RaspberryGPIO():
         o x -GND
         o o                
         o o
-        x x -Grau(17)-Lila(18        
+        x x -Grau(17)-Lila(18)        
         |--| usb==unten
 
         '''
@@ -189,39 +189,6 @@ class RaspberryFAKE():
         smtp_server.sendmail(sender, sender, msg.as_string())
         smtp_server.quit()
     '''
-
-def testQRCode():
-    camera_id = 0
-    delay = 1
-    window_name = 'OpenCV QR Code'
-    
-    qcd = cv2.QRCodeDetector()
-    cap = cv2.VideoCapture(camera_id)
-    
-    while True:
-        ret, frame = cap.read()
-    
-        if ret:
-            ret_qr, decoded_info, points, _ = qcd.detectAndDecodeMulti(frame)
-            state=None
-            if ret_qr:
-                for s, p in zip(decoded_info, points):
-                    if s:
-                        print(s)
-                        state=True
-                        color = (0, 255, 0)
-                    else:
-                        color = (0, 0, 255)
-                        state=False
-                    frame = cv2.polylines(frame, [p.astype(int)], True, color, 8)
-            cv2.imshow(window_name, frame)
-            if state is not None:
-                playSound(state)
-    
-        if cv2.waitKey(delay) & 0xFF == ord('q'):
-            break
-    
-    cv2.destroyWindow(window_name)
 
    
 def playSound(ok):
