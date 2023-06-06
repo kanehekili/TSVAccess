@@ -154,10 +154,17 @@ class BarModel():
         
         return(fakeData,fakeValue)
         
-
-if __name__ == '__main__':
+def main():
+    global Log
+    wd = OSTools().getLocalPath(__file__)
+    OSTools.setMainWorkDir(wd)
+    Log = DBTools.Log
+    OSTools.setupRotatingLogger("TSVAuswertung", True)
     barModel=BarModel()
     app.run(debug=True, host='0.0.0.0', port=5001)    
+
+if __name__ == '__main__':
+    sys.exit(main())
     #r=SimpleBarRenderer(m)
     #r.app.run(debug=True, host='0.0.0.0', port=5001)
     

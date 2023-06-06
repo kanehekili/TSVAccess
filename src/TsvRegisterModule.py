@@ -165,6 +165,7 @@ class MainFrame(QtWidgets.QMainWindow):
         self.cameraThread = None
         self.qtQueueRunning = False
         self.capturing = False
+        self.photoTaken=False
         
         super(MainFrame, self).__init__()
         self.setWindowIcon(getAppIcon())
@@ -197,6 +198,8 @@ class MainFrame(QtWidgets.QMainWindow):
         self.ui_SearchEdit = QtWidgets.QComboBox(self)
         self.ui_SearchEdit.setEditable(True) #Is that right??
         #self.ui_SearchEdit.currentIndexChanged.connect(self._onSearchChanged)
+        self.ui_SearchEdit.setInsertPolicy(QtWidgets.QComboBox.NoInsert);
+        self.ui_SearchEdit.completer().setCompletionMode(QtWidgets.QCompleter.PopupCompletion);
         self.ui_SearchEdit.activated.connect(self._onSearchChanged)
         
         # self.ui_SearchEdit.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.Preferred)
@@ -253,9 +256,12 @@ class MainFrame(QtWidgets.QMainWindow):
 
     # fill the search combo
     def fillSearchCombo(self,memberList):
+        self.ui_SearchEdit.clear()
+        self.ui_SearchEdit.addItem("",None)
         for member in memberList:
             entry= member.searchName()
             self.ui_SearchEdit.addItem(entry,member)
+            
 
 
     def makeGridLayout(self):
@@ -309,16 +315,18 @@ class MainFrame(QtWidgets.QMainWindow):
     @QtCore.pyqtSlot(str)
     #Zugangs kontrolle - not nicht designed
     def _onAccessChanged(self, text):
-        print("Set to model:", text)
-        # self.model.iconSet=text
-        # self.model.update()
+        Log.info("Accessmode:%s", text)
+        #do we need this event?
 
     @QtCore.pyqtSlot()
     def _onScreenShot(self):
         if self.capturing:
             self.capturing = False
-            self.model.takeScreenshot("/tmp/tsv.screenshot.png")
-            self.cameraThread.showFrame(self.model.currentFrame)
+            if self.model.takeScreenshot("/tmp/tsv.screenshot.png"):
+                self.photoTaken=True
+                self.cameraThread.showFrame(self.model.currentFrame)
+            else:
+                self.getMessageDialog("Kein Photo gespeichert!", "Es konnte kein Gesicht erkannt werden \nBitte nochmals probieren").show()
             self.updatePhotoButton()
         else:
             self._initCapture()
@@ -326,7 +334,8 @@ class MainFrame(QtWidgets.QMainWindow):
     @QtCore.pyqtSlot(int)
     def _onSearchChanged(self, idx):
         mbr = self.ui_SearchEdit.itemData(idx)
-        self.setEntryFields(str(mbr.id), mbr.firstName, mbr.lastName)
+        if mbr:
+            self.setEntryFields(str(mbr.id), mbr.firstName, mbr.lastName)
 
     @QtCore.pyqtSlot()
     def _onNewClicked(self):
@@ -334,25 +343,58 @@ class MainFrame(QtWidgets.QMainWindow):
         self.setEntryFields("","","")        
                 
 
-    #persist to database
+    #persist to database (Speichern)
     #Then print Card
     def _onUpdateMember(self):
         mbr=self.ui_SearchEdit.currentData()
-        mid= int(self.ui_IDEdit.text())
+        idstr = self.ui_IDEdit.text()
         firstName= self.ui_FirstNameEdit.text()
         lastName= self.ui_LastNameEdit.text()
+        access = self.ui_AccessCombo.currentText()
+        #photo = self.model.currentFrame #TODO need a screenshot flag!
+        
+        #TODO: We need a "session photo" 
+        
+        msg=""
+        if not idstr:
+            msg="Mitgliedsnr ? \n"
+        if not firstName:
+            msg = msg+"Vorname ? \n"
+        if not lastName:
+            msg = msg+"Nachname ? \n"
+        if not access:
+           msg = msg+"Zugangscode ? \n"
+        if not self.photoTaken:
+            msg = msg+"Photo ? \n"
+           
+        if len(msg)>0: 
+            self.getErrorDialog("Eingabefehler","Bitte alle Felder ausfüllen",msg).show()
+            Log.warn("Data error:%s",msg)
+            return
+
+        mid= int(idstr)
         if mbr is not None:
             mbr.update(mid,firstName,lastName)
             self.ui_SearchEdit.setEditText(mbr.searchName())
         else:
             #create new member, update search box
-            mbr=Mitglied(mid,firstName,lastName)
+            mbr=Mitglied(mid,firstName,lastName,access)
             entry= mbr.searchName()
             self.ui_SearchEdit.addItem(entry,mbr)
+        #need a try catch. 
         self.model.updateMember(mbr)
         self.model.printMemberCard(mbr)
+        self.photoTaken=False
         
-
+        self._clearFields()
+        
+    def _clearFields(self):
+        self.ui_SearchEdit.clearEditText()
+        self.ui_IDEdit.clear()
+        self.ui_FirstNameEdit.clear()
+        self.ui_LastNameEdit.clear()
+        self.ui_AccessCombo.clearEditText()       
+        self.model.currentFrame=None
     # dialogs
     def __getInfoDialog(self, text):
         dlg = QtWidgets.QDialog(self)
@@ -362,7 +404,7 @@ class MainFrame(QtWidgets.QMainWindow):
         label = QtWidgets.QLabel(text)
         label.sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         label.setSizePolicy(label.sizePolicy)
-        label.setMinimumSize(QtCore.QSize(450, 40))
+        label.setMinimumSize(QtCore.QSize(300, 40))
         layout.setSizeConstraint(QtWidgets.QLayout.SetFixedSize)
         layout.addWidget(label)
         return dlg
@@ -376,7 +418,7 @@ class MainFrame(QtWidgets.QMainWindow):
         dlg.setInformativeText(infoText)
         dlg.setDetailedText(detailedText)
         dlg.setStandardButtons(QtWidgets.QMessageBox.Ok)
-        spacer = QtWidgets.QSpacerItem(300, 0, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
+        spacer = QtWidgets.QSpacerItem(300,50, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
         layout = dlg.layout()
         layout.addItem(spacer, layout.rowCount(), 0, 1, layout.columnCount())
         return dlg
@@ -391,7 +433,7 @@ class MainFrame(QtWidgets.QMainWindow):
         dlg.setInformativeText(infoText)
         dlg.setStandardButtons(QtWidgets.QMessageBox.Ok)
         # Workaround to resize a qt dialog. WTF!
-        spacer = QtWidgets.QSpacerItem(300, 0, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
+        spacer = QtWidgets.QSpacerItem(300, 5, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
         layout = dlg.layout()
         layout.addItem(spacer, layout.rowCount(), 0, 1, layout.columnCount())
         
@@ -502,10 +544,11 @@ def headRec():
 class Registration():
 
     def __init__(self):
-        self.accesscodes = []
+        #self.accesscodes = []
         self.currentFrame = None
         self.borders = []
         self.cameraOn = False
+        
 
     def connect(self):
         self.dbSystem = SetUpTSVDB(SetUpTSVDB.DATABASE)
@@ -519,7 +562,7 @@ class Registration():
         # currently: [(1234, 'Merti', 'quanz'), (1236, 'Cora', 'Schnell')]
         res = self.db.select(stmt)
         for titem in res:
-            m = Mitglied(titem[0], titem[1], titem[2])
+            m = Mitglied(titem[0], titem[1], titem[2],"") #TODO access
             col.append(m)
         return col
     
@@ -534,9 +577,12 @@ class Registration():
         # macht das Sinnn? Wieso nicht 10.000 rows einfach laden. 
         pass
     
+    #we need some sane values.Try with at least 300 pix in size.
     def activateCamera(self, cameraThread):
         camera_id = cv2.CAP_V4L2
         cap = cv2.VideoCapture(camera_id)
+        CTHRES=300 #find out... 
+        self.currentFrame = None
         
         # Loading the required haar-cascade xml classifier file
         haar_cascade = cv2.CascadeClassifier('/usr/share/opencv4/haarcascades/haarcascade_frontalface_default.xml') 
@@ -559,8 +605,23 @@ class Registration():
                 for (x, y, w, h) in faces_rect:
                     offsetX = round(w / 2)
                     offsetY = round(h / 2)
-                    cv2.rectangle(frame, (x - offsetX, y - offsetY), (x + w + offsetX, y + h + offsetY), (0, 255, 0), 2)
-                    self.borders = [x - offsetX + 2, y - offsetY + 2, w + 2 * offsetX - 4, h + 2 * offsetY - 4]
+                    left = x-offsetX
+                    top= y-offsetY
+                    right= x+w+offsetX
+                    bottom=y+h+offsetY
+                    cv2.rectangle(frame, (left,top),(right,bottom), (0, 255, 0), 2)
+                    #cv2.rectangle(frame, (x - offsetX, y - offsetY), (x + w + offsetX, y + h + offsetY), (0, 255, 0), 2)
+                    #self.borders = [x - offsetX + 2, y - offsetY + 2, w + 2 * offsetX - 4, h + 2 * offsetY - 4]
+                    
+                    px=max(0,left+2)
+                    py=max(0,top+2)
+                    dw=right-px -2
+                    dh=bottom-py -2;
+                    if dw >CTHRES and dh>CTHRES:
+                        self.borders=[px,py,dw,dh]
+                    else:
+                        Log.info("Invalid frame size: %d / %d -> %d/%d",px,py,dw,dh)
+                       
                 
                 if self.cameraOn: 
                     self.currentFrame = frame
@@ -570,12 +631,14 @@ class Registration():
     
     def takeScreenshot(self, path):
         self.cameraOn = False
-        if self.currentFrame is None:
+        if self.currentFrame is None or len(self.borders)==0:
+            Log.info("Screenshot failed")
             return False
         x = self.borders[0]
         y = self.borders[1]
         w = self.borders[2]
         h = self.borders[3]
+        Log.info("Crop photo dim: %d/%d > %d/%d",x,y,w,h)
         cropped = self.currentFrame[y:y + h, x:x + w].copy()
         cv2.imwrite(path, cv2.cvtColor(cropped, cv2.COLOR_RGB2BGR))
         self.currentFrame = cv2.cvtColor(self.currentFrame[y:y + h, x:x + w], cv2.COLOR_RGB2BGR)
@@ -604,21 +667,22 @@ class Registration():
     
 
 class Mitglied():
-    FIELD_DEF=('id','first_name','last_name') #,'entry_date')
-    def __init__(self, mid, fn, ln):  # id, firstname, lastname, DOB, access1, access2
-        self.update(mid, fn, ln)
+    FIELD_DEF=('id','first_name','last_name') #,'birthdate'?,'access')
+    def __init__(self, mid, fn, ln,access=None):  # id, firstname, lastname, DOB, access1, access2
+        self.update(mid, fn, ln,access)
         
     def searchName(self):
         return self.lastName + " " + self.firstName
 
-    def update(self,mid, fn, ln):
+    def update(self,mid, fn, ln,acc):
         self.id = mid
         self.firstName = fn
         self.lastName = ln
+        self.access=acc
         
     def dataArray(self):
         row=[]
-        inner=(self.id,self.firstName,self.lastName)
+        inner=(self.id,self.firstName,self.lastName) #TODO access/birthdate?
         row.append(inner)
         return row
 
@@ -646,9 +710,6 @@ def main():
         argv = sys.argv
         app = QApplication(argv)
         app.setWindowIcon(getAppIcon())
-        # res=parseOptions(argv)
-        # FFMPEGTools.setupRotatingLogger("VideoCut",res["logConsole"])
-        # VideoPlugin=setUpVideoPlugin(res["mpv"])
         WIN = MainFrame(app)  # keep python reference!
         app.exec_()
         # logging.shutdown()

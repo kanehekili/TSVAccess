@@ -116,5 +116,6 @@ def testcsv():
     s.importCSV("/home/matze/JWSP/python/TSVAccess/tsv.csv")    
 
 if __name__ == '__main__':
-    testcsv()
+    #testcsv()
+    basicSetup()
     pass
