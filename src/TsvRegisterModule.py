@@ -20,8 +20,7 @@ from PyQt5.QtGui import QRegExpValidator
 from DBTools import OSTools
 from TsvDBCreator import SetUpTSVDB
 import DBTools
-#import qrcode
-
+from datetime import datetime
 
 class OpenCV3():
 
@@ -154,6 +153,128 @@ class VideoWidget(QtWidgets.QFrame):
     def updateUI(self, frameNumber, framecount, timeinfo):
         self.trigger.emit(frameNumber, framecount, timeinfo)
 
+# https://gis.stackexchange.com/questions/350148/qcombobox-multiple-selection-pyqt5
+class CheckableComboBox(QtWidgets.QComboBox):
+
+    # Subclass Delegate to increase item height
+    class Delegate(QtWidgets.QStyledItemDelegate):
+        def sizeHint(self, option, index):
+            size = super().sizeHint(option, index)
+            size.setHeight(20)
+            return size
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Make the combo editable to set a custom text, but readonly
+        self.setEditable(True)
+        self.lineEdit().setReadOnly(True)
+        # Make the lineedit the same color as QPushButton
+        #palette = qApp.palette()
+        #palette.setBrush(QPalette.Base, palette.button())
+        #self.lineEdit().setPalette(palette)
+
+        # Use custom delegate
+        self.setItemDelegate(CheckableComboBox.Delegate())
+
+        # Update the text when an item is toggled
+        self.model().dataChanged.connect(self.updateText)
+
+        # Hide and show popup when clicking the line edit
+        self.lineEdit().installEventFilter(self)
+        self.closeOnLineEditClick = False
+
+        # Prevent popup from closing when clicking on an item
+        self.view().viewport().installEventFilter(self)
+
+    def resizeEvent(self, event):
+        # Recompute text to elide as needed
+        self.updateText()
+        super().resizeEvent(event)
+
+    def eventFilter(self, object, event):
+
+        if object == self.lineEdit():
+            if event.type() == QtCore.QEvent.MouseButtonRelease:
+                if self.closeOnLineEditClick:
+                    self.hidePopup()
+                else:
+                    self.showPopup()
+                return True
+            return False
+
+        if object == self.view().viewport():
+            if event.type() == QtCore.QEvent.MouseButtonRelease:
+                index = self.view().indexAt(event.pos())
+                item = self.model().item(index.row())
+
+                if item.checkState() == QtCore.Qt.Checked:
+                    item.setCheckState(QtCore.Qt.Unchecked)
+                else:
+                    item.setCheckState(QtCore.Qt.Checked)
+                return True
+        return False
+
+    def showPopup(self):
+        super().showPopup()
+        # When the popup is displayed, a click on the lineedit should close it
+        self.closeOnLineEditClick = True
+
+    def hidePopup(self):
+        super().hidePopup()
+        # Used to prevent immediate reopening when clicking on the lineEdit
+        self.startTimer(100)
+        # Refresh the display text when closing
+        self.updateText()
+
+    def timerEvent(self, event):
+        # After timeout, kill timer, and reenable click on line edit
+        self.killTimer(event.timerId())
+        self.closeOnLineEditClick = False
+
+    def updateText(self):
+        texts = []
+        for i in range(self.model().rowCount()):
+            if self.model().item(i).checkState() == QtCore.Qt.Checked:
+                texts.append(self.model().item(i).text())
+        text = ", ".join(texts)
+
+        # Compute elided text (with "...")
+        metrics = QtGui.QFontMetrics(self.lineEdit().font())
+        elidedText = metrics.elidedText(text, QtCore.Qt.ElideRight, self.lineEdit().width())
+        self.lineEdit().setText(elidedText)
+
+    def addItem(self, text, data=None):
+        item = QtGui.QStandardItem()
+        item.setText(text)
+        if data is None:
+            item.setData(text)
+        else:
+            item.setData(data)
+        item.setFlags(QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsUserCheckable)
+        item.setData(QtCore.Qt.Unchecked, QtCore.Qt.CheckStateRole)
+        self.model().appendRow(item)
+
+    def addItems(self, texts, datalist=None):
+        for i, text in enumerate(texts):
+            try:
+                data = datalist[i]
+            except (TypeError, IndexError):
+                data = None
+            self.addItem(text, data)
+
+    def currentData(self):
+        # Return the list of selected items data
+        res = []
+        for i in range(self.model().rowCount()):
+            if self.model().item(i).checkState() == QtCore.Qt.Checked:
+                res.append(self.model().item(i).data())
+        return res
+
+    #mark items in data or textarray as selected
+    def selectData(self,textArray):
+        #TODO
+        pass
 
 # #Main App Window. 
 class MainFrame(QtWidgets.QMainWindow):
@@ -172,6 +293,7 @@ class MainFrame(QtWidgets.QMainWindow):
         self._widgets = self.initUI()
         self.centerWindow()
         # self._widgets.enableUserActions(False)
+        self.setWindowTitle("Registrierung für Fit'n Fun Mitglieder")
         self.show()
         qapp.applicationStateChanged.connect(self.__queueStarted)    
 
@@ -186,10 +308,12 @@ class MainFrame(QtWidgets.QMainWindow):
         # #some default:
         
         self.ui_VideoFrame = VideoWidget(self)
+        self.ui_VideoFrame.setToolTip("Warten bis ein grüner Rahmen angezeigt wird, dann 'Photo' Knopf drücken") 
         
         self.ui_PhotoButton = QtWidgets.QPushButton()
         self.updatePhotoButton()
         self.ui_PhotoButton.clicked.connect(self._onScreenShot)
+        self.ui_PhotoButton.setToolTip("Wechsel zwischen Video und Photo machen")
         
         self.ui_SearchLabel = QtWidgets.QLabel(self)
         self.ui_SearchLabel.setText("Suche:")
@@ -201,6 +325,7 @@ class MainFrame(QtWidgets.QMainWindow):
         self.ui_SearchEdit.setInsertPolicy(QtWidgets.QComboBox.NoInsert);
         self.ui_SearchEdit.completer().setCompletionMode(QtWidgets.QCompleter.PopupCompletion);
         self.ui_SearchEdit.activated.connect(self._onSearchChanged)
+        self.ui_SearchEdit.setToolTip("Nachnamen eingeben, um eine Person zu suchen")
         
         # self.ui_SearchEdit.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.Preferred)
         
@@ -209,6 +334,7 @@ class MainFrame(QtWidgets.QMainWindow):
         self.ui_IDEdit = QtWidgets.QLineEdit(self)
         self.ui_IDEdit.setValidator(QtGui.QIntValidator(1,100000,self))
         self.ui_IDEdit.setValidator(QRegExpValidator(QRegExp('^([1-9][0-9]*\.?|0\.)[0-9]+$'), self))
+        self.ui_IDEdit.setToolTip("Die Conplan <Adressnummer> ist hier einzutragen")
 
         self.ui_FirstNameLabel = QtWidgets.QLabel(self)
         self.ui_FirstNameLabel.setText("Vorname:")
@@ -218,26 +344,40 @@ class MainFrame(QtWidgets.QMainWindow):
         self.ui_LastNameLabel.setText("Nachname:")
         self.ui_LastNameEdit = QtWidgets.QLineEdit(self)
 
+        self.ui_BirthLabel = QtWidgets.QLineEdit(self)
+        self.ui_BirthLabel.setText("")
+        self.ui_BirthLabel.setReadOnly(True);
+        self.ui_BirthLabel.setToolTip("Geburtstag (nicht veränderbar)")
+
+        self.ui_RFIDLabel = QtWidgets.QLabel(self)
+        self.ui_RFIDLabel.setText("RFID Nummer")
+        self.ui_RFID = QtWidgets.QLineEdit(self)
+        self.ui_RFID.setToolTip("RFID mit Kartenleser einchecken - Erst draufclicken -dann scannen!")
+        self.ui_RFID.textEdited.connect(self._onRFIDRead)
+
         self.ui_AccessLabel = QtWidgets.QLabel(self)
         self.ui_AccessLabel.setText("Merkmale:")
+        self.ui_AccessLabel.setToolTip("Hier kann der Zugangscode (Nulti3) angepasst werden - aktuell nur einer")
         
         self.ui_AccessCombo = QtWidgets.QComboBox(self)
-        # TODO - defined Stuff from Model
-        # https://gis.stackexchange.com/questions/350148/qcombobox-multiple-selection-pyqt5
-        themes = ["MZR", "FitnFun", "Yoga", "Alles"]
+        #self.ui_AccessCombo = CheckableComboBox(self)
+        themes = SetUpTSVDB.ACCESSLIST
         for item in themes:
             self.ui_AccessCombo.addItem(item)
         self.ui_AccessCombo.setCurrentText("")  # self.model.iconSet
         self.ui_AccessCombo.currentTextChanged.connect(self._onAccessChanged)
-        self.ui_AccessCombo.setToolTip("Angabe der Zugangsbereiche (Mehrfachwahl möglich)")
+        #self.ui_AccessCombo.setToolTip("Angabe der Zugangsbereiche (Mehrfachwahl möglich)")
+        self.ui_AccessCombo.setToolTip("Angabe des Zugangsbereichs")
 
         self.ui_CreateButton = QtWidgets.QPushButton()
         self.ui_CreateButton.setText("Speichern")
         self.ui_CreateButton.clicked.connect(self._onUpdateMember)
+        self.ui_CreateButton.setToolTip("In Datenbank speichern und Zugang erlauben")
 
         self.ui_ExitButton = QtWidgets.QPushButton()
         self.ui_ExitButton.setText("Neu")
         self.ui_ExitButton.clicked.connect(self._onNewClicked)
+        self.ui_ExitButton.setToolTip("Ein weiters Mitglied einchecken")
         
         box = self.makeGridLayout()
         
@@ -288,29 +428,37 @@ class MainFrame(QtWidgets.QMainWindow):
 
         gridLayout.addWidget(self.ui_LastNameLabel, 9, 1, 1, 1)
         gridLayout.addWidget(self.ui_LastNameEdit, 9, 2, 1, 4)
+
+        gridLayout.addWidget(self.ui_RFIDLabel, 10, 1, 1, 1)
+        gridLayout.addWidget(self.ui_RFID, 10, 2, 1, 4)
         
-        gridLayout.addWidget(self.ui_AccessLabel, 10, 1, 1, 1)
-        gridLayout.addWidget(self.ui_AccessCombo, 10, 2, 1, 4)
+        gridLayout.addWidget(self.ui_AccessLabel, 11, 1, 1, 1)
+        gridLayout.addWidget(self.ui_AccessCombo, 11, 2, 1, 2)
+        gridLayout.addWidget(self.ui_BirthLabel,11,4,1,2)
         
         line = QtWidgets.QFrame();
         line.setFrameShape(QtWidgets.QFrame.HLine);
         line.setFrameShadow(QtWidgets.QFrame.Sunken);
         
-        gridLayout.addWidget(line, 11, 1, 1, -1)
+        gridLayout.addWidget(line, 12, 1, 1, -1)
         
-        gridLayout.addWidget(self.ui_ExitButton, 12, 1, 1, 1)
-        gridLayout.addWidget(self.ui_CreateButton, 12, 5, 1, 1)
+        gridLayout.addWidget(self.ui_ExitButton, 13, 1, 1, 1)
+        gridLayout.addWidget(self.ui_CreateButton, 13, 5, 1, 1)
         
         gridLayout.setRowStretch(1, 1)
 
         return gridLayout
 
-    def setEntryFields(self,nbr,firstName,lastName,zugang=None): #TODO
-        self.ui_IDEdit.setText(str(nbr))
-        self.ui_FirstNameEdit.setText(firstName)
-        self.ui_LastNameEdit.setText(lastName)        
-        #self.ui_AccessCombo.do-sth
-
+    def setEntryFields(self,mbr): #TODO
+        self.ui_IDEdit.setText(mbr.primKeyString())
+        self.ui_FirstNameEdit.setText(mbr.firstName)
+        self.ui_LastNameEdit.setText(mbr.lastName)
+        self.ui_AccessCombo.setCurrentText(mbr.access)
+        self.ui_BirthLabel.setText(mbr.birthdayString())
+        self.ui_RFID.setText(mbr.rfidString())
+        #self.ui_AccessCombo.do-sth    
+           
+ 
     # The widget callbacks
     @QtCore.pyqtSlot(str)
     #Zugangs kontrolle - not nicht designed
@@ -335,13 +483,25 @@ class MainFrame(QtWidgets.QMainWindow):
     def _onSearchChanged(self, idx):
         mbr = self.ui_SearchEdit.itemData(idx)
         if mbr:
-            self.setEntryFields(str(mbr.id), mbr.firstName, mbr.lastName)
+            self.setEntryFields(mbr)
 
     @QtCore.pyqtSlot()
     def _onNewClicked(self):
         self.ui_SearchEdit.setCurrentIndex(-1)
-        self.setEntryFields("","","")        
-                
+        self._clearFields()        
+    
+    @QtCore.pyqtSlot(str)            
+    def _onRFIDRead(self,rfid):
+        #this we need to check
+        if len(rfid)<10:
+            return
+        print("Read slot %s"%(rfid))
+        if not rfid:
+            return;
+        
+        if not self.model.verifyRfid(rfid):
+            d= self.getErrorDialog("** RFID **", "Ungültige RFID, bitte einen anderen Token benutzen", "In der Datenbank existiert bereits eine solche RFID Nummer und kann nicht nochmal vergeben werden")
+            d.show()
 
     #persist to database (Speichern)
     #Then print Card
@@ -351,6 +511,8 @@ class MainFrame(QtWidgets.QMainWindow):
         firstName= self.ui_FirstNameEdit.text()
         lastName= self.ui_LastNameEdit.text()
         access = self.ui_AccessCombo.currentText()
+        birthdate= self.ui_BirthLabel.text()
+        rfid = self.ui_RFID.text()
         #photo = self.model.currentFrame #TODO need a screenshot flag!
         
         #TODO: We need a "session photo" 
@@ -363,27 +525,36 @@ class MainFrame(QtWidgets.QMainWindow):
         if not lastName:
             msg = msg+"Nachname ? \n"
         if not access:
-           msg = msg+"Zugangscode ? \n"
+            msg = msg+"Zugangscode ? \n"
         if not self.photoTaken:
             msg = msg+"Photo ? \n"
+        if not rfid:
+            msg= "RFID Code ? \n"
            
         if len(msg)>0: 
             self.getErrorDialog("Eingabefehler","Bitte alle Felder ausfüllen",msg).show()
-            Log.warn("Data error:%s",msg)
+            Log.warning("Data error:%s",msg)
             return
 
         mid= int(idstr)
+        bd = mbr.asDBDate(birthdate)
+        rfid_int= int(rfid)
+        #we should update in the correct form
         if mbr is not None:
-            mbr.update(mid,firstName,lastName)
+            mbr.update(mid,firstName,lastName,access,bd,rfid_int)
             self.ui_SearchEdit.setEditText(mbr.searchName())
         else:
             #create new member, update search box
-            mbr=Mitglied(mid,firstName,lastName,access)
+            mbr=Mitglied(mid,firstName,lastName,access,bd,rfid_int)
             entry= mbr.searchName()
             self.ui_SearchEdit.addItem(entry,mbr)
-        #need a try catch. 
+        #need a try catch.
+        res= self.model.savePicture(mbr)#scps the pic to remote and adds uri to db...
+        if not res:
+            self.getErrorDialog("Verbindungsfehler","Bild konnte nicht gespeichert werden","Das muss gemeldet werden").show()
+        #TODO: BUG--piecure removed, doubse save....     
         self.model.updateMember(mbr)
-        self.model.printMemberCard(mbr)
+        #self.model.printMemberCard(mbr)
         self.photoTaken=False
         
         self._clearFields()
@@ -394,6 +565,8 @@ class MainFrame(QtWidgets.QMainWindow):
         self.ui_FirstNameEdit.clear()
         self.ui_LastNameEdit.clear()
         self.ui_AccessCombo.clearEditText()       
+        self.ui_BirthLabel.clear()
+        self.ui_RFID.clear()
         self.model.currentFrame=None
     # dialogs
     def __getInfoDialog(self, text):
@@ -443,6 +616,16 @@ class MainFrame(QtWidgets.QMainWindow):
     def _displayFrame(self):
         self.ui_VideoFrame.showFrame(self.cameraThread.result)
     
+    @QtCore.pyqtSlot(str)
+    def _showCameraError(self,text):
+        dlg=self.getErrorDialog("Kamerafehler", text, "Ein Kamerafehler ist aufgetreten. Häufigste Ursache ist, das sie nicht gefunden werden kann.")
+        dlg.show()
+    
+    @QtCore.pyqtSlot(str)
+    def _setRFID(self,key):
+        print("RFID:",key)
+        self.ui_RFID.setText(key)
+    
     def __queueStarted(self, state):
         if self.qtQueueRunning:
             return
@@ -451,8 +634,10 @@ class MainFrame(QtWidgets.QMainWindow):
         
         self.cameraThread = CameraThread(self.model.activateCamera)
         self.cameraThread.signal.connect(self._displayFrame)
+        #self.cameraThread.error.connect(self._showCameraError)
         if self._initModel():
             self._initCapture()
+        
     
     def _initCapture(self):
         self.capturing = True
@@ -460,7 +645,11 @@ class MainFrame(QtWidgets.QMainWindow):
         self.updatePhotoButton()
         self.cameraThread.start()
         while not self.model.cameraOn:
-            time.sleep(0.2)
+            if self.model.cameraStatus is None:
+                time.sleep(0.2)
+            else:
+                self._showCameraError(self.model.cameraStatus)
+                break
         QApplication.restoreOverrideCursor()
 
     def _initModel(self):
@@ -489,9 +678,24 @@ class MainFrame(QtWidgets.QMainWindow):
             super(MainFrame, self).closeEvent(event)
         except:
             Log.exception("Error Exit")        
+'''
+class RFIDThread(QtCore.QThread):
+    signal = pyqtSignal(str)
+    
+    def __init__(self, func):
+        QtCore.QThread.__init__(self)
+        self.func = func
+    
+    def run(self):
+        self.func(self)
+        
+    def dispatch(self,key):
+        self.signal.emit(key)        
+'''
 
 class CameraThread(QtCore.QThread):
     signal = pyqtSignal()
+    #error= pyqtSignal(str)
     result = None
 
     def __init__(self, func):
@@ -548,6 +752,7 @@ class Registration():
         self.currentFrame = None
         self.borders = []
         self.cameraOn = False
+        self.cameraStatus = None
         
 
     def connect(self):
@@ -557,30 +762,33 @@ class Registration():
     
     # reads the list and passes it to the caller...
     def getMembers(self):
-        stmt = "SELECT id,first_name,last_name from " + self.dbSystem.MAINTABLE
+        fields = ','.join(Mitglied.FIELD_DEF)#FIELD_DEF=('id','first_name','last_name','access','birth_date,uuid') 
+        #stmt = "SELECT id,first_name,last_name from " + self.dbSystem.MAINTABLE
+        stmt = "SELECT "+fields+" from " + self.dbSystem.MAINTABLE
         col = []
         # currently: [(1234, 'Merti', 'quanz'), (1236, 'Cora', 'Schnell')]
         res = self.db.select(stmt)
         for titem in res:
-            m = Mitglied(titem[0], titem[1], titem[2],"") #TODO access
+            # id(int) (str) (str) (str) date! int
+            m = Mitglied(titem[0], titem[1], titem[2],titem[3],titem[4],titem[5])
             col.append(m)
         return col
     
     def updateMember(self,mbr):
         table=self.dbSystem.MAINTABLE
-        fields=Mitglied.FIELD_DEF
-        data=mbr.dataArray()
+        fields=Mitglied.FIELD_SAVE_DEF
+        data=mbr.dataSaveArray()
         self.db.insertMany(table,fields,data)
-    
-    def searchLastName(self, text):
-        stmt = "SELECT * from " + self.dbSystem.MAINTABLE + " where =" + text
-        # macht das Sinnn? Wieso nicht 10.000 rows einfach laden. 
-        pass
     
     #we need some sane values.Try with at least 300 pix in size.
     def activateCamera(self, cameraThread):
         camera_id = cv2.CAP_V4L2
         cap = cv2.VideoCapture(camera_id)
+        if cap is None or not cap.isOpened():
+            Log.warning("Camera not found!")
+            self.cameraStatus="Keine Kamera gefunden"
+            return
+            
         CTHRES=300 #find out... 
         self.currentFrame = None
         
@@ -588,6 +796,7 @@ class Registration():
         haar_cascade = cv2.CascadeClassifier('/usr/share/opencv4/haarcascades/haarcascade_frontalface_default.xml') 
         # haar_cascade = cv2.CascadeClassifier('./data/upper_body.xml')
         # Reading the image
+        print("Cam on")
         self.cameraOn = True
         # emit signal?
         while self.cameraOn:
@@ -647,44 +856,123 @@ class Registration():
     def stopCamera(self):
         self.cameraOn=False
         
-        
+    #dont- save pic with member name on remote device via scp or smb.     
     def printMemberCard(self,member):
-        "/tmp/tsv.screenshot.png"
         #generate OCR for now    
         #get both images & convert: left to right (else -append)
         #convert +append image_1.png image_2.png -resize x500 new_image_conbined.png
         data = str(member.id)+","+member.searchName()
         cmd1=["/usr/bin/qrencode","-o", "/tmp/qr.png", "-s", "6",data]
         res=DBTools.runExternal(cmd1)
-        print(res)
+        #print(res)
         
         #possible density stuff. We need to ensure that the saved size is independent of the camera!
         #montage card[1-4]*.png -tile 2x2+140+140 -geometry 382x240+65+52 -density 100 cards.pdf
         cmd2=["/usr/bin/convert","+append","/tmp/tsv.screenshot.png","/tmp/qr.png","-resize","x400","/tmp/member.png" ]
         res=DBTools.runExternal(cmd2)
-        print(res)
+        #print(res)
         
+    def savePicture(self,member):
+        saved= "/tmp/tsv.screenshot.png"
+        data = member.searchName()+"-"+member.primKeyString()+".png"
+        targetPath = SetUpTSVDB.PICPATH
+        member.picpath=data
+        cmd1=["scp",saved,targetPath+data]
+        res=DBTools.runExternal(cmd1)
+        if len(res[0])>0:
+            Log.info("Save Pic result:%s",res[0])
+        if len(res[1])>0:
+            Log.warning("Save Pic result:%s",res[1]) 
+            return False
+        return True           
+        
+        
+        #save current frame and remove that imwrite in takeScreenshot
+        #scp saved to remote location
+        '''
+        another way for getting the pic:
+        img = CVImage(frame.copy()).scaled(int(self.cvWidget.imageRatio * self.iconSize), self.iconSize)
+            pix = QtGui.QPixmap.fromImage(img)
+        #conveert to base64 String
+        def toBase64(self,pix):
+            data = QtCore.QByteArray() 
+            buf = QtCore.QBuffer(data)
+            pix.save(buf, 'JPG')
+            #breaks xml test=data.toBase64()
+            t1=data.toBase64()
+            t2= str(t1,'ascii')
+            return t2    
+        #back to img
+        def fromBase64(self,pixstr):
+            if pixstr is None:
+                return None
+            t1=bytearray(pixstr,"ascii")
+            #data = QtCore.QByteArray.fromBase64(pixstr,QtCore.QByteArray.Base64Encoding)
+            data = QtCore.QByteArray.fromBase64(t1)
+            pix=QtGui.QPixmap()
+            pix.loadFromData(data)
+            return pix        
+        
+        generate and install ssh key or use pwd..
+        import subprocess
+        subprocess.run(["scp", FILE, "USER@SERVER:PATH"])
+        '''
+        #store Name(not path) into db
+        return True
+        
+    def verifyRfid(self,rfidString):
+        #check if rfid  alreay exists ->False
+        stmt="SELECT id from "+self.dbSystem.MAINTABLE+" where uuid="+rfidString
+        res = self.db.select(stmt)
+        if len(res)>0:
+            Log.warning("User %d already has RFID key:%s",res[0][0],rfidString)
+            return False
+        return True
+            
     
-
+    
 class Mitglied():
-    FIELD_DEF=('id','first_name','last_name') #,'birthdate'?,'access')
-    def __init__(self, mid, fn, ln,access=None):  # id, firstname, lastname, DOB, access1, access2
-        self.update(mid, fn, ln,access)
+    FIELD_DEF=('id','first_name','last_name','access','birth_date','uuid')
+    FIELD_SAVE_DEF=('id','first_name','last_name','access','picpath','uuid')  
+    def __init__(self, mid_int, fn, ln,access,birthdate,rfid_int):  # id, firstname, lastname, DOB, access1, access2
+        self.update(mid_int, fn, ln,access,birthdate,rfid_int)
         
     def searchName(self):
         return self.lastName + " " + self.firstName
 
-    def update(self,mid, fn, ln,acc):
-        self.id = mid
+    def update(self,mid_int, fn, ln,access,birthdate,rfid_int,picpath=""):
+        self.id = mid_int #This is int
         self.firstName = fn
         self.lastName = ln
-        self.access=acc
-        
-    def dataArray(self):
+        self.access=access
+        self.birthdate=birthdate #This is a date
+        self.rfid=rfid_int #Must be int for faster search
+        self.picpath=picpath 
+    
+    
+    #TODO error; Wrong datatype if no saved and retireved.
+    #Todo: no check if rfid is unique 
+    def birthdayString(self):
+        return datetime.strftime(self.birthdate, '%d.%m.%Y')
+    
+    def asDBDate(self,stringDate):
+        return datetime.strptime(stringDate, '%d.%m.%Y')
+    
+    def primKeyString(self):
+        return str(self.id)
+
+    def rfidString(self):
+        if self.rfid:
+            return str(self.rfid)
+        return None
+    
+    #data to save, no birthday        
+    def dataSaveArray(self):
         row=[]
-        inner=(self.id,self.firstName,self.lastName) #TODO access/birthdate?
+        inner=(self.id,self.firstName,self.lastName,self.access,self.picpath,self.rfid) #birthdate is read only
         row.append(inner)
         return row
+
 
 def getAppIcon():
     return QtGui.QIcon('./icons/tsv_logo_100.png')

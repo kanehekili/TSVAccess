@@ -74,7 +74,7 @@ class Connector():
     sql = "INSERT INTO updates (ID, insert_datetime, egroup, job_state) VALUES (%s,%s,%s,%s) ON DUPLICATE KEY UPDATE insert_datetime = VALUES(insert_datetime), egroup = VALUES(egroup), job_state = VALUES(job_state);"
     mycursor.executemany(sql, jobUpdatesList)
     '''
-    def insertMany(self,table,fields,dataArray):
+    def insertMany(self,table,fields,dataSaveArray):
         try:
             fieldNames = str(fields) #these are tuples. 
             start=0
@@ -103,7 +103,7 @@ class Connector():
 
             print(query)                
             with self.dbConnection.cursor() as cursor:
-                res=cursor.executemany(query, dataArray)
+                res=cursor.executemany(query, dataSaveArray)
                 self.dbConnection.commit()
                 if res is not None:
                     Log.info("insert:> %s <",res)

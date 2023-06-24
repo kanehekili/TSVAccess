@@ -147,6 +147,7 @@ def generateJsonConfig():
     dic["TIMETABLE"]="Zugang"
     dic["GRACETIME"]= "2"      #two hours gracetime to prevent any double checking
     dic["ACCESSPOINTS"]=("FF","FC","DE","STH")
+    dic["PICPATH"]=("/path/to/scp")
     with open("../data/.config.json","w") as jf:
         json.dump(dic,jf) 
 
@@ -202,8 +203,8 @@ def testTimer():
 
 
 if __name__ == '__main__':
-    testTimer()
-    #generateJsonConfig()
+    #testTimer()
+    generateJsonConfig()
     #testSelectRowComplete()
     #testTimeSpan()
     #rand_name()

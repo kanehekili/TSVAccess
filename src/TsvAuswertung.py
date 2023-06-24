@@ -15,6 +15,9 @@ import plotly.express as px
 import plotly.graph_objs as go
 from datetime import datetime,timedelta
 import random
+from DBTools import OSTools
+import DBTools
+import sys
 
 '''
 @app.route('/')
@@ -156,6 +159,7 @@ class BarModel():
         
 def main():
     global Log
+    global barModel
     wd = OSTools().getLocalPath(__file__)
     OSTools.setMainWorkDir(wd)
     Log = DBTools.Log
