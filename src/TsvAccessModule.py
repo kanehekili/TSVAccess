@@ -50,14 +50,32 @@ class RFIDAccessor():
         self.running=True
         while self.running:
             print("start reading")
-            prim,text = self.reader.read()
-            #exception? -> Buzzer
-            self.verifyAccess(prim,text)
+            #prim,text = self.reader.read() #(int,text)
+            try:
+                rfid= self.reader.read_id() #int
+                if RASPI:
+                    rfid=self._convert(rfid)
+            except KeyboardInterrupt:
+                print("Exit")
+                return
+            except:
+                Log.warning("Read error RFID")
+                rfid=0
+            self.verifyAccess(rfid)
+            time.sleep(1)
+    
+    def _convert(self,bigInt):
+        if not bigInt:
+            return 0
+        rbytes = bigInt.to_bytes(5)
+        tmp = rbytes[:-1][::-1]
+        return int.from_bytes(tmp)
+    
      
-    def verifyAccess(self,rfid,text):
+    def verifyAccess(self,rfid):
         #we just read the number... 
-        if rfid.isnumeric():
-            stmt="SELECT * from "+self.dbSystem.MAINTABLE+" where uuid="+rfid
+        if rfid:
+            stmt="SELECT * from "+self.dbSystem.MAINTABLE+" where uuid="+str(rfid)
             rows = self.db.select(stmt)
             if len(rows)>0:
                 res = self.validateRow(rfid,rows[0]) #highlander - we can have only one row per uuid
@@ -65,17 +83,18 @@ class RFIDAccessor():
                 res=False
             if res:
                 self.gate.signalAccess()
+                Log.info("Access:%d",rfid)
             else:
                 self.gate.signalForbidden()
+                Log.info("Reject:%d",rfid)
         else:
-            Log.info("Invalid token %s > %s",rfid,text)    
+            Log.warning("Invalid token %s",rfid)    
         
     def validateRow(self,rfid,row):
         if row is None or len(row)==0:
-            Log.warning("Invalid id %s"%(rfid))
+            Log.warning("Invalid id %d"%(rfid))
             return False
         
-        #TODO Check kennzeichen in the fields -> needs config based on gate.
         #get prim key from the row array
         key = row[0]
         eolDate=row[3]
@@ -84,15 +103,17 @@ class RFIDAccessor():
             return False
         #Allowd. That person needs an entry
         table= self.dbSystem.TIMETABLE
+        location=self.dbSystem.LOCATION
         now = datetime.now().isoformat()
-        stmt = "SELECT mitglied_id,access_date from "+table+" where mitglied_id="+str(key)+" AND access_date >= DATE(NOW()) + INTERVAL -"+self.dbSystem.GRACETIME+" hour"
+        stmt = "SELECT mitglied_id,access_date from "+table+" where mitglied_id="+str(key)+" AND TIMESTAMPDIFF(minute,access_date,NOW()) <= "+self.dbSystem.GRACETIME
+        
         Log.debug("Search time db:%s",stmt)
         timerows=self.db.select(stmt) 
         Log.debug("Access rows:%s",timerows)
         if len(timerows)==0:
             data=[]
-            data.append((key,now))
-            self.db.insertMany(table, ('mitglied_id','access_date'), data)
+            data.append((key,now,location))
+            self.db.insertMany(table, ('mitglied_id','access_date','location'), data)
         
         return True        
      
@@ -100,11 +121,15 @@ class RFIDAccessor():
         if eolDate:
             now = date.today()
             if eolDate < now:
+                Log.warning("Member EOL")
                 return False
         
         if access:
             allowed = SetUpTSVDB.ACCESS
-            return access in allowed
+            ok= access in allowed
+            if not ok:
+                Log.warning("Wrong group:%s in:%s",access,allowed)
+            return ok    
         return False
 
 class QRAccessor():
@@ -132,7 +157,6 @@ class QRAccessor():
         while True:
             ret, frame = cap.read()
             if ret:
-                #ret_qr, decoded_info, _, _ = qcd.detectAndDecodeMulti(frame)
                 ret_qr, decoded_info, _, _ = qcd.detectAndDecodeMulti(frame)
                 if ret_qr:
                     for s in decoded_info:
@@ -179,6 +203,7 @@ class QRAccessor():
         print("Access OK - no fields checked")
         #Allowd. That person needs an entry
         table= self.dbSystem.TIMETABLE
+        location=self.dbSystem.LOCATION
         now = datetime.now().isoformat()
         stmt = "SELECT mitglied_id,access_date from "+table+" where mitglied_id="+key+" AND access_date >= DATE(NOW()) + INTERVAL -"+self.dbSystem.GRACETIME+" hour"
         Log.debug("Search time db:",stmt)
@@ -186,8 +211,8 @@ class QRAccessor():
         print("Access rows:",timerows)
         if len(timerows)==0:
             data=[]
-            data.append((key,now))
-            self.db.insertMany(table, ('mitglied_id','access_date'), data)
+            data.append((key,now,location))
+            self.db.insertMany(table, ('mitglied_id','access_date','location'), data)
         
         return True
 
@@ -204,10 +229,10 @@ class RaspberryGPIO():
     PINRED=3
 
     def __init__(self):
-        self.reset() #GPIOS start on hi... 
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(self.PINGREEN, GPIO.OUT)
         GPIO.setup(self.PINRED, GPIO.OUT)
+        self.reset() #GPIOS start on hi... 
         self.timer = None
         '''
         using GPIOS:
@@ -242,8 +267,8 @@ class RaspberryGPIO():
     
     #TODO needs timer
     def reset(self):
-        GPIO.output(self.PINRED, False)
-        GPIO.output(self.PINGREEN, False)
+        GPIO.output(self.PINRED, True)
+        GPIO.output(self.PINGREEN, True)
             
     def _restartTimer(self):
         if self.timer:
@@ -312,9 +337,9 @@ class RFCUSB():
     def __init__(self):
         pass
     
-    def read(self):
+    def read_id(self):
         text=input()
-        return (text,"Fake")
+        return int(text)
 
    
 def playSound(ok):
@@ -331,12 +356,17 @@ def playSound(ok):
 
 if __name__ == '__main__':
     #testQRCode()
-    
-    #a=QRAccessor()
-    a=RFIDAccessor()
-    if a.connect():
-        a.runDeamon()
-    else:
-        Log.warning("Error not connected")
+    try:
+        a=RFIDAccessor()
+        if a.connect():
+            a.runDeamon()
+        else:
+            Log.warning("Error not connected")
+    except:
+        Log.exception("Error in main:")
+    finally:
+        if RASPI:
+            GPIO.cleanup()
+        
+        
     #a.sendMail("das hat nicht gefunzt")
-    

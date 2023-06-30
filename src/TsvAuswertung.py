@@ -16,40 +16,51 @@ import plotly.graph_objs as go
 from datetime import datetime,timedelta
 import random
 from DBTools import OSTools
+from TsvDBCreator import SetUpTSVDB
 import DBTools
 import sys
+import TsvDBCreator
 
-'''
-@app.route('/')
-def barPlotly():
-   # Students data available in a list of list
-    students = [['Akash', 34, 'Sydney', 'Australia'],
-                ['Rithika', 30, 'Coimbatore', 'India'],
-                ['Priya', 31, 'Coimbatore', 'India'],
-                ['Sandy', 32, 'Tokyo', 'Japan'],
-                ['Praneeth', 16, 'New York', 'US'],
-                ['Praveen', 17, 'Toronto', 'Canada']]
-     
-    # Convert list to dataframe and assign column values
-    df = pd.DataFrame(students,
-                      columns=['Name', 'Age', 'City', 'Country'],
-                      index=['a', 'b', 'c', 'd', 'e', 'f'])
-     
-    # Create Bar chart
-    fig = px.bar(df, x='Name', y='Age', color='City', barmode='group')
-     
-    # Create graphJSON
-    graphJSON = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
-    return render_template('index.html', graphJSON=graphJSON)
+OSTools.setupRotatingLogger("TSVAuswertung",True)
+Log = DBTools.Log
 
-'''
 app= Flask(__name__,
             static_url_path='', 
             static_folder='web/static',
             template_folder='web/templates')
 
 
-@app.route('/fancy')    
+@app.route('/'+TsvDBCreator.KRAFTRAUM)
+def statisticsKraftraum():
+    dates,counts= barModel.plainhistory(TsvDBCreator.KRAFTRAUM)# count members over time
+    
+    
+    #chat gpt -it forgot to tell about the index.html - hence we have a second one:
+    '''
+    data = [go.Bar(x=dates, y=counts)]
+    layout = go.Layout(title='Besucher pro Tag', xaxis=dict(title='Datum'), yaxis=dict(title='Anzahl'))
+    fig = go.Figure(data=data, layout=layout)
+    plot_div = fig.to_html(full_html=False)
+        
+    return render_template('index2.html', plot_div=plot_div)
+    '''
+    #This results in exact the same bar. Only the index.html is different. 
+    data = [go.Bar(
+       x = dates, 
+       y = counts,
+       marker_color='#FFA500'
+    )]
+    layout = go.Layout(title="Nutzung "+TsvDBCreator.KRAFTRAUM,xaxis=dict(title="Datum"),yaxis=dict(title="Besucher"))
+    fig = go.Figure(data=data,layout=layout)
+    
+    graphJSON = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
+    logo_path = "tsv_logo_100.png"
+    dynamic_location = TsvDBCreator.KRAFTRAUM
+    return render_template('index.html', graphJSON=graphJSON,logo_path=logo_path, dynamic_location=dynamic_location)
+    
+   
+
+@app.route('/fancy')   #just colorfull fake 
 def plot():
     fakeDAta= barModel.pandaData()
     df = pd.DataFrame(fakeDAta,
@@ -65,10 +76,7 @@ def plot():
     graphJSON = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
     return render_template('index.html', graphJSON=graphJSON)
 
-def plotAccess():
-    pass
-
-@app.route('/')
+@app.route('/') #later access to all - now just a demo 
 def plotFigTestWorking():
     #data=[ ["12/4/2023", 50],["13/4/2023", 25],["14/4/2023", 54],["15/4/2023", 32]]
     dates, access =  barModel.rawData()
@@ -83,54 +91,26 @@ def plotFigTestWorking():
     graphJSON = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
     return render_template('index.html', graphJSON=graphJSON)
 
-'''
-myPlot.on('plotly_relayout',(e)=>{
-    var zoom_level = e['mapbox.zoom'];
-    if (zoom_level < initialZoom){
-      layout.mapbox.zoom = initialZoom
-      layout.mapbox.center = {lat: initialLat, lon: initialLon}
-      Plotly.relayout(myPlot, layout)
-    }
-  })
-'''
+@app.route('/accessKR') #Access kraftraum
+def whoIsThere():
+    people = barModel.currentVisitorPictures(TsvDBCreator.KRAFTRAUM)
+    logo_path = "tsv_logo_100.png"
+    dynamic_location = TsvDBCreator.KRAFTRAUM    
+    return render_template('access.html', people=people,logo_path=logo_path, dynamic_location=dynamic_location)
 
-
-   
-'''
-class SimpleBarRenderer():
-    def __init__(self,barModel):
-        self.barModel=barModel
-        self.app=self._defineFlask()
-        
-    def _defineFlask(self):
-        return Flask(__name__,
-            static_url_path='', 
-            static_folder='web/static',
-            template_folder='web/templates'
-        )
-    
-    @app.route('/')    
-    def plot(self):
-        df = pd.DataFrame(self.barModel.accessData(),
-                      columns=['Date', 'Count'],
-                      index=['a', 'b', 'c', 'd', 'e', 'f'])
-     
-        # Create Bar chart
-        fig = px.bar(df, x='Besucher', y='Datum', barmode='group')
-     
-        # Create graphJSON
-        graphJSON = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
-        return render_template('index.html', graphJSON=graphJSON)
-'''
-
+#hook to more acees sites
+ 
 class BarModel():
-    def __iniit__(self):
-        self.db=self._connectToDB()
+    def __init__(self):
+        self._connectToDB()
 
     def _connectToDB(self):
-        pass #do sth
+        self.dbSystem = SetUpTSVDB(SetUpTSVDB.DATABASE)
+        self.db=self.dbSystem.db
+        if not self.dbSystem.isConnected():
+            Log.warning("DB connecton failed")
     
-    def pandaData(self):
+    def pandaData(self):#demo
         #data=[ ["12/4/2023", 50],["13/4/2023", 25],["14/4/2023", 54],["15/4/2023", 32]]
         data=[]
         now=datetime.now()
@@ -143,7 +123,7 @@ class BarModel():
             start=start+delta          
         return data
 
-    def rawData(self):
+    def rawData(self):#demo
         now=datetime.now()
         delta = timedelta(days=1)
         start = now - timedelta(days=68)
@@ -156,6 +136,39 @@ class BarModel():
             start=start+delta        
         
         return(fakeData,fakeValue)
+    
+    def plainhistory(self,location):
+        #simmply count woo was there when...
+        timetable= self.dbSystem.TIMETABLE
+        stmt = "SELECT access_date from "+timetable+" where location='"+location+"'"
+        rows = self.db.select(stmt)    
+        #chat GPT - does that work?
+        datetime_dict = {}
+        for row in rows:
+            #date_str = datetime.strptime(row[0], '%Y-%m-%d %H:%M:%S.%f').strftime('%Y-%m-%d')
+            date_str = row[0].strftime('%Y-%m-%d')
+            if date_str in datetime_dict:
+                datetime_dict[date_str] += 1
+            else:
+                datetime_dict[date_str] = 1
+        
+        # Create a Plotly bar chart
+        x_values = list(datetime_dict.keys())
+        y_values = list(datetime_dict.values())
+        return (x_values,y_values)
+    
+    def currentVisitorPictures(self,location):
+        mbrTable= self.dbSystem.MAINTABLE
+        timetable= self.dbSystem.TIMETABLE
+        picFolder="TSPIC/"
+        #TODO da muss noch die location aus m selectiert werden
+        stmt ="SELECT first_name,last_name,picpath,access_date FROM "+mbrTable+" m JOIN "+timetable+" z ON m.id = z.mitglied_id WHERE DATE(z.access_date) = CURDATE() AND ((HOUR(z.access_date) < 12 AND HOUR(CURTIME()) < 12) OR (HOUR(z.access_date) >= 12 AND HOUR(CURTIME()) >= 12) and location='"+location+"')  ORDER By z.access_date DESC"
+        #raw test stmt ="SELECT first_name,last_name,picpath,access_date FROM "+mbrTable+" m JOIN "+timetable+" z ON m.id = z.mitglied_id" 
+        rows = self.db.select(stmt)
+        print("ROWS:",rows)
+        people = [{'name': fn+" "+name+"("+datetime.strftime(accDate,"%H:%M")+")", 'image_path': picFolder+picpath} for fn, name, picpath,accDate in rows]
+        return people
+
         
 def main():
     global Log

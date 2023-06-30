@@ -14,11 +14,29 @@ body {
     margin: 0;
   padding: 2em 1em;
 }
- 
+
+  /* CSS for the header */
+  h1 {
+    align-items: flex-start;
+    display: flex;
+  }
+
+  .logo-container {
+    margin-left: auto;
+  }
+
 </style>
+
+
  <body>
-  <h1>TSV Zugang - die Daten für den Vorstand ;-)</h1>
-  <div id='chart' class='chart'”></div>
+   <h1>
+     <span>TSV Zugang -&nbsp</span>
+     <span id="location">{{ dynamic_location }}</span>
+     <div class="logo-container">
+       <img src="{{ logo_path }}" alt="Logo">
+     </div>
+  </h1>
+   <div id='chart' class='chart'”></div>
 </body>
  
 <script src='https://cdn.plot.ly/plotly-latest.min.js'></script>

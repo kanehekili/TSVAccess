@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TSV Zugang</title>
+</head>    
+    <style>
+	* {
+	    -webkit-box-sizing: border-box;
+	    box-sizing: border-box;
+	}
+	body {
+	    background-color: #272b34;
+	    font-family: 'Khula', sans-serif;
+	    font-weight: 300;
+	    color: white;
+	    line-height: 1em;
+	    margin: 0;
+	  padding: 2em 1em;
+	}	    
+	  /* CSS for the header */
+		  h1 {
+		    color:white;
+		    align-items: flex-start;
+		    display: flex;
+		  }
+		
+		  .logo-container {
+		    margin-left: auto;
+		  }
+		.portrait {
+		    display: inline-block;
+		    text-align: center;
+		    margin: 10px;
+		}
+		.portrait img {
+		    width: 150px;
+		    height: 150px;
+		}
+    </style>          
+
+<body>
+    <h1>
+        <div>Wer trainiert grad im&nbsp</div>
+        <span id="location"> {{ dynamic_location }}?</span>        
+     	<div class="logo-container">
+            <img src="{{ logo_path }}" alt="Logo">
+        </div>        
+    </h1>
+    <div class="container">
+        {% for person in people %}
+        <div class="portrait">
+            <img src="{{ person.image_path }}" alt="Portrait">
+            <p>{{ person.name }}</p>
+        </div>
+        {% endfor %}
+    </div>
+</body>
+</html>

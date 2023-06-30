@@ -4,11 +4,11 @@ Created on Jun 23, 2023
 @author: matze
 '''
 
-'''
+
 import evdev
 
 RFC522="IC Reader"
-
+#user must be in group "input" !
 class RFIDReaderEvDev():
     def __init__(self,readerType):
         self._locatePath(readerType)
@@ -43,6 +43,7 @@ class RFIDReaderEvDev():
             for event in device.read_loop():
                 if event.type == evdev.ecodes.EV_KEY:
                     data = evdev.categorize(event)
+                    print(data)
                     if data.keystate == 1 and data.scancode != 42:
                         if(data.scancode == 28):
                             #we have rfid
@@ -54,7 +55,7 @@ class RFIDReaderEvDev():
 
 '''
 #this is raspi stuff:
-'''
+
 import RPi.GPIO as GPIO
 from mfrc522 import SimpleMFRC522
 
@@ -80,8 +81,8 @@ class SimpleKBDReader():
 
 
 if __name__ == '__main__':
-    #r=RFIDReaderEvDev(RFC522)
-    r=SimpleKBDReader()
+    r=RFIDReaderEvDev(RFC522)
+    #r=SimpleKBDReader()
     code= r.readOnce()
     print("Exit:",code)
     exit(0)

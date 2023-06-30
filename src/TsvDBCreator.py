@@ -34,7 +34,10 @@ class Fields(Enum):
     GENDER=7
     BDATE=8
     
-
+#Allowed access locations:
+KRAFTRAUM="Kraftraum"
+YOGA="Yoga"
+#to be defined 
 
 class SetUpTSVDB():
     #TODO this stuff belongs to env->getenv or hidden file
@@ -52,6 +55,7 @@ class SetUpTSVDB():
         GRACETIME=dic["GRACETIME"]   # hours gracetime to prevent any double check in
         ACCESS=dic["ACCESSPOINTS"] #Controlpoint
         PICPATH=dic["PICPATH"] #path to scp
+        LOCATION=dic["LOCATION"]
 
     ACCESSLIST=["KR","UKR","Group","FFA","Juggling"]
 
@@ -73,6 +77,7 @@ class SetUpTSVDB():
         CREATE OR REPLACE TABLE Zugang (
           mitglied_id INT,
           access_date DATETIME,
+          location VARCHAR(100),
           FOREIGN KEY(mitglied_id) REFERENCES Mitglieder(id) ON DELETE CASCADE
         )
         """ 

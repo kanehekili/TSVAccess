@@ -121,7 +121,7 @@ class VideoWidget(QtWidgets.QFrame):
 
     def showFrame(self, aFrame):
         if aFrame is None:  # showing an error icon...
-            self.showPicture('icons/tsv_logo_100.png')
+            self.showPicture('web/static/TSV-big.png')
         else: 
             resy = aFrame.shape[0]
             resx = aFrame.shape[1]
@@ -357,7 +357,7 @@ class MainFrame(QtWidgets.QMainWindow):
 
         self.ui_AccessLabel = QtWidgets.QLabel(self)
         self.ui_AccessLabel.setText("Merkmale:")
-        self.ui_AccessLabel.setToolTip("Hier kann der Zugangscode (Nulti3) angepasst werden - aktuell nur einer")
+        self.ui_AccessLabel.setToolTip("Hier kann der Zugangscode (Multi3) angepasst werden - aktuell nur einer")
         
         self.ui_AccessCombo = QtWidgets.QComboBox(self)
         #self.ui_AccessCombo = CheckableComboBox(self)
@@ -874,7 +874,7 @@ class Registration():
         
     def savePicture(self,member):
         saved= "/tmp/tsv.screenshot.png"
-        data = member.searchName()+"-"+member.primKeyString()+".png"
+        data = member.lastName+"-"+member.primKeyString()+".png"
         targetPath = SetUpTSVDB.PICPATH
         member.picpath=data
         cmd1=["scp",saved,targetPath+data]
@@ -975,7 +975,7 @@ class Mitglied():
 
 
 def getAppIcon():
-    return QtGui.QIcon('./icons/tsv_logo_100.png')
+    return QtGui.QIcon('./web/static/tsv_logo_100.png')
 
 
 def handle_exception(exc_type, exc_value, exc_traceback):

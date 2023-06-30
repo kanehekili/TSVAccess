@@ -201,10 +201,59 @@ def testTimer():
         if 'q' in res:
             ok=False
 
+'''
+res:
+13893217165 Raspi
+11001111 00000110 01101010 11100011 01
+33C19AB8D
+03,3C,19,AB,8D raspi
+
+2870557699  usbreader  10 Zeichen
+AB 19 3C 03
+->convert: 03 3c 19 AB was ist 8D?
+
+rc522 uid:
+uid> 03 hex 03  (usb4)==1byte
+uid> 60 hex 3C  (usb3)
+uid> 25 hex 19  (usb2)
+uid> 171 hex AB (usb1)
+uid> 141 hex 8D -not used!
+
+
+'''
+def calcRFID():
+    uids=[3,60,25,171,141]
+    print("soll:",2870557699)
+    print("rfid rc522 ist:",13893217165)
+    n=0
+    for i in range(0,len(uids)):
+        n = n * 256 + uids[i]
+    print(n)
+    
+    x=0
+    scm=[3,60,25,171]
+    for i in reversed(range(0,len(scm))):
+        print(scm[i])
+        x = x * 256 + scm[i]
+    print("umbau uids:",x)
+    
+    ist=13893217165 #usb reader ->convert to ist rc522!
+    #wiegehts wieter?
+    ba=ist.to_bytes(5, byteorder = 'little')
+    print("little:",ba)
+    ba=ist.to_bytes(5) #default=big
+    print("big:",hex(ba[0]),hex(ba[1]),hex(ba[2]),hex(ba[3]),hex(ba[4]))
+    test= ba[:-1][::-1]
+    
+    print("rev:",test," >",int.from_bytes(test))
+    print("soll:",hex(ba[3]),hex(ba[2]),hex(ba[1]),hex(ba[0]))
+        
+    
 
 if __name__ == '__main__':
+    #generateJsonConfig()
+    calcRFID()
     #testTimer()
-    generateJsonConfig()
     #testSelectRowComplete()
     #testTimeSpan()
     #rand_name()
