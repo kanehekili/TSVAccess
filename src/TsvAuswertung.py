@@ -160,8 +160,7 @@ class BarModel():
     def currentVisitorPictures(self,location):
         mbrTable= self.dbSystem.MAINTABLE
         timetable= self.dbSystem.TIMETABLE
-        picFolder="TSPIC/"
-        #TODO da muss noch die location aus m selectiert werden
+        picFolder="TSVPIC/"
         stmt ="SELECT first_name,last_name,picpath,access_date FROM "+mbrTable+" m JOIN "+timetable+" z ON m.id = z.mitglied_id WHERE DATE(z.access_date) = CURDATE() AND ((HOUR(z.access_date) < 12 AND HOUR(CURTIME()) < 12) OR (HOUR(z.access_date) >= 12 AND HOUR(CURTIME()) >= 12) and location='"+location+"')  ORDER By z.access_date DESC"
         #raw test stmt ="SELECT first_name,last_name,picpath,access_date FROM "+mbrTable+" m JOIN "+timetable+" z ON m.id = z.mitglied_id" 
         rows = self.db.select(stmt)
