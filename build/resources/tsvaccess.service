@@ -1,0 +1,9 @@
+[Unit]
+Description=TSV access rfid deamon
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /root/bin/TsvAccessModule.py
+
+[Install]
+WantedBy=multi-user.target

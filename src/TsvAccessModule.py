@@ -43,6 +43,11 @@ class RFIDAccessor():
     
     def connect(self):
         self.dbSystem = SetUpTSVDB(SetUpTSVDB.DATABASE)
+        while not self.dbSystem.isConnected():
+            time.sleep(10)
+            Log.warning("Reconnect to database")
+            self.dbSystem.connectToDatabase(SetUpTSVDB.DATABASE)    
+            
         self.db=self.dbSystem.db
         return self.dbSystem.isConnected()
         

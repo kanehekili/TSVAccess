@@ -82,13 +82,20 @@ class SetUpTSVDB():
         )
         """ 
 
+    
     def __init__(self,dbName):
+        self.connectToDatabase(dbName)
+        
+    def connectToDatabase(self,dbName):
         try:
             self.db = Connector(self.HOST,self.USER,self.PASSWORD)
             self.db.connect(dbName)
         except Connector.DBError as sqlError:
             self.db=None
             print(sqlError)
+            return False
+        return True
+        
 
     def isConnected(self):
         return self.db.connected
