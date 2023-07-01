@@ -499,12 +499,16 @@ class MainFrame(QtWidgets.QMainWindow):
         if not rfid:
             return;
         
-        if not self.model.verifyRfid(rfid):
+        mbr=self.ui_SearchEdit.currentData()
+        testId=None
+        if mbr:
+            testId=mbr.id
+        if not self.model.verifyRfid(rfid,testId):
             d= self.getErrorDialog("** RFID **", "Ungültige RFID, bitte einen anderen Token benutzen", "In der Datenbank existiert bereits eine solche RFID Nummer und kann nicht nochmal vergeben werden")
             d.show()
 
     #persist to database (Speichern)
-    #Then print Card
+    #Store & contrl picture only if not in mbr
     def _onUpdateMember(self):
         mbr=self.ui_SearchEdit.currentData()
         idstr = self.ui_IDEdit.text()
@@ -513,9 +517,7 @@ class MainFrame(QtWidgets.QMainWindow):
         access = self.ui_AccessCombo.currentText()
         birthdate= self.ui_BirthLabel.text()
         rfid = self.ui_RFID.text()
-        #photo = self.model.currentFrame #TODO need a screenshot flag!
-        
-        #TODO: We need a "session photo" 
+        photoSaved= mbr.picpath is not None
         
         msg=""
         if not idstr:
@@ -526,7 +528,7 @@ class MainFrame(QtWidgets.QMainWindow):
             msg = msg+"Nachname ? \n"
         if not access:
             msg = msg+"Zugangscode ? \n"
-        if not self.photoTaken:
+        if not (self.photoTaken or photoSaved):
             msg = msg+"Photo ? \n"
         if not rfid:
             msg= "RFID Code ? \n"
@@ -549,10 +551,11 @@ class MainFrame(QtWidgets.QMainWindow):
             entry= mbr.searchName()
             self.ui_SearchEdit.addItem(entry,mbr)
         #need a try catch.
-        res= self.model.savePicture(mbr)#scps the pic to remote and adds uri to db...
-        if not res:
-            self.getErrorDialog("Verbindungsfehler","Bild konnte nicht gespeichert werden","Das muss gemeldet werden").show()
-        #TODO: BUG--piecure removed, doubse save....     
+        if self.photoTaken:
+            res= self.model.savePicture(mbr)#scps the pic to remote and adds uri to db...
+            if not res:
+                self.getErrorDialog("Verbindungsfehler","Bild konnte nicht gespeichert werden","Das muss gemeldet werden").show()
+   
         self.model.updateMember(mbr)
         #self.model.printMemberCard(mbr)
         self.photoTaken=False
@@ -762,7 +765,7 @@ class Registration():
     
     # reads the list and passes it to the caller...
     def getMembers(self):
-        fields = ','.join(Mitglied.FIELD_DEF)#FIELD_DEF=('id','first_name','last_name','access','birth_date,uuid') 
+        fields = ','.join(Mitglied.FIELD_DEF)#FIELD_DEF=('id','first_name','last_name','access','birth_date,picpath,uuid') 
         #stmt = "SELECT id,first_name,last_name from " + self.dbSystem.MAINTABLE
         stmt = "SELECT "+fields+" from " + self.dbSystem.MAINTABLE
         col = []
@@ -770,7 +773,8 @@ class Registration():
         res = self.db.select(stmt)
         for titem in res:
             # id(int) (str) (str) (str) date! int
-            m = Mitglied(titem[0], titem[1], titem[2],titem[3],titem[4],titem[5])
+            m = Mitglied(titem[0], titem[1], titem[2],titem[3],titem[4],titem[6])
+            m.picpath=titem[5]
             col.append(m)
         return col
     
@@ -920,11 +924,13 @@ class Registration():
         #store Name(not path) into db
         return True
         
-    def verifyRfid(self,rfidString):
+    def verifyRfid(self,rfidString,testId):
         #check if rfid  alreay exists ->False
         stmt="SELECT id from "+self.dbSystem.MAINTABLE+" where uuid="+rfidString
         res = self.db.select(stmt)
         if len(res)>0:
+            if res[0][0]==testId:
+                return True # it belongs to him..
             Log.warning("User %d already has RFID key:%s",res[0][0],rfidString)
             return False
         return True
@@ -932,22 +938,23 @@ class Registration():
     
     
 class Mitglied():
-    FIELD_DEF=('id','first_name','last_name','access','birth_date','uuid')
-    FIELD_SAVE_DEF=('id','first_name','last_name','access','picpath','uuid')  
+    FIELD_DEF=('id','first_name','last_name','access','birth_date','picpath','uuid')
+    FIELD_SAVE_DEF=('id','first_name','last_name','access','picpath','uuid')
     def __init__(self, mid_int, fn, ln,access,birthdate,rfid_int):  # id, firstname, lastname, DOB, access1, access2
+        self.picpath=None #special handling
         self.update(mid_int, fn, ln,access,birthdate,rfid_int)
         
     def searchName(self):
         return self.lastName + " " + self.firstName
 
-    def update(self,mid_int, fn, ln,access,birthdate,rfid_int,picpath=""):
+    def update(self,mid_int, fn, ln,access,birthdate,rfid_int):
         self.id = mid_int #This is int
         self.firstName = fn
         self.lastName = ln
         self.access=access
         self.birthdate=birthdate #This is a date
         self.rfid=rfid_int #Must be int for faster search
-        self.picpath=picpath 
+        
     
     
     #TODO error; Wrong datatype if no saved and retireved.
