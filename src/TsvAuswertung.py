@@ -74,7 +74,9 @@ def plot():
     fig.update_traces(width=1000*3600*24*0.8)
     # Create graphJSON
     graphJSON = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
-    return render_template('index.html', graphJSON=graphJSON)
+    logo_path = "tsv_logo_100.png"
+    dynamic_location = TsvDBCreator.KRAFTRAUM
+    return render_template('index.html', graphJSON=graphJSON,logo_path=logo_path, dynamic_location=dynamic_location)
 
 @app.route('/') #later access to all - now just a demo 
 def plotFigTestWorking():
@@ -89,7 +91,9 @@ def plotFigTestWorking():
     )]
     fig = go.Figure(data=data)
     graphJSON = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
-    return render_template('index.html', graphJSON=graphJSON)
+    logo_path = "tsv_logo_100.png"
+    dynamic_location = TsvDBCreator.KRAFTRAUM
+    return render_template('index.html', graphJSON=graphJSON,logo_path=logo_path, dynamic_location=dynamic_location)
 
 @app.route('/accessKR') #Access kraftraum
 def whoIsThere():
