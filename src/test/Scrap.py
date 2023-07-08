@@ -5,9 +5,10 @@ Created on Apr 3, 2023
 '''
 from DBTools import Connector
 from datetime import datetime, timedelta
-from faker import Faker
+#from faker import Faker
 import json
 from TsvAccessModule import RaspberryFAKE
+import TsvDBCreator
 '''
 def setupDB():
     c=Connector()
@@ -120,6 +121,159 @@ def testSelectRowComplete():
         print(info)
     c.close()    
 
+# testCount:
+'''
+ List the users that are present at a certain hour and day (usually today.
+ First entry is always a check in, second a checkout. So either select the morning or the afternoon batch ascending by date
+ Return the rows in date descending order (latest checkin is first) 
+'''
+
+class AccessRow():
+    def __init__(self,dbRow):
+        self.id=dbRow[0]
+        self.da=dbRow[4] #datetime
+        self.data=dbRow
+        self.checked=True
+    
+    def hour(self):
+        return self.da.hour()
+    
+    def checkInTimeString(self):
+        return datetime.strftime(self.da,"%H:%M")
+    
+    def toggleChecked(self,acDate):
+        self.checked=not self.checked
+        self.da=acDate
+        
+    def __lt__(self, other):
+        return self.da < other.da
+    
+    def __gt__(self, other):
+        return self.da > other.da
+
+class CountRow():
+    #SELECT mitglied_id,access_date
+    MAX_PREVVAIL=4
+    def __init__(self,dbRow,breaktime):
+        self.id=dbRow[0]
+        self.breakTime=breaktime
+        #self.da=dbRow[1] #datetime
+        self.checkArray=[None,None,None,None] #0=morning CKI, 1 morning CKO, 2 Aftern CKi. 3 Aftn cko
+        self._checkin(dbRow[1])
+        self.data=dbRow
+        self.checked=True
+    
+    def _checkin(self,rowDate):
+        if rowDate.hour < self.breakTime:
+            self.checkArray[0]=rowDate
+        else:
+            self.checkArray[2]=rowDate
+
+    def _setInternal(self,rowDate,idx):
+            if self.checkArray[idx] is None:
+                self.checkArray[idx]=rowDate
+            else:
+                self.checkArray[idx+1]=rowDate
+                
+    def _checkDate(self,rowDate):
+        if rowDate.hour < self.breakTime:
+            self._setInternal(rowDate, 0)
+        else:
+            self._setInternal(rowDate, 2)
+        
+        
+    def updateAccess(self,row):
+        self._checkDate(row[1])
+    
+    #crude: either 1x or twice a day. 
+    def accessCount(self):
+        cnt=0
+        ctxIndx=[0,2]
+        for idx in ctxIndx:
+            if self.checkArray[idx] is not None:
+                cnt+=1
+        return cnt
+    
+    #crude: if cki but not cko we assume 4 hours
+    
+    def _calcPartHours(self,idx):
+        hours=0
+        if self.checkArray[idx] is not None:
+            if self.checkArray[idx+1] is None:
+                hours = CountRow.MAX_PREVVAIL
+            else:
+                hours = self.checkArray[idx+1].hour-self.checkArray[idx].hour
+        return hours
+    
+    def cumulatedHours(self):
+        hours1= self._calcPartHours(0)
+        hours2=self._calcPartHours(2)
+        return hours1+hours2
+          
+    
+def testAccessNow():
+    #Morning
+    db=openConnector()
+    mbrTable= "Mitglieder"
+    timetable= "Zugang"
+    endHour="13";
+    location="Kraftraum"
+    members={}
+    #stmt ="SELECT id,first_name,last_name,picpath,access_date FROM "+mbrTable+" m JOIN "+timetable+" z ON m.id = z.mitglied_id WHERE DATE(z.access_date) = CURDATE() AND ((HOUR(z.access_date) < "+endHour+" AND HOUR(CURTIME()) < "+endHour+") OR (HOUR(z.access_date) >= "+endHour+" AND HOUR(CURTIME()) >= "+endHour+") and location='"+location+"')  ORDER By z.access_date DESC"
+    stmt ="SELECT id,first_name,last_name,picpath,access_date FROM "+mbrTable+" m JOIN "+timetable+" z ON m.id = z.mitglied_id WHERE DATE(z.access_date) = CURDATE() and location='"+location+"'  ORDER By z.access_date ASC"
+    rows = db.select(stmt)
+    for row in rows:
+        mid = row[0]
+        acr= members.get(mid,None)
+        if acr is None:
+            members[mid]=AccessRow(row)
+        else:
+            members[mid].toggleChecked(row[4])
+    
+    present =[item for item in members.values() if item.checked]    
+    present.sort(reverse=True)
+    print("Row count:",len(rows)," mbr count:",len(members)," present count:",len(present))
+    for mbr in present:
+        print(mbr.data)
+    db.close()
+
+def testDailyCount():
+    db=openConnector()
+    table="Zugang"
+    location="Kraftraum"
+    breakTime=12
+    members={}
+    stmt = "SELECT mitglied_id,access_date from "+table+" where location='"+location+"'"
+    rows = db.select(stmt)
+    for row in rows:
+        print(row)
+        mid = row[0]
+        theDayKey=row[1].strftime('%Y/%m/%d')
+        acr= members.get(theDayKey,None)
+        if acr is None:
+            members[theDayKey]={}
+
+        cr=members[theDayKey].get(mid,None)
+        if cr is None:
+            cr=members[theDayKey][mid]=CountRow(row,breakTime)
+        else:
+            members[theDayKey][mid].updateAccess(row)    
+        
+        
+    #We need date as key and count as value
+    for key, aDay in members.items():
+        for theid, countRow in aDay.items():
+            print("%s>id: %d count: %d hours:%d"%(key,theid,countRow.accessCount(),countRow.cumulatedHours()))
+    
+    for key, aDay in members.items():
+        cnt=0
+        for cr in aDay.values():
+            cnt+=cr.accessCount()
+        print("key:",key," cnt:",cnt)
+    
+    db.close()
+    
+    
 
 def testTimeSpan():
     table="Zugang"
@@ -182,13 +336,13 @@ def testGraph():
     plt.xticks(ticks=df['date'],labels=labels, rotation=90)
     plt.show()
 '''
-
+''' Fake not installed anymore
 def rand_name():
     fake = Faker('de_DE')
     for n in range(1000):
         data=[n+24,fake.first_name(),fake.last_name() ]
         print(data)
-
+'''
 def testTimer():
     ok=True
     tx=RaspberryFAKE()
@@ -251,8 +405,10 @@ def calcRFID():
     
 
 if __name__ == '__main__':
+    #testAccessNow()
+    testDailyCount()
     #generateJsonConfig()
-    calcRFID()
+    #calcRFID()
     #testTimer()
     #testSelectRowComplete()
     #testTimeSpan()

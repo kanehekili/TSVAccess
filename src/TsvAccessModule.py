@@ -110,7 +110,7 @@ class RFIDAccessor():
         table= self.dbSystem.TIMETABLE
         location=self.dbSystem.LOCATION
         now = datetime.now().isoformat()
-        stmt = "SELECT mitglied_id,access_date from "+table+" where mitglied_id="+str(key)+" AND TIMESTAMPDIFF(minute,access_date,NOW()) <= "+self.dbSystem.GRACETIME
+        stmt = "SELECT mitglied_id,access_date from "+table+" where mitglied_id="+str(key)+" AND TIMESTAMPDIFF(SECOND,access_date,NOW()) <= "+self.dbSystem.GRACETIME
         
         Log.debug("Search time db:%s",stmt)
         timerows=self.db.select(stmt) 
@@ -211,7 +211,7 @@ class QRAccessor():
         location=self.dbSystem.LOCATION
         now = datetime.now().isoformat()
         stmt = "SELECT mitglied_id,access_date from "+table+" where mitglied_id="+key+" AND access_date >= DATE(NOW()) + INTERVAL -"+self.dbSystem.GRACETIME+" hour"
-        Log.debug("Search time db:",stmt)
+        Log.debug("Search time db:%s",stmt)
         timerows=self.db.select(stmt) 
         print("Access rows:",timerows)
         if len(timerows)==0:

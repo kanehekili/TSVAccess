@@ -32,7 +32,7 @@ app= Flask(__name__,
 
 @app.route('/'+TsvDBCreator.KRAFTRAUM)
 def statisticsKraftraum():
-    dates,counts= barModel.plainhistory(TsvDBCreator.KRAFTRAUM)# count members over time
+    dates,counts= barModel.countPeoplePerDay(TsvDBCreator.KRAFTRAUM)# count members over time
     
     
     #chat gpt -it forgot to tell about the index.html - hence we have a second one:
@@ -99,6 +99,89 @@ def whoIsThere():
     return render_template('access.html', people=people,logo_path=logo_path, dynamic_location=dynamic_location)
 
 #hook to more acees sites
+
+#model for the access row part - checkin/checkout
+class AccessRow():
+    def __init__(self,dbRow):
+        self.id=dbRow[0]
+        self.da=dbRow[4] #datetime
+        self.data=dbRow
+        self.checked=True
+    
+    def hour(self):
+        return self.da.hour()
+    
+    def checkInTimeString(self):
+        return datetime.strftime(self.da,"%H:%M")
+    
+    def toggleChecked(self,acDate):
+        self.checked=not self.checked
+        self.da=acDate
+        
+    def __lt__(self, other):
+        return self.da < other.da
+    
+    def __gt__(self, other):
+        return self.da > other.da
+
+class CountRow():
+    #SELECT mitglied_id,access_date
+    MAX_PREVVAIL=4
+    def __init__(self,dbRow,breaktime):
+        self.id=dbRow[0]
+        self.breakTime=breaktime
+        #self.da=dbRow[1] #datetime
+        self.checkArray=[None,None,None,None] #0=morning CKI, 1 morning CKO, 2 Aftern CKi. 3 Aftn cko
+        self._checkin(dbRow[1])
+        self.data=dbRow
+        self.checked=True
+    
+    def _checkin(self,rowDate):
+        if rowDate.hour < self.breakTime:
+            self.checkArray[0]=rowDate
+        else:
+            self.checkArray[2]=rowDate
+
+    def _setInternal(self,rowDate,idx):
+            if self.checkArray[idx] is None:
+                self.checkArray[idx]=rowDate
+            else:
+                self.checkArray[idx+1]=rowDate
+                
+    def _checkDate(self,rowDate):
+        if rowDate.hour < self.breakTime:
+            self._setInternal(rowDate, 0)
+        else:
+            self._setInternal(rowDate, 2)
+        
+        
+    def updateAccess(self,row):
+        self._checkDate(row[1])
+    
+    #crude: either 1x or twice a day. 
+    def accessCount(self):
+        cnt=0
+        ctxIndx=[0,2]
+        for idx in ctxIndx:
+            if self.checkArray[idx] is not None:
+                cnt+=1
+        return cnt
+    
+    #crude: if cki but not cko we assume 4 hours
+    
+    def _calcPartHours(self,idx):
+        hours=0
+        if self.checkArray[idx] is not None:
+            if self.checkArray[idx+1] is None:
+                hours = CountRow.MAX_PREVVAIL
+            else:
+                hours = self.checkArray[idx+1].hour-self.checkArray[idx].hour
+        return hours
+    
+    def cumulatedHours(self):
+        hours1= self._calcPartHours(0)
+        hours2=self._calcPartHours(2)
+        return hours1+hours2
  
 class BarModel():
     def __init__(self):
@@ -137,35 +220,66 @@ class BarModel():
         
         return(fakeData,fakeValue)
     
-    def plainhistory(self,location):
+    #TODO respect checkin/checkout there is a gracetime 0r 120 seconds between check in and checkout
+    def countPeoplePerDay(self,location):
         #simmply count woo was there when...
         timetable= self.dbSystem.TIMETABLE
-        stmt = "SELECT access_date from "+timetable+" where location='"+location+"'"
+        breakTime=12
+        members={}
+        stmt = "SELECT mitglied_id,access_date from "+timetable+" where location='"+location+"'"
         rows = self.db.select(stmt)    
-        #chat GPT - does that work?
-        datetime_dict = {}
         for row in rows:
             #date_str = datetime.strptime(row[0], '%Y-%m-%d %H:%M:%S.%f').strftime('%Y-%m-%d')
-            date_str = row[0].strftime('%Y-%m-%d')
-            if date_str in datetime_dict:
-                datetime_dict[date_str] += 1
+            date_str = row[1].strftime('%Y-%m-%d')
+            mid = row[0]
+            acr= members.get(date_str,None)
+            if acr is None:
+                members[date_str]={}
+    
+            cr=members[date_str].get(mid,None)
+            if cr is None:
+                cr=members[date_str][mid]=CountRow(row,breakTime)
             else:
-                datetime_dict[date_str] = 1
+                members[date_str][mid].updateAccess(row)    
+        
+        countValues=[]
+        for aDay in members.values():
+            cnt=0
+            for cr in aDay.values():
+                cnt+=cr.accessCount()
+            countValues.append(cnt)
         
         # Create a Plotly bar chart
-        x_values = list(datetime_dict.keys())
-        y_values = list(datetime_dict.values())
+        x_values = list(members.keys())
+        y_values = list(countValues)
         return (x_values,y_values)
     
+    #show pic and names of those that are curently in the location
     def currentVisitorPictures(self,location):
         mbrTable= self.dbSystem.MAINTABLE
         timetable= self.dbSystem.TIMETABLE
+        daysplit="13" # time between morning and afternoon
+        members={}
         picFolder="TSVPIC/"
-        stmt ="SELECT first_name,last_name,picpath,access_date FROM "+mbrTable+" m JOIN "+timetable+" z ON m.id = z.mitglied_id WHERE DATE(z.access_date) = CURDATE() AND ((HOUR(z.access_date) < 12 AND HOUR(CURTIME()) < 12) OR (HOUR(z.access_date) >= 12 AND HOUR(CURTIME()) >= 12) and location='"+location+"')  ORDER By z.access_date DESC"
+        stmt ="SELECT id,first_name,last_name,picpath,access_date FROM "+mbrTable+" m JOIN "+timetable+" z ON m.id = z.mitglied_id WHERE DATE(z.access_date) = CURDATE() AND ((HOUR(z.access_date) < "+daysplit+" AND HOUR(CURTIME()) < "+daysplit+") OR (HOUR(z.access_date) > "+daysplit+" AND HOUR(CURTIME()) > "+daysplit+") and location='"+location+"')  ORDER By z.access_date DESC"
         #raw test stmt ="SELECT first_name,last_name,picpath,access_date FROM "+mbrTable+" m JOIN "+timetable+" z ON m.id = z.mitglied_id" 
         rows = self.db.select(stmt)
         print("ROWS:",rows)
-        people = [{'name': fn+" "+name+"("+datetime.strftime(accDate,"%H:%M")+")", 'image_path': picFolder+picpath} for fn, name, picpath,accDate in rows]
+        for row in rows:
+            mid = row[0]
+            acr= members.get(mid,None)
+            if acr is None:
+                members[mid]=AccessRow(row)
+            else:
+                members[mid].toggleChecked(row[4])
+        
+        present =[item for item in members.values() if item.checked]     
+        #people = [{'name': fn+" "+name+"("+datetime.strftime(accDate,"%H:%M")+")", 'image_path': picFolder+picpath} for fn, name, picpath,accDate in rows]
+        people=[]
+        for row in present:
+            people.append({'name': row.data[1]+" "+row.data[2]+"("+row.checkInTimeString()+")",'image_path': picFolder+row.data[3]}) 
+        #people = [{'name': fn+" "+name+"("+datetime.strftime(accDate,"%H:%M")+")", 'image_path': picFolder+picpath} for id,fn, name, picpath,accDate in present]
+        
         return people
 
         

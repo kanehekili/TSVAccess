@@ -1,5 +1,5 @@
 [Unit]
-Description=TSV access rfid deamon
+Description=TSV access rfid deamon. Log found in /
 
 [Service]
 Type=simple
