@@ -371,7 +371,7 @@ class MainFrame(QtWidgets.QMainWindow):
 
         self.ui_CreateButton = QtWidgets.QPushButton()
         self.ui_CreateButton.setText("Speichern")
-        self.ui_CreateButton.clicked.connect(self._onUpdateMember)
+        self.ui_CreateButton.clicked.connect(self._onSaveMember)
         self.ui_CreateButton.setToolTip("In Datenbank speichern und Zugang erlauben")
 
         self.ui_ExitButton = QtWidgets.QPushButton()
@@ -509,7 +509,7 @@ class MainFrame(QtWidgets.QMainWindow):
 
     #persist to database (Speichern)
     #Store & contrl picture only if not in mbr
-    def _onUpdateMember(self):
+    def _onSaveMember(self):
         mbr=self.ui_SearchEdit.currentData()
         idstr = self.ui_IDEdit.text()
         firstName= self.ui_FirstNameEdit.text()
@@ -531,7 +531,7 @@ class MainFrame(QtWidgets.QMainWindow):
         if not (self.photoTaken or photoSaved):
             msg = msg+"Photo ? \n"
         if not rfid:
-            msg= "RFID Code ? \n"
+            msg= msg+"RFID Code ? \n"
            
         if len(msg)>0: 
             self.getErrorDialog("Eingabefehler","Bitte alle Felder ausfüllen",msg).show()
@@ -833,7 +833,7 @@ class Registration():
                     if dw >CTHRES and dh>CTHRES:
                         self.borders=[px,py,dw,dh]
                     else:
-                        Log.info("Invalid frame size: %d / %d -> %d/%d",px,py,dw,dh)
+                        Log.debug("Invalid frame size: %d / %d -> %d/%d",px,py,dw,dh)
                        
                 
                 if self.cameraOn: 
@@ -1002,6 +1002,7 @@ def main():
         OSTools.setMainWorkDir(wd)
         Log = DBTools.Log
         OSTools.setupRotatingLogger("TSVAccess", True)
+        OSTools.setLogLevel("Info")
         argv = sys.argv
         app = QApplication(argv)
         app.setWindowIcon(getAppIcon())
