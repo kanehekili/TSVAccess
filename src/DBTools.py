@@ -23,7 +23,7 @@ class Connector():
 
     def connect(self, dbName):
         try:
-            self.dbConnection=mysql.connect(host=self.HOST,database=dbName, user=self.USER, password=self.PASSWORD)
+            self.dbConnection=mysql.connect(host=self.HOST,database=dbName, user=self.USER, password=self.PASSWORD,autocommit=True)
             Log.info("Connected to:%s", self.dbConnection.get_server_info())
             self.connected =True
         except mysql.Error as sqlError:

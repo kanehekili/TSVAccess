@@ -266,16 +266,18 @@ class BarModel():
         members={}
         picFolder="TSVPIC/"
         stmt ="SELECT id,first_name,last_name,picpath,access_date FROM "+mbrTable+" m JOIN "+timetable+" z ON m.id = z.mitglied_id WHERE DATE(z.access_date) = CURDATE() AND ((HOUR(z.access_date) < "+daysplit+" AND HOUR(CURTIME()) < "+daysplit+") OR (HOUR(z.access_date) > "+daysplit+" AND HOUR(CURTIME()) > "+daysplit+") and location='"+location+"')  ORDER By z.access_date DESC"
-        #raw test stmt ="SELECT first_name,last_name,picpath,access_date FROM "+mbrTable+" m JOIN "+timetable+" z ON m.id = z.mitglied_id" 
+        #raw test stmt ="SELECT first_name,last_name,picpath,access_date FROM "+mbrTable+" m JOIN "+timetable+" z ON m.id = z.mitglied_id"
+        print(stmt) 
         rows = self.db.select(stmt)
-        print("ROWS:",rows)
         for row in rows:
             mid = row[0]
             acr= members.get(mid,None)
             if acr is None:
+                Log.debug("Visitor add: %d",mid)
                 members[mid]=AccessRow(row)
             else:
                 members[mid].toggleChecked(row[4])
+                Log.debug("Visitor toggle: %s",members[mid].checked)
         
         present =[item for item in members.values() if item.checked]     
         #people = [{'name': fn+" "+name+"("+datetime.strftime(accDate,"%H:%M")+")", 'image_path': picFolder+picpath} for fn, name, picpath,accDate in rows]
@@ -283,7 +285,7 @@ class BarModel():
         for row in present:
             people.append({'name': row.data[1]+" "+row.data[2]+"("+row.checkInTimeString()+")",'image_path': picFolder+row.data[3]}) 
         #people = [{'name': fn+" "+name+"("+datetime.strftime(accDate,"%H:%M")+")", 'image_path': picFolder+picpath} for id,fn, name, picpath,accDate in present]
-        
+        Log.info("Checked in:%d",len(people))
         return people
 
         
@@ -295,7 +297,7 @@ def main():
     Log = DBTools.Log
     OSTools.setupRotatingLogger("TSVAuswertung", True)
     barModel=BarModel()
-    app.run(debug=True, host='0.0.0.0', port=5001)    
+    app.run(debug=False, host='0.0.0.0', port=5001)    
 
 if __name__ == '__main__':
     sys.exit(main())

@@ -213,7 +213,6 @@ class QRAccessor():
         stmt = "SELECT mitglied_id,access_date from "+table+" where mitglied_id="+key+" AND access_date >= DATE(NOW()) + INTERVAL -"+self.dbSystem.GRACETIME+" hour"
         Log.debug("Search time db:%s",stmt)
         timerows=self.db.select(stmt) 
-        print("Access rows:",timerows)
         if len(timerows)==0:
             data=[]
             data.append((key,now,location))
