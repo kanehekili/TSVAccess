@@ -517,7 +517,7 @@ class MainFrame(QtWidgets.QMainWindow):
         access = self.ui_AccessCombo.currentText()
         birthdate= self.ui_BirthLabel.text()
         rfid = self.ui_RFID.text()
-        photoSaved= mbr.picpath is not None
+        photoSaved= mbr is not None and mbr.picpath is not None
         
         msg=""
         if not idstr:
@@ -539,15 +539,15 @@ class MainFrame(QtWidgets.QMainWindow):
             return
 
         mid= int(idstr)
-        bd = mbr.asDBDate(birthdate)
         rfid_int= int(rfid)
         #we should update in the correct form
         if mbr is not None:
+            bd = mbr.asDBDate(birthdate)
             mbr.update(mid,firstName,lastName,access,bd,rfid_int)
             self.ui_SearchEdit.setEditText(mbr.searchName())
         else:
             #create new member, update search box
-            mbr=Mitglied(mid,firstName,lastName,access,bd,rfid_int)
+            mbr=Mitglied(mid,firstName,lastName,access,None,rfid_int)
             entry= mbr.searchName()
             self.ui_SearchEdit.addItem(entry,mbr)
         #need a try catch.

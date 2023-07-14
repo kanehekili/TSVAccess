@@ -1,9 +1,13 @@
 [Unit]
-Description=TSV access rfid deamon. Log found in /
+Description=TSV access rfid deamon
+Wants=network-online.target
+After=network-online.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/python3 /root/bin/TsvAccessModule.py
+WorkingDirectory=/opt/TSVAccess
+ExecStart=/usr/bin/python3 /opt/TSVAccess/TsvAccessModule.py
 
 [Install]
 WantedBy=multi-user.target
+

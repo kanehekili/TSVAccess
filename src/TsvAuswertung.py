@@ -58,9 +58,24 @@ def statisticsKraftraum():
     dynamic_location = TsvDBCreator.KRAFTRAUM
     return render_template('index.html', graphJSON=graphJSON,logo_path=logo_path, dynamic_location=dynamic_location)
     
-   
+@app.route('/'+TsvDBCreator.KRAFTRAUM+"Usage")
+def verweilzeitKraftraum():
+    dates,counts= barModel.dailyHoursUsage(TsvDBCreator.KRAFTRAUM)# reside time per hour     
+    data = [go.Bar(
+       x = dates, 
+       y = counts,
+       marker_color='#FFA500'
+    )]
+    layout = go.Layout(title="Verweilzeit "+TsvDBCreator.KRAFTRAUM,xaxis=dict(title="Stunde"),yaxis=dict(title="Anzahl"))
+    fig = go.Figure(data=data,layout=layout)
+    fig.update_xaxes(showgrid=True, nticks=24, tickmode="auto")
+    
+    graphJSON = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
+    logo_path = "tsv_logo_100.png"
+    dynamic_location = TsvDBCreator.KRAFTRAUM
+    return render_template('index.html', graphJSON=graphJSON,logo_path=logo_path, dynamic_location=dynamic_location)        
 
-@app.route('/fancy')   #just colorfull fake 
+@app.route('/fancy')   #just colorfull fake with pandas. Think twice using the library 
 def plot():
     fakeDAta= barModel.pandaData()
     df = pd.DataFrame(fakeDAta,
@@ -186,6 +201,20 @@ class CountRow():
         hours1= self._calcPartHours(0)
         hours2=self._calcPartHours(2)
         return hours1+hours2
+    
+    def morningData(self):
+        #return the morning start date and the partial hours
+        if self.checkArray[0] is None:
+            return None
+        return (self.checkArray[0],self._calcPartHours(0))
+    
+    def afternoonData(self):
+        #return the morning start date and the partial hours
+        if self.checkArray[2] is None:
+            return None
+        return (self.checkArray[2],self._calcPartHours(2))
+
+        
  
 class BarModel():
     def __init__(self):
@@ -226,9 +255,9 @@ class BarModel():
     
     #TODO respect checkin/checkout there is a gracetime 0r 120 seconds between check in and checkout
     def countPeoplePerDay(self,location):
-        #simmply count woo was there when...
+        '''
         timetable= self.dbSystem.TIMETABLE
-        breakTime=12
+        breakTime=13
         members={}
         stmt = "SELECT mitglied_id,access_date from "+timetable+" where location='"+location+"'"
         rows = self.db.select(stmt)    
@@ -245,11 +274,12 @@ class BarModel():
                 cr=members[date_str][mid]=CountRow(row,breakTime)
             else:
                 members[date_str][mid].updateAccess(row)    
-        
+        '''
+        members = self.__collectCountRows(location)
         countValues=[]
-        for aDay in members.values():
+        for aDay in members.values(): #id->cr list
             cnt=0
-            for cr in aDay.values():
+            for cr in aDay.values(): #cr->list
                 cnt+=cr.accessCount()
             countValues.append(cnt)
         
@@ -257,6 +287,58 @@ class BarModel():
         x_values = list(members.keys())
         y_values = list(countValues)
         return (x_values,y_values)
+    
+    #What? Average usage per person? average usage per day? This cumulates... and is wrong!
+    def dailyHoursUsage(self,location):
+        members = self.__collectCountRows(location)
+        hourlyCount={}
+        #go from 9:00 to 12, 14 to 22:00
+        #startHour=9
+        #endHour=22
+        preCount=0
+        postCount=0
+        theHourDict={}
+        daysCount=len(members.keys())
+        #note: We need hours not days. Iterate over the days and collect the mean access time
+        for idCrDict in members.values():
+            for cr in idCrDict.values():
+                pre=cr.morningData() #date->hour count tuple)
+                post=cr.afternoonData()
+                if pre:
+                    hrs= theHourDict.get(pre[0].hour,0)
+                    theHourDict[pre[0].hour]=hrs+pre[1]
+                if post:
+                    hrs= theHourDict.get(post[0].hour,0)
+                    theHourDict[post[0].hour]=hrs+post[1]
+        #todo calc means over the days    
+        # Create a Plotly bar chart
+        x_values = list(theHourDict.keys())
+        y_values = list(theHourDict.values())
+        return (x_values,y_values)        
+        
+    
+    #returns a {date-> {id -> rowCount} ] double dict
+    def __collectCountRows(self,location):
+        timetable= self.dbSystem.TIMETABLE
+        breakTime=13
+        members={}
+        stmt = "SELECT mitglied_id,access_date from "+timetable+" where location='"+location+"'"
+        rows = self.db.select(stmt)    
+        for row in rows:
+            #date_str = datetime.strptime(row[0], '%Y-%m-%d %H:%M:%S.%f').strftime('%Y-%m-%d')
+            date_str = row[1].strftime('%Y-%m-%d')
+            mid = row[0]
+            acr= members.get(date_str,None)
+            if acr is None:
+                members[date_str]={}
+    
+            cr=members[date_str].get(mid,None)
+            if cr is None:
+                cr=members[date_str][mid]=CountRow(row,breakTime)
+            else:
+                members[date_str][mid].updateAccess(row)    
+        return members
+    
     
     #show pic and names of those that are curently in the location
     def currentVisitorPictures(self,location):
@@ -266,18 +348,18 @@ class BarModel():
         members={}
         picFolder="TSVPIC/"
         stmt ="SELECT id,first_name,last_name,picpath,access_date FROM "+mbrTable+" m JOIN "+timetable+" z ON m.id = z.mitglied_id WHERE DATE(z.access_date) = CURDATE() AND ((HOUR(z.access_date) < "+daysplit+" AND HOUR(CURTIME()) < "+daysplit+") OR (HOUR(z.access_date) > "+daysplit+" AND HOUR(CURTIME()) > "+daysplit+") and location='"+location+"')  ORDER By z.access_date DESC"
-        #raw test stmt ="SELECT first_name,last_name,picpath,access_date FROM "+mbrTable+" m JOIN "+timetable+" z ON m.id = z.mitglied_id"
-        print(stmt) 
+        #print(stmt) 
         rows = self.db.select(stmt)
+        Log.info("Visitor rows:%d",len(rows))
         for row in rows:
             mid = row[0]
             acr= members.get(mid,None)
             if acr is None:
-                Log.debug("Visitor add: %d",mid)
+                #Log.debug("Visitor add: %d",mid)
                 members[mid]=AccessRow(row)
             else:
                 members[mid].toggleChecked(row[4])
-                Log.debug("Visitor toggle: %s",members[mid].checked)
+                #Log.debug("Visitor toggle: %s",members[mid].checked)
         
         present =[item for item in members.values() if item.checked]     
         #people = [{'name': fn+" "+name+"("+datetime.strftime(accDate,"%H:%M")+")", 'image_path': picFolder+picpath} for fn, name, picpath,accDate in rows]
