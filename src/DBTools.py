@@ -18,17 +18,21 @@ class Connector():
         self.HOST=host
         self.USER=user
         self.PASSWORD=pwd
-        self.connected = False
+        self.dbConnection = None
         
 
     def connect(self, dbName):
         try:
             self.dbConnection=mysql.connect(host=self.HOST,database=dbName, user=self.USER, password=self.PASSWORD,autocommit=True)
             Log.info("Connected to:%s", self.dbConnection.get_server_info())
-            self.connected =True
         except mysql.Error as sqlError:
-            self.connected =False
-            Log.warn("Connect: %s",sqlError)
+            Log.warning("Connect: %s",sqlError)
+            self.dbConnection = None
+
+    def isConnected(self):
+        if self.dbConnection is None:
+            return False
+        return self.dbConnection.is_connected()
 
     def createDatabase(self,dbName):
         try:

@@ -98,7 +98,7 @@ class SetUpTSVDB():
         
 
     def isConnected(self):
-        return self.db.connected
+        return self.db.isConnected()
 
     def resetDatabase(self):
         self.db.dropDatabase(self.DATABASE)
