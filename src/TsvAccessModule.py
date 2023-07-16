@@ -12,7 +12,7 @@ from TsvDBCreator import SetUpTSVDB
 from datetime import datetime
 from threading import Timer
 from _datetime import date
-import traceback
+
 '''
 os.uname():
 posix.uname_result(sysname='Linux', nodename='raspi3a', release='6.1.29-2-rpi-ARCH', version='#1 SMP Thu May 25 05:35:29 MDT 2023', machine='armv7l')
@@ -20,8 +20,8 @@ data[4] > armv7l
 '''
 
 try:
-    import RPi.GPIO as GPIO  # @UndefinedVariable
-    from mfrc522 import SimpleMFRC522
+    import RPi.GPIO as GPIO  #@UnresolvedImport
+    from mfrc522 import SimpleMFRC522 #@UnresolvedImport
     RASPI = True
 except Exception:
     print("no GPIOS installed")

@@ -11,7 +11,7 @@ add that user to the TsvDB
 '''
 
 # Importing OpenCV package
-import cv2, sys, traceback, time
+import cv2, sys, traceback, time, os
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtCore import pyqtSignal
 from PyQt5 import QtWidgets, QtGui, QtCore
@@ -66,6 +66,14 @@ class OpenCV3():
 
 OPENCV = OpenCV3()
 
+'''
+Unbelievable windows crap: To get your icon into the task bar:
+'''
+if os.name == 'nt':
+    import ctypes
+    myappid = 'Register.tsv.access' # arbitrary string
+    cwdll = ctypes.windll # @UndefinedVariable
+    cwdll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
 class CVImage(QtGui.QImage):
 
@@ -192,9 +200,9 @@ class CheckableComboBox(QtWidgets.QComboBox):
         self.updateText()
         super().resizeEvent(event)
 
-    def eventFilter(self, object, event):
+    def eventFilter(self, leObject, event):
 
-        if object == self.lineEdit():
+        if leObject == self.lineEdit():
             if event.type() == QtCore.QEvent.MouseButtonRelease:
                 if self.closeOnLineEditClick:
                     self.hidePopup()
@@ -361,7 +369,7 @@ class MainFrame(QtWidgets.QMainWindow):
         
         self.ui_AccessCombo = QtWidgets.QComboBox(self)
         #self.ui_AccessCombo = CheckableComboBox(self)
-        themes = SetUpTSVDB.ACCESSLIST
+        themes = SetUpTSVDB.ACCESS
         for item in themes:
             self.ui_AccessCombo.addItem(item)
         self.ui_AccessCombo.setCurrentText("")  # self.model.iconSet
@@ -1001,7 +1009,7 @@ def main():
         wd = OSTools().getLocalPath(__file__)
         OSTools.setMainWorkDir(wd)
         Log = DBTools.Log
-        OSTools.setupRotatingLogger("TSVAccess", True)
+        OSTools.setupRotatingLogger("TSVRegister", True)
         OSTools.setLogLevel("Info")
         argv = sys.argv
         app = QApplication(argv)

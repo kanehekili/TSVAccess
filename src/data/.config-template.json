@@ -1,1 +1,1 @@
-{"HOST": "DBHOST", "DB": "TsvDB", "USER": "aUSER", "PASSWORD": "PWD", "MAINTABLE": "Mitglieder", "TIMETABLE": "Zugang", "GRACETIME": "120", "LOCATION":"Kraftraum","ACCESSPOINTS": ["KR", "UKR"], "PICPATH": "usr@host:/where/ever/you/go/TSVPIC/"}
+{"HOST": "DBHOST", "DB": "TsvDB", "USER": "aUSER", "PASSWORD": "PWD", "MAINTABLE": "Mitglieder", "TIMETABLE": "Zugang", "GRACETIME": "120", "LOCATION":"Kraftraum","ACCESSPOINTS": ["KR", "UKR", "ÜL"], "PICPATH": "usr@host:/where/ever/you/go/TSVPIC/"}

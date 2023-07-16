@@ -1,0 +1,15 @@
+From a point of a unix/linux user this shows how sick windows is. Following an attempt how to install the RegisterModule on an alien windows system:
+
+Install python from
+https://www.python.org/ftp/python/3.11.4/python-3.11.4-amd64.exe
+install python as custom for all users and pip, no doku, debug etc
+mkdir C:\Users\<user>\Access
+
+pip install PyQt5 opencv-python mysql-connector-python
+ extract the contents of TsvWinReg.zip into (e.g.) C:\Users\<user>\Access
+ rename the TsvRegistration.py into ..pyw.
+ Use the Windoze file explorer - find somehow the user dir - click the pyw file and create a shortcut via Context menu .
+ Select the favicon in web/static as icon.
+ 
+ 
+  

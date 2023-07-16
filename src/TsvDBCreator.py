@@ -57,8 +57,6 @@ class SetUpTSVDB():
         PICPATH=dic["PICPATH"] #path to scp
         LOCATION=dic["LOCATION"]
 
-    ACCESSLIST=["KR","UKR","Group","FFA","Juggling"]
-
     TABLE1= """
     CREATE OR REPLACE TABLE Mitglieder (
       id INT PRIMARY KEY,
