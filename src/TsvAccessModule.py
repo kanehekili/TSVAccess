@@ -4,7 +4,6 @@ Reads some input, checks with remote db and gives a sign (RED=forbidden, GREEN=a
 "Zugangskontrolle auf RASPI"
 @author: matze
 '''
-import cv2
 import subprocess, os, time
 import DBTools
 from DBTools import OSTools
@@ -145,7 +144,8 @@ class RFIDAccessor():
             return ok    
         return False
 
-
+'''
+import cv2
 class QRAccessor():
 
     def __init__(self):
@@ -232,7 +232,7 @@ class QRAccessor():
 
     def accessForbidden(self):
         self.gate.signalForbidden()  # RED LED
-        
+ '''       
 
 class RaspberryGPIO():
     PINGREEN = 2

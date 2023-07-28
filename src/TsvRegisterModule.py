@@ -11,7 +11,7 @@ add that user to the TsvDB
 '''
 
 # Importing OpenCV package
-import cv2, sys, traceback, time, os
+import cv2, sys, traceback, time, argparse, os
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtCore import pyqtSignal
 from PyQt5 import QtWidgets, QtGui, QtCore
@@ -21,18 +21,56 @@ from DBTools import OSTools
 from TsvDBCreator import SetUpTSVDB
 import DBTools
 from datetime import datetime
+import paramiko
+from scp import SCPClient
 
 class OpenCV3():
 
-    def __init__(self):
-        self._cap = cv2.VideoCapture()
+    @classmethod
+    def setColor(cls, numpyArray):
+        cv2.cvtColor(numpyArray, cv2.COLOR_BGR2RGB, numpyArray)  # @UndefinedVariable
+
+    @classmethod
+    def getBestCameraIndex(cls):
+        best=(-1,-1) #indx,w*h
+        for i in range(8,0,-1):
+            vc = cv2.VideoCapture(i,cv2.CAP_V4L2)
+            if vc.isOpened():
+                rval, frame = vc.read()
+                if rval:
+                    height, width, _bytesPerComponent = frame.shape #numpyArray
+                    print("Camera ",i, "ok:",width,">",height)
+                    quality=width*height
+                    if best[1]<quality:
+                        best=(i,quality)
+                else:
+                    print("Camera ",i, "found, no read")                    
+            else:
+                print("Camera ",i, "fails")
+        camIndex=best[0]
+        if camIndex < 0:
+            camIndex=0
+        print("selected camera is:",camIndex)
+        return camIndex
+        
+
+        
+
+    @classmethod
+    def getCamera(cls,index):
+        cap = cv2.VideoCapture(index,cv2.CAP_V4L2)
+        if cap.isOpened():
+            rval, _frame = cap.read()
+            if rval:      
+                return cap
+        return None
+
+    def __init__(self, capture=None):
+        self._cap = capture
     
     def getCapture(self):
         return self._cap
     
-    def setColor(self, numpyArray):
-        cv2.cvtColor(numpyArray, cv2.COLOR_BGR2RGB, numpyArray)  # @UndefinedVariable
-        
     def getFrameWidth(self):
         return self._cap.get(cv2.CAP_PROP_FRAME_WIDTH)  # @UndefinedVariable
      
@@ -64,7 +102,6 @@ class OpenCV3():
         return self._cap.isOpened()
 
 
-OPENCV = OpenCV3()
 
 '''
 Unbelievable windows crap: To get your icon into the task bar:
@@ -82,7 +119,7 @@ class CVImage(QtGui.QImage):
         dst = numpyArray
         bytesPerLine = bytesPerComponent * width
             
-        OPENCV.setColor(dst)
+        OpenCV3.setColor(dst)
         super(CVImage, self).__init__(dst.data, width, height, bytesPerLine, QtGui.QImage.Format_RGB888)
 
 
@@ -200,9 +237,9 @@ class CheckableComboBox(QtWidgets.QComboBox):
         self.updateText()
         super().resizeEvent(event)
 
-    def eventFilter(self, leObject, event):
+    def eventFilter(self, _object, event):
 
-        if leObject == self.lineEdit():
+        if object == self.lineEdit():
             if event.type() == QtCore.QEvent.MouseButtonRelease:
                 if self.closeOnLineEditClick:
                     self.hidePopup()
@@ -287,10 +324,10 @@ class CheckableComboBox(QtWidgets.QComboBox):
 # #Main App Window. 
 class MainFrame(QtWidgets.QMainWindow):
     
-    def __init__(self, qapp, aPath=None):
+    def __init__(self, qapp, cameraIndex):
         self._isStarted = False
         self.__qapp = qapp
-        self.model = Registration()
+        self.model = Registration(cameraIndex)
         self.cameraThread = None
         self.qtQueueRunning = False
         self.capturing = False
@@ -301,7 +338,7 @@ class MainFrame(QtWidgets.QMainWindow):
         self._widgets = self.initUI()
         self.centerWindow()
         # self._widgets.enableUserActions(False)
-        self.setWindowTitle("Registrierung für Fit'n Fun Mitglieder")
+        self.setWindowTitle("Registrierung für TSV Mitglieder")
         self.show()
         qapp.applicationStateChanged.connect(self.__queueStarted)    
 
@@ -320,13 +357,12 @@ class MainFrame(QtWidgets.QMainWindow):
         
         self.ui_PhotoButton = QtWidgets.QPushButton()
         self.updatePhotoButton()
-        self.ui_PhotoButton.clicked.connect(self._onScreenShot)
+        self.ui_PhotoButton.clicked.connect(self._onPhotoButtonClicked)
         self.ui_PhotoButton.setToolTip("Wechsel zwischen Video und Photo machen")
         
         self.ui_SearchLabel = QtWidgets.QLabel(self)
         self.ui_SearchLabel.setText("Suche:")
         
-        #self.ui_SearchEdit = QtWidgets.QLineEdit(self)
         self.ui_SearchEdit = QtWidgets.QComboBox(self)
         self.ui_SearchEdit.setEditable(True) #Is that right??
         #self.ui_SearchEdit.currentIndexChanged.connect(self._onSearchChanged)
@@ -370,6 +406,7 @@ class MainFrame(QtWidgets.QMainWindow):
         self.ui_AccessCombo = QtWidgets.QComboBox(self)
         #self.ui_AccessCombo = CheckableComboBox(self)
         themes = SetUpTSVDB.ACCESS
+        self.ui_AccessCombo.addItem("-")
         for item in themes:
             self.ui_AccessCombo.addItem(item)
         self.ui_AccessCombo.setCurrentText("")  # self.model.iconSet
@@ -475,7 +512,7 @@ class MainFrame(QtWidgets.QMainWindow):
         #do we need this event?
 
     @QtCore.pyqtSlot()
-    def _onScreenShot(self):
+    def _onPhotoButtonClicked(self):
         if self.capturing:
             self.capturing = False
             if self.model.takeScreenshot("/tmp/tsv.screenshot.png"):
@@ -492,6 +529,8 @@ class MainFrame(QtWidgets.QMainWindow):
         mbr = self.ui_SearchEdit.itemData(idx)
         if mbr:
             self.setEntryFields(mbr)
+            self.ui_RFID.setFocus()
+            self._initCapture()#fastCam
 
     @QtCore.pyqtSlot()
     def _onNewClicked(self):
@@ -563,7 +602,9 @@ class MainFrame(QtWidgets.QMainWindow):
             res= self.model.savePicture(mbr)#scps the pic to remote and adds uri to db...
             if not res:
                 self.getErrorDialog("Verbindungsfehler","Bild konnte nicht gespeichert werden","Das muss gemeldet werden").show()
-   
+                self.photoTaken=False
+                return #only all or nothing
+            
         self.model.updateMember(mbr)
         #self.model.printMemberCard(mbr)
         self.photoTaken=False
@@ -579,6 +620,11 @@ class MainFrame(QtWidgets.QMainWindow):
         self.ui_BirthLabel.clear()
         self.ui_RFID.clear()
         self.model.currentFrame=None
+        self.model.cameraOn=False
+        self.capturing=False
+        self.updatePhotoButton()
+        self.ui_VideoFrame.showFrame(None) #fastCam
+         
     # dialogs
     def __getInfoDialog(self, text):
         dlg = QtWidgets.QDialog(self)
@@ -637,7 +683,7 @@ class MainFrame(QtWidgets.QMainWindow):
         print("RFID:",key)
         self.ui_RFID.setText(key)
     
-    def __queueStarted(self, state):
+    def __queueStarted(self, _state):
         if self.qtQueueRunning:
             return
         self.qtQueueRunning = True
@@ -645,10 +691,7 @@ class MainFrame(QtWidgets.QMainWindow):
         
         self.cameraThread = CameraThread(self.model.activateCamera)
         self.cameraThread.signal.connect(self._displayFrame)
-        #self.cameraThread.error.connect(self._showCameraError)
-        if self._initModel():
-            self._initCapture()
-        
+        self._initModel() #fastCam
     
     def _initCapture(self):
         self.capturing = True
@@ -674,7 +717,6 @@ class MainFrame(QtWidgets.QMainWindow):
         else:
             memberList = self.model.getMembers()
             self.fillSearchCombo(memberList)
-            # self.ui_SearchEdit.add alot of data
             
         return res
 
@@ -722,7 +764,7 @@ class CameraThread(QtCore.QThread):
 
 
 ###DEMO ###
-def headRec(): 
+def __DEMO__headRec(): 
     camera_id = 0
     delay = 1
     window_name = 'OpenCV Onboarding'
@@ -758,17 +800,20 @@ def headRec():
 
 class Registration():
 
-    def __init__(self):
+    def __init__(self, cameraIndex):
         #self.accesscodes = []
         self.currentFrame = None
         self.borders = []
         self.cameraOn = False
         self.cameraStatus = None
+        self.camIndex=cameraIndex
+        self.cam=None
         
 
     def connect(self):
         self.dbSystem = SetUpTSVDB(SetUpTSVDB.DATABASE)
         self.db = self.dbSystem.db
+        self.sshClient=self.connectSSH(SetUpTSVDB.HOST);
         return self.dbSystem.isConnected()
     
     # reads the list and passes it to the caller...
@@ -794,8 +839,12 @@ class Registration():
     
     #we need some sane values.Try with at least 300 pix in size.
     def activateCamera(self, cameraThread):
-        camera_id = cv2.CAP_V4L2
-        cap = cv2.VideoCapture(camera_id)
+        #cap = OpenCV3.getLatestCamera()
+        if not self.cam:
+            self.cam = OpenCV3.getCamera(self.camIndex)
+            print("cam found")
+        cap=self.cam    
+            
         if cap is None or not cap.isOpened():
             Log.warning("Camera not found!")
             self.cameraStatus="Keine Kamera gefunden"
@@ -847,9 +896,7 @@ class Registration():
                 if self.cameraOn: 
                     self.currentFrame = frame
                     cameraThread.showFrame(frame)
-                
-        cap.release()
-    
+
     def takeScreenshot(self, path):
         self.cameraOn = False
         if self.currentFrame is None or len(self.borders)==0:
@@ -867,70 +914,48 @@ class Registration():
 
     def stopCamera(self):
         self.cameraOn=False
+        if self.cam:
+            self.cam.release()        
         
     #dont- save pic with member name on remote device via scp or smb.     
-    def printMemberCard(self,member):
+    def __deprecated_printMemberCard(self,member):
         #generate OCR for now    
         #get both images & convert: left to right (else -append)
         #convert +append image_1.png image_2.png -resize x500 new_image_conbined.png
         data = str(member.id)+","+member.searchName()
         cmd1=["/usr/bin/qrencode","-o", "/tmp/qr.png", "-s", "6",data]
         res=DBTools.runExternal(cmd1)
-        #print(res)
+        print(res)
         
         #possible density stuff. We need to ensure that the saved size is independent of the camera!
         #montage card[1-4]*.png -tile 2x2+140+140 -geometry 382x240+65+52 -density 100 cards.pdf
         cmd2=["/usr/bin/convert","+append","/tmp/tsv.screenshot.png","/tmp/qr.png","-resize","x400","/tmp/member.png" ]
         res=DBTools.runExternal(cmd2)
-        #print(res)
+        print(res)
         
     def savePicture(self,member):
         saved= "/tmp/tsv.screenshot.png"
         data = member.lastName+"-"+member.primKeyString()+".png"
         targetPath = SetUpTSVDB.PICPATH
         member.picpath=data
-        cmd1=["scp",saved,targetPath+data]
-        res=DBTools.runExternal(cmd1)
-        if len(res[0])>0:
-            Log.info("Save Pic result:%s",res[0])
-        if len(res[1])>0:
-            Log.warning("Save Pic result:%s",res[1]) 
+        try:
+            with SCPClient(self.sshClient.get_transport()) as scp:
+                place = targetPath+data
+                print("SRC:%s target:%s"%(saved,place))
+                scp.put(saved,place)
+        except Exception:
+            Log.exception("Scp failure")
             return False
         return True           
         
-        
-        #save current frame and remove that imwrite in takeScreenshot
-        #scp saved to remote location
-        '''
-        another way for getting the pic:
-        img = CVImage(frame.copy()).scaled(int(self.cvWidget.imageRatio * self.iconSize), self.iconSize)
-            pix = QtGui.QPixmap.fromImage(img)
-        #conveert to base64 String
-        def toBase64(self,pix):
-            data = QtCore.QByteArray() 
-            buf = QtCore.QBuffer(data)
-            pix.save(buf, 'JPG')
-            #breaks xml test=data.toBase64()
-            t1=data.toBase64()
-            t2= str(t1,'ascii')
-            return t2    
-        #back to img
-        def fromBase64(self,pixstr):
-            if pixstr is None:
-                return None
-            t1=bytearray(pixstr,"ascii")
-            #data = QtCore.QByteArray.fromBase64(pixstr,QtCore.QByteArray.Base64Encoding)
-            data = QtCore.QByteArray.fromBase64(t1)
-            pix=QtGui.QPixmap()
-            pix.loadFromData(data)
-            return pix        
-        
-        generate and install ssh key or use pwd..
-        import subprocess
-        subprocess.run(["scp", FILE, "USER@SERVER:PATH"])
-        '''
-        #store Name(not path) into db
-        return True
+      
+    def connectSSH(self,server):
+        DBTools.logging.getLogger("paramiko").setLevel( DBTools.logging.WARNING)
+        client = paramiko.SSHClient()
+        client.load_system_host_keys()
+        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        client.connect(server, username="matze", password="lotse3", look_for_keys=False, allow_agent=False)
+        return client        
         
     def verifyRfid(self,rfidString,testId):
         #check if rfid  alreay exists ->False
@@ -1001,20 +1026,34 @@ def handle_exception(exc_type, exc_value, exc_traceback):
         WIN.getErrorDialog("Unexpected error", infoText, detailText).show()
         Log.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
 
+def parse():
+    parser = argparse.ArgumentParser(description="Registration")
+    parser.add_argument('-s', dest="searchCamera", action='store_true', help="Search for a camera")
+    parser.add_argument('-c', dest="setCamera", type=int, default=0, help="set a camera index")
+    parser.add_argument('-d', dest="debug", action='store_true', help="Debug logs")
+    return parser.parse_args()    
 
-def main():
+def main(args):
+    #todo speed up camera lookup. check log and promote: -c nbr
+    if args.searchCamera:
+        OpenCV3.getBestCameraIndex()
+        sys.exit()
+        
     try:
         global WIN
         global Log
         wd = OSTools().getLocalPath(__file__)
         OSTools.setMainWorkDir(wd)
         Log = DBTools.Log
-        OSTools.setupRotatingLogger("TSVRegister", True)
-        OSTools.setLogLevel("Info")
+        OSTools.setupRotatingLogger("TSVAccess", True)
+        if args.debug:
+            OSTools.setLogLevel("Debug")
+        else:
+            OSTools.setLogLevel("Info")
         argv = sys.argv
         app = QApplication(argv)
         app.setWindowIcon(getAppIcon())
-        WIN = MainFrame(app)  # keep python reference!
+        WIN = MainFrame(app,args.setCamera)  # keep python reference!
         app.exec_()
         # logging.shutdown()
     except:
@@ -1026,4 +1065,29 @@ def main():
 
 if __name__ == '__main__':
     sys.excepthook = handle_exception
-    sys.exit(main())
+    sys.exit(main(parse()))
+
+'''
+--
+
+
+QWidget
+{
+background-color: red;
+}
+QPushButton
+{
+color: yellow;
+}
+--
+QFile File("stylesheet.qss");
+File.open(QFile::ReadOnly);
+QString StyleSheet = QLatin1String(File.readAll());
+
+qApp->setStyleSheet(StyleSheet);
+...
+  QApplication a(argc, argv);
+  a.setStyleSheet(teststyle);
+  MainWindow w;
+  w.show();
+'''
