@@ -1,0 +1,12 @@
+[Unit]
+Description=TSV access Flask server
+Wants=mariadb.target
+After=mariadb.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/TSVAccess/src
+ExecStart=/usr/bin/python3 /opt/TSVAccess/src/TsvAuswertung.py
+
+[Install]
+WantedBy=multi-user.target

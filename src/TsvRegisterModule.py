@@ -23,6 +23,7 @@ import DBTools
 from datetime import datetime
 import paramiko
 from scp import SCPClient
+import TsvDBCreator
 
 class OpenCV3():
 
@@ -405,6 +406,7 @@ class MainFrame(QtWidgets.QMainWindow):
         
         self.ui_AccessCombo = QtWidgets.QComboBox(self)
         #self.ui_AccessCombo = CheckableComboBox(self)
+        #TODO Wrong- location/group agnostic... 
         themes = SetUpTSVDB.ACCESS
         self.ui_AccessCombo.addItem("-")
         for item in themes:
@@ -843,6 +845,7 @@ class Registration():
         if not self.cam:
             self.cam = OpenCV3.getCamera(self.camIndex)
             print("cam found")
+            self.cameraStatus=None
         cap=self.cam    
             
         if cap is None or not cap.isOpened():
@@ -954,7 +957,7 @@ class Registration():
         client = paramiko.SSHClient()
         client.load_system_host_keys()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        client.connect(server, username="matze", password="lotse3", look_for_keys=False, allow_agent=False)
+        client.connect(server, username=SetUpTSVDB.SSHUSER, password=SetUpTSVDB.SSHPWD, look_for_keys=False, allow_agent=False)
         return client        
         
     def verifyRfid(self,rfidString,testId):

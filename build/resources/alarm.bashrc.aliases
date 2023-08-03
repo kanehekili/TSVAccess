@@ -1,0 +1,11 @@
+alias tree='find . -print | sed -e "s/[^-][^\/]*\//  |/g" -e "s/|\([^ ]\)/|-\1/>
+alias grep='grep --color=auto'
+alias sudo='sudo '
+alias home='cd ~/'
+alias cls='printf "\033c"'
+alias mountc='mount |column -t'
+alias grepc='grep -v ^#'
+alias ping='ping -c 5'
+alias ports='netstat -tulanp'
+alias ll='ls -la'
+alias llt='ls -lat'

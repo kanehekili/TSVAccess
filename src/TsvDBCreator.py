@@ -2,9 +2,6 @@
 Created on Apr 1, 2023
 Generates the basic structure of a TSV database
 @author: matze
-'''
-from PyQt5.pylupdate_main import printUsage
-'''
 security
 pip3 install python-dotenv
 from dotenv import load_dotenv
@@ -36,12 +33,21 @@ class Fields(Enum):
     ACCESS = 4
     EOLDATE = 5
     BDATE = 6
-    
+    #FLAG?
     
 # Allowed access locations:
 KRAFTRAUM = "Kraftraum"
 YOGA = "Yoga"
 # to be defined 
+
+class GROUPS(Enum):
+    Group = 0
+    ÜL = 1
+    FFA = 2
+    KR = 3
+    Juggling = 4
+    UKR =5
+
 
 
 class SetUpTSVDB():
@@ -54,14 +60,18 @@ class SetUpTSVDB():
         HOST = dic["HOST"]
         DATABASE = dic["DB"]
         USER = dic["USER"]             
-        PASSWORD = dic["PASSWORD"]        
-        MAINTABLE = dic["MAINTABLE"] 
-        TIMETABLE = dic["TIMETABLE"] 
+        PASSWORD = dic["PASSWORD"]    
         GRACETIME = dic["GRACETIME"]  # hours gracetime to prevent any double check in
-        ACCESS = dic["ACCESSPOINTS"]  # Controlpoint
-        PICPATH = dic["PICPATH"]  # path to scp
-        LOCATION = dic["LOCATION"]
+        #---------- ssh only -----------
+        PICPATH = dic["PICPATH"]  # path to scp -REgisterModule only
+        SSHUSER = dic["SSHUSR"]
+        SSHPWD=dic["SSHPWD"]
+        
+        #--- deprected ->DB Location ---
+        LOCATION = dic["LOCATION"] #only location Accessmodule -> to database!!!
+        ACCESS = dic["ACCESSPOINTS"]  # Controlpoint -< DB Only
 
+    MAINTABLE ="Mitglieder"
     TABLE1 = """
     CREATE OR REPLACE TABLE Mitglieder (
       id INT PRIMARY KEY,
@@ -72,10 +82,12 @@ class SetUpTSVDB():
       gender VARCHAR(1),
       birth_date DATETIME,
       picpath VARCHAR(100),
-      uuid INT UNSIGNED
+      uuid INT UNSIGNED,
+      flag SMALLINT UNSIGNED 
       )
     """
-        
+
+    TIMETABLE="Zugang"        
     TABLE2 = """
         CREATE OR REPLACE TABLE Zugang (
           mitglied_id INT,
@@ -84,7 +96,15 @@ class SetUpTSVDB():
           FOREIGN KEY(mitglied_id) REFERENCES Mitglieder(id) ON DELETE CASCADE
         )
         """ 
-    
+    LOCATIONTABLE="Location"
+    TABLE3 = """
+        CREATE OR REPLACE TABLE Location (
+        host_name VARCHAR(50),
+        room VARCHAR(100),
+        groups VARCHAR(250),
+        grace_time SMALLINT UNSIGNED
+        )
+        """  
     def __init__(self, dbName):
         self.connectToDatabase(dbName)
         
@@ -102,7 +122,10 @@ class SetUpTSVDB():
         return self.db.isConnected()
 
     def resetDatabase(self):
-        self.db.dropDatabase(self.DATABASE)
+        try:
+            self.db.dropDatabase(self.DATABASE)
+        except:
+            print("No reset - new DB?")
         self.db.close()
     
     def setupDatabase(self):
@@ -111,6 +134,7 @@ class SetUpTSVDB():
         self.db.connect(self.DATABASE)
         self.db.createTable(self.TABLE1)
         self.db.createTable(self.TABLE2)
+        self.db.createTable(self.TABLE3)
         self.db.close()    
 
     '''
@@ -230,6 +254,7 @@ def importCSV(filename):
 def persistCSV(fn):
     s = SetUpTSVDB("TsvDB")
     data = importCSV(fn)
+    #todo a.symmetric_difference(b) - two sets of ids! (not arrays)
     s.updateDatabase(data)
 
     
@@ -255,7 +280,7 @@ def parseOptions(args):
 
 def printUsage():
     print("Creator commands: \n"\
-          "\t-p filename > persist a csv file (--persist)\n"\
+          "\t-p filename > verify & persist a csv file (--persist)\n"\
           "\t-v filename > verify csv file and check for inconsistencies (--verify)\n"\
           "\t-r > reset the database (--reset) \n")
     
