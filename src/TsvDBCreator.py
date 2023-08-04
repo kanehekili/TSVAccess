@@ -183,7 +183,9 @@ class SetUpTSVDB():
                 self.db.select("Select 1")
                 self.log.info("Heartbeat")
             except:
+                self.log.warning("Heartbeat too short -reconnecting")
                 self.connectToDatabase(self.databaseName)
+                
 
 def basicSetup():
     s = SetUpTSVDB(SetUpTSVDB.DATABASE)
