@@ -13,11 +13,13 @@ print(os.environ.get('secretKey'))
 print(os.environ.get('secretHost'))
 '''
 
+import DBTools
 from DBTools import Connector, OSTools
 import csv
 from datetime import datetime
 import json, getopt, sys
 from enum import Enum
+import threading, time
 
 # TODO 
 ACCESSCODES = []
@@ -51,8 +53,6 @@ class GROUPS(Enum):
 
 
 class SetUpTSVDB():
-    # TODO this stuff belongs to env->getenv or hidden file
-    # HOST="192.168.2.82" #"T410Arch.fritz.box"
     path = OSTools.getLocalPath(__file__)
     cfg = OSTools.joinPathes(path, "data", ".config.json")
     with open(cfg, "r") as jr:
@@ -61,9 +61,9 @@ class SetUpTSVDB():
         DATABASE = dic["DB"]
         USER = dic["USER"]             
         PASSWORD = dic["PASSWORD"]    
-        GRACETIME = dic["GRACETIME"]  # hours gracetime to prevent any double check in
+        GRACETIME = dic["GRACETIME"]  # seconds gracetime to prevent any double check in
         #---------- ssh only -----------
-        PICPATH = dic["PICPATH"]  # path to scp -REgisterModule only
+        PICPATH = dic["PICPATH"]  # path to scp -RegisterModule only
         SSHUSER = dic["SSHUSR"]
         SSHPWD=dic["SSHPWD"]
         
@@ -106,7 +106,10 @@ class SetUpTSVDB():
         )
         """  
     def __init__(self, dbName):
+        self.databaseName=dbName
+        self.log = DBTools.Log
         self.connectToDatabase(dbName)
+        
         
     def connectToDatabase(self, dbName):
         try:
@@ -116,6 +119,7 @@ class SetUpTSVDB():
             self.db = None
             print(sqlError)
             return False
+        self._intrepidSockets()
         return True
 
     def isConnected(self):
@@ -125,7 +129,7 @@ class SetUpTSVDB():
         try:
             self.db.dropDatabase(self.DATABASE)
         except:
-            print("No reset - new DB?")
+            self.log.warning("No reset - new DB?")
         self.db.close()
     
     def setupDatabase(self):
@@ -167,6 +171,19 @@ class SetUpTSVDB():
         self.db.insertMany(table, fields, data)
         self.db.close()            
 
+
+    def _intrepidSockets(self):
+        t=threading.Thread(target=self.heartbeat())
+        t.start()
+
+    def heartbeat(self):
+        while True:
+            time.sleep(3600*6)
+            try:
+                self.db.select("Select 1")
+                self.log.info("Heartbeat")
+            except:
+                self.connectToDatabase(self.databaseName)
 
 def basicSetup():
     s = SetUpTSVDB(SetUpTSVDB.DATABASE)

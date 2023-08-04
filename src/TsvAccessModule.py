@@ -275,18 +275,25 @@ class RaspberryGPIO():
     
     def welcome1(self):
         self.reset()
-        GPIO.output(self.PINGREEN, self.LIGHTON) #0
-        time.sleep(1)
+        GPIO.output(self.PINGREEN, self.LIGHTON)
+        time.sleep(0.3)
         GPIO.output(self.PINORANGE, self.LIGHTON) 
-        time.sleep(0.2)
+        time.sleep(0.05)
         GPIO.output(self.PINGREEN, self.LIGHTOFF)
-        time.sleep(1)
+        time.sleep(0.3)
         GPIO.output(self.PINRED, self.LIGHTON)
-        time.sleep(0.2)
+        time.sleep(0.05)
         GPIO.output(self.PINORANGE, self.LIGHTOFF)
-        time.sleep(1)
+        time.sleep(0.3)
+        GPIO.output(self.PINORANGE, self.LIGHTON)
+        time.sleep(0.05)
         GPIO.output(self.PINRED, self.LIGHTOFF)
-        
+        time.sleep(0.3)
+        GPIO.output(self.PINGREEN, self.LIGHTON)
+        time.sleep(0.05)
+        GPIO.output(self.PINORANGE, self.LIGHTOFF)
+        time.sleep(0.3)
+        GPIO.output(self.PINGREEN, self.LIGHTOFF)
     
     # TODO needs timer
     def reset(self):
