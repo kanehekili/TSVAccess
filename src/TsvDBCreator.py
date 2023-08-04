@@ -173,7 +173,7 @@ class SetUpTSVDB():
 
 
     def _intrepidSockets(self):
-        t=threading.Thread(target=self.heartbeat())
+        t=threading.Thread(target=self.heartbeat)
         t.start()
 
     def heartbeat(self):
