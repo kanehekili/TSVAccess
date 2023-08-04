@@ -35,6 +35,7 @@ Log = DBTools.Log
 class RFIDAccessor():
 
     def __init__(self):
+        self.eastereggs=[2229782266]
         # OSTools.setupRotatingLogger("TSVAccess",True)
         if RASPI:
             self.gate = RaspberryGPIO()
@@ -79,6 +80,9 @@ class RFIDAccessor():
     def verifyAccess(self, rfid):
         # we just read the number... 
         if rfid:
+            if rfid in self.eastereggs:
+                self.gate.welcome1()
+                return
             stmt = "SELECT * from " + self.dbSystem.MAINTABLE + " where uuid=" + str(rfid)
             rows = self.db.select(stmt)
             if len(rows) > 0:
