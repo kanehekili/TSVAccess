@@ -38,7 +38,7 @@ class RFIDAccessor():
         # OSTools.setupRotatingLogger("TSVAccess",True)
         if RASPI:
             self.gate = RaspberryGPIO()
-            self.reader = SimpleMFRC522()
+            self.reader = MFRC522Reader()
         else:
             self.gate = RaspberryFAKE()
             self.reader = RFCUSB() 
@@ -64,8 +64,6 @@ class RFIDAccessor():
             # prim,text = self.reader.read() #(int,text)
             try:
                 rfid = self.reader.read_id()  # int
-                if RASPI:
-                    rfid = self._convert(rfid)
                 self.verifyAccess(rfid)    
             except KeyboardInterrupt:
                 print("Exit")
@@ -77,13 +75,7 @@ class RFIDAccessor():
             
             time.sleep(1)
     
-    def _convert(self, bigInt):
-        if not bigInt:
-            return 0
-        rbytes = bigInt.to_bytes(5)
-        tmp = rbytes[:-1][::-1]
-        return int.from_bytes(tmp)
-     
+    
     def verifyAccess(self, rfid):
         # we just read the number... 
         if rfid:
@@ -342,7 +334,6 @@ class RaspberryFAKE():
     '''
 
 
-# TODO - we might put this in a generic module for the RegisterModule
 class RFCUSB():
 
     def __init__(self):
@@ -352,6 +343,26 @@ class RFCUSB():
         text = input()
         return int(text)
 
+#changed due to 100% CPU
+class MFRC522Reader():
+    def __init__(self):
+        self.mfrc = SimpleMFRC522()
+        
+    def read_id(self):
+        id=None
+        while not id:
+            data=self.mfrc.read_id_no_block()
+            if data:
+                return self._convert(data)
+            time.sleep(0.3)
+    
+    def _convert(self,bigInt):
+        if not bigInt:
+            return 0
+        rbytes = bigInt.to_bytes(5)
+        tmp = rbytes[:-1][::-1]
+        return int.from_bytes(tmp)
+    
    
 def playSound(ok):
     base = os.path.dirname(os.path.abspath(__file__)) 
