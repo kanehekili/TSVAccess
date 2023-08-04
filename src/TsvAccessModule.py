@@ -228,12 +228,18 @@ class QRAccessor():
 
 class RaspberryGPIO():
     PINGREEN = 2
-    PINRED = 3
+    PINORANGE=3
+    PINRED = 17
+    PINSIGNAL=27
+    LIGHTON=False
+    LIGHTOFF=True #depends how we cable the relais
 
     def __init__(self):
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(self.PINGREEN, GPIO.OUT)
         GPIO.setup(self.PINRED, GPIO.OUT)
+        GPIO.setup(self.PINORANGE, GPIO.OUT)
+        GPIO.setup(self.PINSIGNAL, GPIO.OUT)
         self.reset()  # GPIOS start on hi... 
         self.timer = None
         '''
@@ -247,30 +253,47 @@ class RaspberryGPIO():
         |--| usb==unten
     
         Relais
-        o x 5V Yello
-        x o GPIO2 Red
-        x o GPIO3 Orange
+        o x 5V Red
+        x o GPIO2 Blue   ->Green light (OK)
+        x o GPIO3 yello   -> yello (WARN)
         o o                
-        X o -GND Green
-        o o         
+        X o -GND Green  
+        x o GPIO 17 orange  -> red (NO ACCESS)
+        x o GPIO27  brown   ->signal (NO ACCESS)       
         |--| usb==unten
         
         '''
 
     def signalAccess(self):
-        GPIO.output(self.PINGREEN, True)
-        GPIO.output(self.PINRED, False)
+        GPIO.output(self.PINGREEN, self.LIGHTON)
         self._restartTimer()        
         
     def signalForbidden(self):
-        GPIO.output(self.PINRED, True)        
-        GPIO.output(self.PINGREEN, False)
+        GPIO.output(self.PINRED, self.LIGHTON)        
+        GPIO.output(self.PINSIGNAL, self.LIGHTON)
         self._restartTimer()
+    
+    def welcome1(self):
+        self.reset()
+        GPIO.output(self.PINGREEN, self.LIGHTON) #0
+        time.sleep(1)
+        GPIO.output(self.PINORANGE, self.LIGHTON) 
+        time.sleep(0.2)
+        GPIO.output(self.PINGREEN, self.LIGHTOFF)
+        time.sleep(1)
+        GPIO.output(self.PINRED, self.LIGHTON)
+        time.sleep(0.2)
+        GPIO.output(self.PINORANGE, self.LIGHTOFF)
+        time.sleep(1)
+        GPIO.output(self.PINRED, self.LIGHTOFF)
+        
     
     # TODO needs timer
     def reset(self):
-        GPIO.output(self.PINRED, True)
-        GPIO.output(self.PINGREEN, True)
+        GPIO.output(self.PINRED, self.LIGHTOFF) #true=off, false=ON
+        GPIO.output(self.PINGREEN, self.LIGHTOFF)
+        GPIO.output(self.PINORANGE, self.LIGHTOFF)
+        GPIO.output(self.PINSIGNAL, self.LIGHTOFF)        
             
     def _restartTimer(self):
         if self.timer:
