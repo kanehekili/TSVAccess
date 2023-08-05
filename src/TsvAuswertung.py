@@ -375,12 +375,12 @@ class BarModel():
 
         
 def main():
-    global Log
+    #global Log
     global barModel
     wd = OSTools().getLocalPath(__file__)
     OSTools.setMainWorkDir(wd)
-    Log = DBTools.Log
-    OSTools.setupRotatingLogger("TSVAuswertung", True)
+    #Log = DBTools.Log
+    #OSTools.setupRotatingLogger("TSVAuswertung", True)
     barModel = BarModel()
     app.run(debug=False, host='0.0.0.0', port=5001)    
 

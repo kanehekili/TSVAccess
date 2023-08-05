@@ -8,9 +8,8 @@ import subprocess, os, time
 import DBTools
 from DBTools import OSTools
 from TsvDBCreator import SetUpTSVDB
-from datetime import datetime
+from datetime import datetime,date
 from threading import Timer
-from _datetime import date
 
 '''
 os.uname():
@@ -110,20 +109,24 @@ class RFIDAccessor():
         if not self.checkValidity(eolDate, access):
             return False
         # Allowd. That person needs an entry
-        table = self.dbSystem.TIMETABLE
+        Timer(0, self.__forkWriteAccess,[key]).start()
+        
+        return True        
+
+    def __forkWriteAccess(self,key):
         location = self.dbSystem.LOCATION
         now = datetime.now().isoformat()
+        table = self.dbSystem.TIMETABLE
         stmt = "SELECT mitglied_id,access_date from " + table + " where mitglied_id=" + str(key) + " AND TIMESTAMPDIFF(SECOND,access_date,NOW()) <= " + self.dbSystem.GRACETIME
         
         Log.debug("Search time db:%s", stmt)
         timerows = self.db.select(stmt) 
         Log.debug("Access rows:%s", timerows)
-        if len(timerows) == 0:
+        if len(timerows) == 0:        
             data = []
             data.append((key, now, location))
             self.db.insertMany(table, ('mitglied_id', 'access_date', 'location'), data)
         
-        return True        
      
     def checkValidity(self, eolDate, access):
         if eolDate:

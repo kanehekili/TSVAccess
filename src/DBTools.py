@@ -19,15 +19,26 @@ class Connector():
         self.USER=user
         self.PASSWORD=pwd
         self.dbConnection = None
+        self.dbName=None
         
 
     def connect(self, dbName):
         try:
             self.dbConnection=mysql.connect(host=self.HOST,database=dbName, user=self.USER, password=self.PASSWORD,autocommit=True)
+            self.dbName=dbName
             Log.info("Connected to:%s", self.dbConnection.get_server_info())
         except mysql.Error as sqlError:
             Log.warning("Connect: %s",sqlError)
             self.dbConnection = None
+
+
+    def _getCursor(self):
+        try:
+            return self.dbConnection.cursor()
+        except:
+            Log.warning("Cursor reconnect!")
+            self.connect(self.dbName)
+            return self.dbConnection.cursor() #no recursion now
 
     def isConnected(self):
         if self.dbConnection is None:
@@ -37,31 +48,32 @@ class Connector():
     def createDatabase(self,dbName):
         try:
             create_db_query = "CREATE DATABASE "+dbName
-            with self.dbConnection.cursor() as cursor:
+            #with self.dbConnection.cursor() as cursor:
+            with self._getCursor() as cursor:
                 cursor.execute(create_db_query)
         except mysql.Error as sqlError:
             self.dbConnection.rollback()
-            print("CREATE DB:%s"%(sqlError)) 
+            Log.debug("CREATE DB:%s"%(sqlError)) 
                 
 
     def dropDatabase(self,dbName):
         try:
             drop_query = "DROP DATABASE "+dbName
-            with self.dbConnection.cursor() as cursor:
+            with self._getCursor() as cursor:
                 cursor.execute(drop_query)
         except mysql.Error as sqlError:
             self.dbConnection.rollback()
-            print("DROP DB:%s"%(sqlError)) 
+            Log.debug("DROP DB:%s"%(sqlError)) 
 
 
     def dropTable(self,tableName):
         drop_table_query = "DROP TABLE "+tableName
-        with self.dbConnection.cursor() as cursor:
+        with self._getCursor() as cursor:
             cursor.execute(drop_table_query)
 
     def showTables(self):
         query="SHOW TABLES"
-        with self.dbConnection.cursor() as cursor:
+        with self._getCursor() as cursor:
             cursor.execute(query)
             tNames=[]
             for item in cursor:
@@ -71,7 +83,7 @@ class Connector():
                 tQuery = "SHOW COLUMNS FROM "+tx
                 cursor.execute(tQuery)
                 for item in cursor:
-                    print("Table %s field:%s"%(tx,item))
+                    Log.debug("Table %s field:%s"%(tx,item))
     
     
     '''
@@ -105,12 +117,12 @@ class Connector():
             
             query = "".join(query).replace("'","")
 
-            print(query)                
-            with self.dbConnection.cursor() as cursor:
+            Log.debug(query)                
+            with self._getCursor() as cursor:
                 res=cursor.executemany(query, dataSaveArray)
                 self.dbConnection.commit()
                 if res is not None:
-                    Log.info("insert:> %s <",res)
+                    Log.debug("insert:> %s <",res)
 
         except mysql.Error as sqlError:
             self.dbConnection.rollback()
@@ -118,36 +130,36 @@ class Connector():
 
     def createTable(self,stmt):
         try:
-            with self.dbConnection.cursor() as cursor:
+            with self._getCursor() as cursor:
                 cursor.execute(stmt)
                 self.dbConnection.commit()     
         except mysql.Error as sqlError:
             self.dbConnection.rollback()
-            print("CREATE TABLE:%s"%(sqlError)) 
+            Log.debug("CREATE TABLE:%s"%(sqlError)) 
             
 
     def showDatabases(self):
         show_db_query = "SHOW DATABASES"
-        with self.dbConnection.cursor() as cursor:
+        with self._getCursor() as cursor:
             cursor.execute(show_db_query)
             for db in cursor:
-                print(db)
+                Log.debug(db)
 
     def deleteEntry(self,table,fn,condition):
         try:
             cond = str(condition)
             stmt ="DELETE FROM "+table+" WHERE "+fn+" = " + cond 
-            with self.dbConnection.cursor() as cursor:
+            with self._getCursor() as cursor:
                 cursor.execute(stmt)        
                 self.dbConnection.commit()
         except mysql.Error as sqlError:
             self.dbConnection.rollback()
-            print("DELETE ROW: %s"%(sqlError))     
+            Log.debug("DELETE ROW: %s"%(sqlError))     
     
 
     def select(self,stmt):
         try:
-            with self.dbConnection.cursor() as cursor:
+            with self._getCursor() as cursor:
                 cursor.execute(stmt)
                 return cursor.fetchall()
         except mysql.Error as sqlError:
