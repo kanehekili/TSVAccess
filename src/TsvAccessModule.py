@@ -138,9 +138,7 @@ class RFIDAccessor():
         # location = self.dbSystem.LOCATION
         now = datetime.now().isoformat()
         table = self.dbSystem.TIMETABLE
-        stmt = "SELECT mitglied_id,access_date from " + table + " where mitglied_id=" + str(key) + " AND TIMESTAMPDIFF(SECOND,access_date,NOW()) <= " + str(self.gracetime)
-        
-        Log.debug("Search time db:%s", stmt)
+        stmt = "SELECT mitglied_id,access_date from " + table + " where mitglied_id=" + str(key) + " AND TIMESTAMPDIFF(SECOND,access_date,NOW()) >= " + str(self.gracetime)
         timerows = self.db.select(stmt) 
         Log.debug("Access rows:%s", timerows)
         if len(timerows) == 0: 
@@ -152,6 +150,7 @@ class RFIDAccessor():
     
     def checkPrepaid(self,count):
         if self.paySection in TsvDBCreator.PREPAID_INDICATOR:
+            Log.info("Abo count: %d [%s]",count,self.paySection)
             return count>0
         return True
 
