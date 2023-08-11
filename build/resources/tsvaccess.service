@@ -2,8 +2,12 @@
 Description=TSV access rfid deamon
 Wants=network-online.target
 After=network-online.target
+StartLimitIntervalSec=600
+StartLimitBurst=3
 
 [Service]
+Restart=on-failure
+RestartSec=5s
 Type=simple
 WorkingDirectory=/opt/TSVAccess
 ExecStart=/usr/bin/python3 /opt/TSVAccess/TsvAccessModule.py

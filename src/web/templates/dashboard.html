@@ -1,0 +1,78 @@
+<!doctype html>
+<html>
+<head>
+    <title>TSV Access</title>
+</head> 
+<style>
+* {
+    -webkit-box-sizing: border-box;
+    box-sizing: border-box;
+}
+body {
+    background-color: #D0D0D0; 
+    font-family: 'Khula', sans-serif;
+    color: black;
+    margin: 0;
+  padding: 2em 1em;
+}
+
+  /* CSS for the header */
+  h1 {
+    align-items: flex-start;
+    display: flex;
+  }
+
+	.center {
+	  margin: auto;
+	  width: 60%;
+	  padding: 10px;
+	}
+
+   .inside {
+      list-style-position: inside;
+      font-family: 'Khula', sans-serif;
+    }
+
+      li {
+      color:#ececec; 
+      padding:1em;
+      margin-bottom:0.5em;
+     background: linear-gradient(180deg, rgba(113,173,255,1) 7%, rgba(1,1,150,1) 100%);
+     background: linear-gradient(0deg, rgba(65,0,0,1) 0%, rgba(255,70,70,1) 86%);
+      border-radius:9px;
+      }
+      li:active {
+        background: linear-gradient(180deg, rgba(1,1,150,1) 7%, rgba(113,173,255,1) 100%);
+        background: linear-gradient(0deg, rgba(255,70,70,1) 14%, rgba(65,0,0,1) 100%);
+      }
+  	a{
+  	text-decoration: none; 
+    font-size:2em;  
+    color:#ececec;       
+    }
+
+  .logo-container {
+    margin-left: auto;
+  }
+
+</style>
+
+
+ <body>
+   <h1>
+     <span>TSV Übersicht &nbsp</span>
+     <div class="logo-container">
+       <img src="{{ logo_path }}" alt="Logo">
+     </div>
+  </h1>
+ <nav class="center">
+  <ul class="inside">
+    <li><a id=sello href="accessKR"> Kraftraum Aktiv </a></li>
+    <li><a href="Kraftraum"> Kraftraum Nutzung </a></li>
+    <li><a>Sauna (in Arbeit) </a></li>
+    <li><a>Gymnastik (in Arbeit) </a></li>
+  </ul>
+ </nav>      
+</body>
+
+</html>

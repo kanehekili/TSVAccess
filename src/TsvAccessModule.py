@@ -4,12 +4,14 @@ Reads some input, checks with remote db and gives a sign (RED=forbidden, GREEN=a
 "Zugangskontrolle auf RASPI"
 @author: matze
 '''
-import subprocess, os, time
+import time, socket, signal, sys
 import DBTools
 from DBTools import OSTools
 from TsvDBCreator import SetUpTSVDB
-from datetime import datetime,date
+from datetime import datetime, date
 from threading import Timer
+from ast import literal_eval
+import TsvDBCreator
 
 '''
 os.uname():
@@ -18,8 +20,8 @@ data[4] > armv7l
 '''
 
 try:
-    import RPi.GPIO as GPIO  #@UnresolvedImport
-    from mfrc522 import SimpleMFRC522 #@UnresolvedImport
+    import RPi.GPIO as GPIO  # @UnresolvedImport
+    from mfrc522 import SimpleMFRC522  # @UnresolvedImport
     RASPI = True
 except Exception:
     print("no GPIOS installed")
@@ -31,11 +33,12 @@ OSTools.setupRotatingLogger("TSVAccess", True)
 Log = DBTools.Log
 
 
+# TODO take this into consideration:
+# https://www.raspberrypi-spy.co.uk/2018/02/rc522-rfid-tag-read-raspberry-pi/
 class RFIDAccessor():
 
     def __init__(self):
-        self.eastereggs=[2229782266]
-        # OSTools.setupRotatingLogger("TSVAccess",True)
+        self.eastereggs = [2229782266]
         if RASPI:
             self.gate = RaspberryGPIO()
             self.reader = MFRC522Reader()
@@ -46,6 +49,7 @@ class RFIDAccessor():
     def connect(self):
         self.dbSystem = SetUpTSVDB(SetUpTSVDB.DATABASE)
         self._waitForConnection()
+        self.readLocation()
         return self.dbSystem.isConnected()
     
     def _waitForConnection(self):
@@ -55,13 +59,25 @@ class RFIDAccessor():
             self.dbSystem.connectToDatabase(SetUpTSVDB.DATABASE)    
         
         self.db = self.dbSystem.db        
-    
+    def readLocation(self):
+        table1 = self.dbSystem.LOCATIONTABLE
+        table2 = self.dbSystem.CONFIGTABLE
+        host = socket.gethostname()
+        stmt = "select activity,paySection,groups,grace_time from %s loc JOIN %s conf where loc.config_id=conf.config_id and loc.host_name='%s'"%(table1,table2,host)
+        rows = self.db.select(stmt)
+        if len(rows) == 0:
+            raise Exception("No location data - exiting")
+        data = rows[0]
+        self.activity = data[0]
+        self.paySection = data[1]
+        self.groups = literal_eval(data[2])
+        self.gracetime = data[3]
         
     def runDeamon(self):
         self.running = True
         Log.info("Deamon started")
+        #TODO: change of location is not known! we need to check every x seconds between 8:00 and 22:00 -so that's about a hearbeat #use on locs that a changeable
         while self.running:
-            # prim,text = self.reader.read() #(int,text)
             try:
                 rfid = self.reader.read_id()  # int
                 self.verifyAccess(rfid)    
@@ -69,12 +85,12 @@ class RFIDAccessor():
                 print("Exit")
                 return
             except Exception as ex:
-                Log.error("Read error RFID :%s",str(ex),exc_info=1)
+                self.gate.signalAlarm()
+                Log.error("Read error RFID :%s", str(ex), exc_info=1)
                 self._waitForConnection()
                 rfid = 0
             
             time.sleep(1)
-    
     
     def verifyAccess(self, rfid):
         # we just read the number... 
@@ -82,9 +98,11 @@ class RFIDAccessor():
             if rfid in self.eastereggs:
                 self.gate.welcome1()
                 return
-            stmt = "SELECT * from " + self.dbSystem.MAINTABLE + " where uuid=" + str(rfid)
+            #rfid & paysection must fit ->if section in PREPAID-> decrease count
+            stmt = "SELECT id,access,flag,payuntil_date,prepaid from " + self.dbSystem.MAINTABLE + " m JOIN " + self.dbSystem.BEITRAGTABLE + " b ON m.id=b.mitglied_id where m.uuid=" + str(rfid) + " and b.section='" + self.paySection + "'"
             rows = self.db.select(stmt)
             if len(rows) > 0:
+                # | id    | access | flag | payuntil_date       |
                 res = self.validateRow(rfid, rows[0])  # highlander - we can have only one row per uuid
             else:
                 res = False
@@ -101,45 +119,65 @@ class RFIDAccessor():
         if row is None or len(row) == 0:
             Log.warning("Invalid id %d" % (rfid))
             return False
-        
         # get prim key from the row array
         key = row[0]
+        access = row[1]
+        flag = row[2]
         eolDate = row[3]
-        access = row[4]
-        if not self.checkValidity(eolDate, access):
+        prepaidCount=row[4]
+        if not self.checkValidity(eolDate, flag, access):
+            return False
+        if not self.checkPrepaid(prepaidCount): 
             return False
         # Allowd. That person needs an entry
-        Timer(0, self.__forkWriteAccess,[key]).start()
+        Timer(0, self.__forkWriteAccess, [key,prepaidCount]).start()
         
         return True        
 
-    def __forkWriteAccess(self,key):
-        location = self.dbSystem.LOCATION
+    def __forkWriteAccess(self, key,prepaidCount):
+        # location = self.dbSystem.LOCATION
         now = datetime.now().isoformat()
         table = self.dbSystem.TIMETABLE
-        stmt = "SELECT mitglied_id,access_date from " + table + " where mitglied_id=" + str(key) + " AND TIMESTAMPDIFF(SECOND,access_date,NOW()) <= " + self.dbSystem.GRACETIME
+        stmt = "SELECT mitglied_id,access_date from " + table + " where mitglied_id=" + str(key) + " AND TIMESTAMPDIFF(SECOND,access_date,NOW()) <= " + str(self.gracetime)
         
         Log.debug("Search time db:%s", stmt)
         timerows = self.db.select(stmt) 
         Log.debug("Access rows:%s", timerows)
-        if len(timerows) == 0:        
+        if len(timerows) == 0: 
             data = []
-            data.append((key, now, location))
+            data.append((key, now,self.activity))
             self.db.insertMany(table, ('mitglied_id', 'access_date', 'location'), data)
-        
+        if prepaidCount >0: #Dieters Sauna special
+            self.voidPrepaid(key, prepaidCount)
+    
+    def checkPrepaid(self,count):
+        if self.paySection in TsvDBCreator.PREPAID_INDICATOR:
+            return count>0
+        return True
+
+    def voidPrepaid(self,mid,count):
+        stmt="UPDATE %s set prepaid=%d where mitglied_id=%d and section='%s'"%(self.dbSystem.BEITRAGTABLE,count-1,mid,self.paySection)
+        self.db.select(stmt) 
      
-    def checkValidity(self, eolDate, access):
+    def checkValidity(self, eolDate, flag, access):
         if eolDate:
             now = date.today()
-            if eolDate < now:
+            if eolDate.date() < now:
                 Log.warning("Member EOL")
+                return False
+
+        if flag is not None:
+            if flag > 0:
+                Log.warning("Member has been flagged!")
                 return False
         
         if access:
-            allowed = SetUpTSVDB.ACCESS
-            ok = access in allowed
+            if len(self.groups) == 0:
+                Log.debug("Access %s meets empty group", access)
+                return True 
+            ok = access in self.groups
             if not ok:
-                Log.warning("Wrong group:%s in:%s", access, allowed)
+                Log.warning("Wrong group:%s in:%s", access, self.groups)
             return ok    
         return False
 
@@ -233,13 +271,14 @@ class QRAccessor():
         self.gate.signalForbidden()  # RED LED
  '''       
 
+
 class RaspberryGPIO():
     PINGREEN = 2
-    PINORANGE=3
+    PINORANGE = 3
     PINRED = 17
-    PINSIGNAL=27
-    LIGHTON=False
-    LIGHTOFF=True #depends how we cable the relais
+    PINSIGNAL = 27
+    LIGHTON = False
+    LIGHTOFF = True  # depends how we cable the relais
 
     def __init__(self):
         GPIO.setmode(GPIO.BCM)
@@ -272,12 +311,19 @@ class RaspberryGPIO():
         '''
 
     def signalAccess(self):
+        self.reset()
         GPIO.output(self.PINGREEN, self.LIGHTON)
         self._restartTimer()        
         
     def signalForbidden(self):
+        self.reset()
         GPIO.output(self.PINRED, self.LIGHTON)        
         GPIO.output(self.PINSIGNAL, self.LIGHTON)
+        self._restartTimer()
+    
+    def signalAlarm(self):
+        self.reset()
+        GPIO.output(self.PINORANGE, self.LIGHTON)
         self._restartTimer()
     
     def welcome1(self):
@@ -304,7 +350,7 @@ class RaspberryGPIO():
     
     # TODO needs timer
     def reset(self):
-        GPIO.output(self.PINRED, self.LIGHTOFF) #true=off, false=ON
+        GPIO.output(self.PINRED, self.LIGHTOFF)  # true=off, false=ON
         GPIO.output(self.PINGREEN, self.LIGHTOFF)
         GPIO.output(self.PINORANGE, self.LIGHTOFF)
         GPIO.output(self.PINSIGNAL, self.LIGHTOFF)        
@@ -346,6 +392,13 @@ class RaspberryFAKE():
         print("RED LIGHT")        
         self._restartTimer()
 
+    def welcome1(self):
+        print("Welcome")
+
+    def signalAlarm(self):
+        print("ORANGE LIGHT")
+        self._restartTimer()
+
     def reset(self):
         print("RESET LIGHT")
             
@@ -380,27 +433,29 @@ class RFCUSB():
         text = input()
         return int(text)
 
-#changed due to 100% CPU
+
+# changed due to 100% CPU
 class MFRC522Reader():
+
     def __init__(self):
         self.mfrc = SimpleMFRC522()
         
     def read_id(self):
-        id=None
-        while not id:
-            data=self.mfrc.read_id_no_block()
+        rfid = None
+        while not rfid:
+            data = self.mfrc.read_id_no_block()
             if data:
                 return self._convert(data)
             time.sleep(0.3)
     
-    def _convert(self,bigInt):
+    def _convert(self, bigInt):
         if not bigInt:
             return 0
         rbytes = bigInt.to_bytes(5)
-        tmp = rbytes[:-1][::-1]
+        tmp = rbytes[:-1][::-1]  # little to big endian
         return int.from_bytes(tmp)
-    
-   
+
+'''   
 def playSound(ok):
     base = os.path.dirname(os.path.abspath(__file__)) 
     # base = os.path.dirname(home)
@@ -410,22 +465,31 @@ def playSound(ok):
         fn = base + "/sounds/error.mp3"
     cmd = ["/usr/bin/mpg123", fn]
     subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT).communicate()
-    # print(res[0])
-    # print(res[1]) 
+'''
 
+
+def handleSignals(*_args):
+    sys.exit(1)  # -> leads to finally
+    
 
 if __name__ == '__main__':
-    # testQRCode()
+    global ACCESSOR
+    signal.signal(signal.SIGINT, handleSignals) 
+    signal.signal(signal.SIGTERM, handleSignals)
+    signal.signal(signal.SIGHUP, handleSignals)        
     try:
-        a = RFIDAccessor()
-        if a.connect():
-            a.runDeamon()
+        ACCESSOR = RFIDAccessor()
+        if ACCESSOR.connect():
+            ACCESSOR.runDeamon()
         else:
             Log.warning("Error not connected")
-    except:
+    except Exception as ex:
         Log.exception("Error in main:")
+    except SystemExit as se:
+        Log.warning("System exit")
     finally:
         if RASPI:
             GPIO.cleanup()
-        
+        ACCESSOR.dbSystem.close()  
+        Log.info("Accessor clean shut down")     
     # a.sendMail("das hat nicht gefunzt")

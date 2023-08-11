@@ -7,7 +7,7 @@ Show graphs per Month or year.
 # https://github.com/alanjones2/Flask-Plotly/tree/main/plotly
 # using  plotly and flask. 
 # pip install flask,plotly,pandas
-from flask import Flask, render_template
+from flask import Flask, render_template,request,request, has_request_context, session, url_for
 import pandas as pd
 import json
 import plotly
@@ -30,9 +30,10 @@ app = Flask(__name__,
             template_folder='web/templates')
 
 
-@app.route('/' + TsvDBCreator.KRAFTRAUM)
+@app.route('/' + TsvDBCreator.ACTIVITY_KR)
 def statisticsKraftraum():
-    dates, counts = barModel.countPeoplePerDay(TsvDBCreator.KRAFTRAUM)  # count members over time
+    #TODO
+    dates, counts = barModel.countPeoplePerDay(TsvDBCreator.ACTIVITY_KR)  # count members over time
     
     # chat gpt -it forgot to tell about the index.html - hence we have a second one:
     '''
@@ -49,30 +50,31 @@ def statisticsKraftraum():
        y=counts,
        marker_color='#FFA500'
     )]
-    layout = go.Layout(title="Nutzung " + TsvDBCreator.KRAFTRAUM, xaxis=dict(title="Datum"), yaxis=dict(title="Besucher"))
+    layout = go.Layout(title="Nutzung " + TsvDBCreator.ACTIVITY_KR, xaxis=dict(title="Datum"), yaxis=dict(title="Besucher"))
     fig = go.Figure(data=data, layout=layout)
     
     graphJSON = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
     logo_path = "tsv_logo_100.png"
-    dynamic_location = TsvDBCreator.KRAFTRAUM
+    dynamic_location = TsvDBCreator.ACTIVITY_KR
     return render_template('index.html', graphJSON=graphJSON, logo_path=logo_path, dynamic_location=dynamic_location)
 
     
-@app.route('/' + TsvDBCreator.KRAFTRAUM + "Usage")
+@app.route('/' + TsvDBCreator.ACTIVITY_KR + "Usage")
 def verweilzeitKraftraum():
-    dates, counts = barModel.dailyHoursUsage(TsvDBCreator.KRAFTRAUM)  # reside time per hour     
+    #TODO
+    dates, counts = barModel.dailyHoursUsage(TsvDBCreator.ACTIVITY_KR)  # reside time per hour     
     data = [go.Bar(
        x=dates,
        y=counts,
        marker_color='#FFA500'
     )]
-    layout = go.Layout(title="Verweilzeit " + TsvDBCreator.KRAFTRAUM, xaxis=dict(title="Stunde"), yaxis=dict(title="Anzahl"))
+    layout = go.Layout(title="Verweilzeit " + TsvDBCreator.ACTIVITY_KR, xaxis=dict(title="Stunde"), yaxis=dict(title="Anzahl"))
     fig = go.Figure(data=data, layout=layout)
     fig.update_xaxes(showgrid=True, nticks=24, tickmode="auto")
     
     graphJSON = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
     logo_path = "tsv_logo_100.png"
-    dynamic_location = TsvDBCreator.KRAFTRAUM
+    dynamic_location = TsvDBCreator.ACTIVITY_KR
     return render_template('index.html', graphJSON=graphJSON, logo_path=logo_path, dynamic_location=dynamic_location)        
 
 
@@ -90,11 +92,17 @@ def plot():
     # Create graphJSON
     graphJSON = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
     logo_path = "tsv_logo_100.png"
-    dynamic_location = TsvDBCreator.KRAFTRAUM
+    dynamic_location = TsvDBCreator.ACTIVITY_KR
     return render_template('index.html', graphJSON=graphJSON, logo_path=logo_path, dynamic_location=dynamic_location)
 
-
-@app.route('/')  # later access to all - now just a demo 
+#@app.route('/', methods=['GET', 'POST'])
+@app.route('/')
+def dashboard():
+    logo_path = "tsv_logo_100.png"
+    return render_template('dashboard.html',logo_path=logo_path)
+    
+'''
+@app.route('/')  # TODO lead to avalaibale pages ==Dashboard
 def plotFigTestWorking():
     # data=[ ["12/4/2023", 50],["13/4/2023", 25],["14/4/2023", 54],["15/4/2023", 32]]
     dates, access = barModel.rawData()
@@ -110,13 +118,14 @@ def plotFigTestWorking():
     logo_path = "tsv_logo_100.png"
     dynamic_location = TsvDBCreator.KRAFTRAUM
     return render_template('index.html', graphJSON=graphJSON, logo_path=logo_path, dynamic_location=dynamic_location)
-
+'''
 
 @app.route('/accessKR')  # Access kraftraum
 def whoIsThere():
-    people = barModel.currentVisitorPictures(TsvDBCreator.KRAFTRAUM)
+    #https://stackoverflow.com/questions/58996870/update-flask-web-page-with-python-script
+    people = barModel.currentVisitorPictures(TsvDBCreator.ACTIVITY_KR)
     logo_path = "tsv_logo_100.png"
-    dynamic_location = TsvDBCreator.KRAFTRAUM    
+    dynamic_location = TsvDBCreator.ACTIVITY_KR    
     return render_template('access.html', people=people, logo_path=logo_path, dynamic_location=dynamic_location)
 
 # hook to more acees sites
@@ -230,6 +239,16 @@ class BarModel():
         self.db = self.dbSystem.db
         if not self.dbSystem.isConnected():
             Log.warning("DB connecton failed")
+        self.getMapping()
+    
+    def getMapping(self):
+        stmt="select * from Konfig"
+        rows = self.db.select(stmt)
+        self.configMapping={}
+        #Known rooms: Kraftraum,Spiegelsaal,Sauna
+        for entry in rows:#room>activity = dic value for getting access 
+            self.configMapping[entry[0]]=entry[1]
+            
     
     def pandaData(self):  # demo
         # data=[ ["12/4/2023", 50],["13/4/2023", 25],["14/4/2023", 54],["15/4/2023", 32]]
