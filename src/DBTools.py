@@ -40,6 +40,16 @@ class Connector():
             self.connect(self.dbName)
             return self.dbConnection.cursor() #no recursion now
 
+    def ensureConnection(self):
+        retries=5
+        while retries >0:
+            retries -=1
+            try:
+                self._getCursor()
+                return
+            except:
+                Log.warning("connect failed, retry:%d",retries)
+
     def isConnected(self):
         if self.dbConnection is None:
             return False
@@ -261,6 +271,20 @@ class OSTools():
             Log.setLevel(logging.WARNING)
         elif levelString == "Error":
             Log.setLevel(logging.ERROR)
+
+    '''
+    #will not work in windows
+    @classmethod
+    def checkIfInstanceRunning(moduleName):
+        process = Popen(["ps aux |grep -v grep | grep "+moduleName],shell=True,stdout=subprocess.PIPE)
+        result = process.communicate()
+        rows = result[0].decode('utf8').splitlines()
+        instanceCount =0
+        for line in rows:
+            if line:
+                instanceCount+=1
+        return instanceCount == 1
+    '''
 
 Log=logging.getLogger("TSV")
 

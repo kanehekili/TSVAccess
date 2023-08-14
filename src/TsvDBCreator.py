@@ -120,10 +120,8 @@ class SetUpTSVDB():
         DATABASE = dic["DB"]
         USER = dic["USER"]             
         PASSWORD = dic["PASSWORD"]    
-        #---------- ssh only -----------
-        PICPATH = dic["PICPATH"]  # path to scp -RegisterModule only
-        SSHUSER = dic["SSHUSR"]
-        SSHPWD=dic["SSHPWD"]
+        #---------- RegisterModule only -----------
+        PICPATH = dic["PICPATH"]
         
     MAINTABLE ="Mitglieder"
     TABLE1 = """

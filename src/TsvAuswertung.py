@@ -7,7 +7,8 @@ Show graphs per Month or year.
 # https://github.com/alanjones2/Flask-Plotly/tree/main/plotly
 # using  plotly and flask. 
 # pip install flask,plotly,pandas
-from flask import Flask, render_template,request,request, has_request_context, session, url_for
+from flask import Flask, render_template,request#, has_request_context, session, url_for
+from werkzeug.utils import secure_filename
 import pandas as pd
 import json
 import plotly
@@ -18,7 +19,7 @@ import random
 from DBTools import OSTools
 from TsvDBCreator import SetUpTSVDB
 import DBTools
-import sys
+import sys,os
 import TsvDBCreator
 
 OSTools.setupRotatingLogger("TSVAuswertung", True)
@@ -129,6 +130,27 @@ def whoIsThere():
     return render_template('access.html', people=people, logo_path=logo_path, dynamic_location=dynamic_location)
 
 # hook to more acees sites
+
+#save or retrieve pictures for Registration 
+@app.route("/TSVPIC/<picture_name>",methods=['GET', 'POST'])
+def manage_picture(picture_name):
+    """Used to send the requested picture from the pictures folder."""
+    picture_path="TSVPIC/"+picture_name #TODO -get configured
+    if request.method =='GET':
+        Log.debug("Read pic:%s",picture_name)
+        return app.send_static_file(picture_path)
+    elif request.method =='POST':
+        file = request.files['file']
+        Log.debug("Save pic:%s",picture_path)
+        try:
+            file.save(app.static_folder+"/"+picture_path)
+        except:
+            Log.exception("Save picture failed")
+            return None
+        return "200"
+        
+#@app.route("/savePic")
+#def savePicture():
 
 
 # model for the access row part - checkin/checkout

@@ -140,7 +140,7 @@ class RFIDAccessor():
         table = self.dbSystem.TIMETABLE
         stmt = "SELECT mitglied_id,access_date from " + table + " where mitglied_id=" + str(key) + " AND TIMESTAMPDIFF(SECOND,access_date,NOW()) <= " + str(self.gracetime)
         timerows = self.db.select(stmt) 
-        Log.debug("Gracetime over: %s", timerows)
+        Log.debug("Access in gracetime: %s", timerows)
         if len(timerows) == 0: 
             #gracetime period is over, checkout/recheck in possible
             data = []
@@ -148,6 +148,8 @@ class RFIDAccessor():
             self.db.insertMany(table, ('mitglied_id', 'access_date', 'location'), data)
             if prepaidCount >0: #Dieters Sauna special
                 self.voidPrepaid(key, prepaidCount)
+        else:
+            self.gate.tickGracetime()
     
     def checkPrepaid(self,count):
         if self.paySection in TsvDBCreator.PREPAID_INDICATOR:
@@ -326,6 +328,12 @@ class RaspberryGPIO():
         GPIO.output(self.PINORANGE, self.LIGHTON)
         self._restartTimer()
     
+    #mark if gracetime still in place (=no action)
+    def tickGracetime(self):
+        GPIO.output(self.PINORANGE, self.LIGHTON)
+        time.sleep(0.5)
+        GPIO.output(self.PINORANGE, self.LIGHTOFF)
+        
     def welcome1(self):
         self.reset()
         GPIO.output(self.PINGREEN, self.LIGHTON)
