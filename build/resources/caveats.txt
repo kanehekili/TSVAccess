@@ -3,4 +3,4 @@ sudo systemctl edit --full systemd-networkd-wait-online.service
 change line to: ExecStart=/usr/lib/systemd/systemd-networkd-wait-online --timeout=10
 
 2)Broken pipe tsvauswertung
-No idea yet. Seems to happen after a while
+reconnect with cursor

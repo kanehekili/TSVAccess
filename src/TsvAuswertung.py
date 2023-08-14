@@ -390,7 +390,7 @@ class BarModel():
         timetable = self.dbSystem.TIMETABLE
         daysplit = "13"  # time between morning and afternoon
         members = {}
-        picFolder = "TSVPIC/"
+        picFolder = "TSVPIC/"#TODO use config now
         stmt = "SELECT id,first_name,last_name,picpath,access_date FROM " + mbrTable + " m JOIN " + timetable + " z ON m.id = z.mitglied_id WHERE DATE(z.access_date) = CURDATE() AND ((HOUR(z.access_date) < " + daysplit + " AND HOUR(CURTIME()) < " + daysplit + ") OR (HOUR(z.access_date) > " + daysplit + " AND HOUR(CURTIME()) > " + daysplit + ") and location='" + location + "')  ORDER By z.access_date DESC"
         # print(stmt) 
         rows = self.db.select(stmt)

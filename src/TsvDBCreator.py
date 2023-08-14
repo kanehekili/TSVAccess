@@ -194,6 +194,7 @@ class SetUpTSVDB():
             self.db = None
             print(sqlError)
             return False
+        #BIG FAIL-lets get reconnected
         if useHearbeat:
             self._intrepidSockets()
         return True
