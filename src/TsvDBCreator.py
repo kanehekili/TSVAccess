@@ -139,7 +139,8 @@ class SetUpTSVDB():
       )
     """
 
-    TIMETABLE="Zugang"        
+    TIMETABLE="Zugang"   
+    #TODO used ALTER TABLE to add a new column     
     TABLE2 = """
         CREATE OR REPLACE TABLE Zugang (
           mitglied_id INT,
@@ -437,7 +438,7 @@ def persistCSV(fn):
     except Exception:
         traceback.print_exc()
     finally:
-        s.db.close()
+        s.close()
 
 def symDiff(importData,connection):
     stmt="select id from %s"%(SetUpTSVDB.MAINTABLE)
@@ -459,7 +460,7 @@ def updateLocationTable():
     except Exception:
         traceback.print_exc()
     finally:
-        s.db.close()
+        s.close()
     
 
     
@@ -483,7 +484,7 @@ def parseOptions(args):
         elif o in ("-l", "--updateLocation"):
             updateLocationTable()
         elif o in ("-s", "--updateScheme"):
-            updateScheme()
+            updateScheme() #Removes data from Zutritt and Beitrag! 
         else:
             printUsage()
 
@@ -491,8 +492,9 @@ def printUsage():
     print("Creator commands: \n"\
           "\t-p filename > verify & persist a csv file (--persist)\n"\
           "\t-v filename > verify csv file and check for inconsistencies (--verify)\n"\
-          "\t-r > reset the database (--reset) \n"\
-          "\t-s > update the database (--updateScheme) \n"
+          "\t-r > !reset the database! (--reset) \n"\
+          "\t-l > update location (--updateLocation) \n"\
+          "\t-s > !update the database! (--updateScheme) \n"
           )
     
 
