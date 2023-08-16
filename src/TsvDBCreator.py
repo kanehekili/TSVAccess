@@ -23,7 +23,7 @@ import threading, time, traceback
 from collections import Counter
 
 # codes found on migration
-ACCESSCODES = ["Group","ÜL","FFA","KR","Juggling","UKR"]
+ACCESSCODES = ["GROUP","ÜL","FFA","KR","JUGGLING","UKR"]
 
 # Allowed access locations: Display only
 LOC_KRAFTRAUM = "Kraftraum"
@@ -45,6 +45,7 @@ ACTIVITY_SAUNA="Sauna"
 ##Allowed "Beitrags" sections
 SECTION_FIT='Fit & Fun'
 SECTION_LA='Leichtathletik'
+#SECTION_KURS='Kurs' ??
 SECTION_SAUNA="Sauna" #for prepaid
 PREPAID_INDICATOR=[SECTION_SAUNA]  
 
@@ -150,11 +151,12 @@ class SetUpTSVDB():
     BEITRAGTABLE="BEITRAG"
     TABLE3="""
         CREATE OR REPLACE TABLE BEITRAG (
-          mitglied_id INT,
+          mitglied_id INT NOT NULL,
           payuntil_date DATETIME,
-          section VARCHAR(100),
+          section VARCHAR(100) NOT NULL,
           prepaid SMALLINT UNSIGNED DEFAULT 0,
-          FOREIGN KEY(mitglied_id) REFERENCES Mitglieder(id) ON DELETE CASCADE
+          FOREIGN KEY(mitglied_id) REFERENCES Mitglieder(id) ON DELETE CASCADE,
+          CONSTRAINT PK_BEITRAG PRIMARY KEY(mitglied_id,section)
         )
     """        
 
@@ -213,13 +215,15 @@ class SetUpTSVDB():
         self.db.createDatabase(self.DATABASE)
         self.db.close()
         self.db.connect(self.DATABASE)
+        self.defineDatabases()
+
+    def defineDatabases(self): 
         self.db.createTable(self.TABLE1)
         self.db.createTable(self.TABLE2)
         self.db.createTable(self.TABLE3)
         self.db.createTable(self.TABLE4)
         self.db.createTable(self.TABLE5)
-        self.db.close()    
-
+        self.db.close()        
 
     def _fillLocationTable(self):
         #list the correlations:
@@ -244,35 +248,6 @@ class SetUpTSVDB():
         entries.append(("tsvaccess2",3))
         entries.append(("msi",0))
         self.db.insertMany(table, fields, entries)     
-    '''
-    import from a CSV file 
-    def testImportCSV(self,filename):
-        data=[]
-        with open(filename,encoding='utf-8-sig') as csvfile:
-            reader= csv.reader(csvfile, delimiter=';', quotechar='|')
-            for line in reader:
-                print(line)
-                mid = line[0]
-                fn=line[1]
-                nn=line[2]
-                ed=line[3]
-                dt=datetime.strptime(ed, '%d.%m.%Y')
-                fmt=dt.date().isoformat()
-                dingens=(mid,fn,nn,fmt)
-                data.append(dingens)
-                #gather and do some stuff
-        table="Mitglieder"
-        fields=('id','first_name','last_name','entry_date')
-        self.db.insertMany(table,fields,data)
-        self.db.close()     
-
-    # id, ﻿Vorname $Nachname $Multifeld 3 $Geschlecht $GebDatum    
-    def updateDatabase_old(self, data):
-        table = "Mitglieder"
-        fields = ('id', 'first_name', 'last_name', "access", "gender", "birth_date")
-        self.db.insertMany(table, fields, data)
-        self.db.close()            
-    '''
         
     def updateDatabase(self,tsvMembers):
         table = self.MAINTABLE
@@ -316,11 +291,14 @@ class SetUpTSVDB():
             self.heartbeatEvent.set()
 
 def basicSetup():
-    s = SetUpTSVDB(SetUpTSVDB.DATABASE)
+    s = SetUpTSVDB(SetUpTSVDB.DATABASE,False)
     s.resetDatabase()
     s.db.connect("")
     s.setupDatabase()    
 
+def updateScheme():
+    s = SetUpTSVDB(SetUpTSVDB.DATABASE,False)
+    s.defineDatabases()
 
 def displayImportFindings(sections, multiSet, mbrCount,rogue):
     print("Imported %d members" % (mbrCount))
@@ -332,8 +310,7 @@ def displayImportFindings(sections, multiSet, mbrCount,rogue):
         
 
 def importCSV(filename):
-    # = SetUpTSVDB("TsvDB")
-    # Profile TSVAccess
+    # Profile TSVAccess -> NAch adressdaten suchen Dialog!
     # Adressdaten,Geschlecht,Nachname,Vorname,Mutli3,Austrittsdatum,GebDatum,BeitragBis,Abteilungg  
     # validate
     # filename="/home/matze/git/TSVAccess/ExportTSV.csv"
@@ -357,7 +334,7 @@ def importCSV(filename):
                 access = ''
                 zugang = line[Fields.ACCESS.value].split(' ')
                 if len(zugang) >= 1:
-                    access = zugang[0]
+                    access = zugang[0].upper()
             
                 tmpGender = line[Fields.GENDER.value]
                 if tmpGender.startswith("w"):
@@ -448,15 +425,31 @@ class TsvMember():
 
 #TODO if we get only members ,remove those who are  in the database but not in the list...    
 def persistCSV(fn):
+    OSTools.setLogLevel("Debug")
     s = SetUpTSVDB("TsvDB",False)
     try:
         data = importCSV(fn)
         #todo a.symmetric_difference(b) - two sets of ids! (not arrays)
+        lostMembers=symDiff(data, s)
+        for pk in lostMembers:
+            s.db.deleteEntry(SetUpTSVDB.MAINTABLE, "id", pk)
         s.updateDatabase(data)
     except Exception:
         traceback.print_exc()
     finally:
         s.db.close()
+
+def symDiff(importData,connection):
+    stmt="select id from %s"%(SetUpTSVDB.MAINTABLE)
+    rows=connection.db.select(stmt)
+    ids = [data[0] for data in rows] #int
+    currIds=[int(mbr.getID()) for mbr in importData]
+    diff=[]
+    for indb in ids:
+        if not indb in currIds:
+            print("Member lost:%d"%(indb))
+            diff.append(indb)     
+    return diff
 
 
 def updateLocationTable():
@@ -473,7 +466,7 @@ def updateLocationTable():
 def parseOptions(args):
     
     try:
-        opts, args = getopt.getopt(args[1:], "p:v:rl", ["persist=", "verify=", "reset", "updateLocation"])
+        opts, args = getopt.getopt(args[1:], "p:v:rls", ["persist=", "verify=", "reset", "updateLocation", "updateScheme"])
         if len(opts) == 0:
             print("Use -p, -r, -l or -v")
     except getopt.GetoptError as err:
@@ -489,6 +482,8 @@ def parseOptions(args):
             importCSV(a)
         elif o in ("-l", "--updateLocation"):
             updateLocationTable()
+        elif o in ("-s", "--updateScheme"):
+            updateScheme()
         else:
             printUsage()
 
@@ -496,7 +491,9 @@ def printUsage():
     print("Creator commands: \n"\
           "\t-p filename > verify & persist a csv file (--persist)\n"\
           "\t-v filename > verify csv file and check for inconsistencies (--verify)\n"\
-          "\t-r > reset the database (--reset) \n")
+          "\t-r > reset the database (--reset) \n"\
+          "\t-s > update the database (--updateScheme) \n"
+          )
     
 
 if __name__ == '__main__':

@@ -970,9 +970,10 @@ class Registration():
         if section is None:
             return
         oldCount = mbr.currentAbo[1]
-        stmt = "UPDATE %s set prepaid=%d where mitglied_id=%d and section='%s'" % (self.dbSystem.BEITRAGTABLE, oldCount + 10, mbr.id, section)
+        fields=('mitglied_id','section','prepaid')
+        data=[(mbr.id,section,oldCount + 10)]
         Log.info("Update ABO prepaid count from %s , %d +10", section, oldCount)
-        self.db.select(stmt)
+        self.db.insertMany(self.dbSystem.BEITRAGTABLE,fields,data)
     
     def readAboData(self, mbr):
         section = TsvDBCreator.PREPAID_INDICATOR[0]  # currently only one
@@ -1242,6 +1243,8 @@ def main(args):
         app = QApplication(argv)
         app.setWindowIcon(getAppIcon())
         WIN = MainFrame(app, args.setCamera)  # keep python reference!
+        #ONLY windoze, if ever: app.setStyleSheet(winStyle())
+        #app.setStyle(QtWidgets.QStyleFactory.create("Fusion"));
         app.exec_()
         # logging.shutdown()
     except:
@@ -1250,32 +1253,61 @@ def main(args):
         sys_tuple = sys.exc_info()
         QtWidgets.QMessageBox.critical(None, "Error!", str(sys_tuple[1]))
 
+def winStyle():
+    return """
+        QWidget
+        {
+        color:black;
+        background-color: lightgray;
+        font-size: 15px;
+        }
+        
+        QPushButton {
+        color: white;
+        font: bold 14px;
+        min-width:20em;
+        background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #88d, stop: 0.1 #99e, stop: 0.49 #77c, stop: 0.5 #66b, stop: 1 #77c);
+        border-width: 1px;
+        border-color: #339;
+        border-style: solid;
+        border-radius: 7;
+        padding: 3px;
+        padding-left: 5px;
+        padding-right: 5px;
+        min-width: 50px;
+        max-width: 50px;
+        min-height: 13px;
+        max-height: 13px;
+        }
+
+          QLineEdit {
+        padding: 1px;
+        border-style: solid;
+        border: 2px solid gray;
+        border-radius: 8px;
+        }
+        
+        QLabel {
+        font-weight: bold;
+        } """
+
 
 if __name__ == '__main__':
     sys.excepthook = handle_exception
     sys.exit(main(parse()))
 
+
 '''
---
-
-
-QWidget
-{
-background-color: red;
-}
-QPushButton
-{
-color: yellow;
-}
---
 QFile File("stylesheet.qss");
 File.open(QFile::ReadOnly);
 QString StyleSheet = QLatin1String(File.readAll());
 
 qApp->setStyleSheet(StyleSheet);
-...
+
   QApplication a(argc, argv);
   a.setStyleSheet(teststyle);
   MainWindow w;
   w.show();
 '''
+
+

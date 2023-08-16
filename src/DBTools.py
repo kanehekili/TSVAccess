@@ -6,7 +6,7 @@ Created on Mar 30, 2023
 import mysql.connector as mysql
 import os,sys
 from itertools import tee
-import gzip
+import gzip,time
 import logging
 from logging.handlers import RotatingFileHandler
 import subprocess
@@ -49,6 +49,7 @@ class Connector():
                 return
             except:
                 Log.warning("connect failed, retry:%d",retries)
+                time.sleep(2)
 
     def isConnected(self):
         if self.dbConnection is None:
@@ -159,6 +160,7 @@ class Connector():
         try:
             cond = str(condition)
             stmt ="DELETE FROM "+table+" WHERE "+fn+" = " + cond 
+            Log.debug(stmt)
             with self._getCursor() as cursor:
                 cursor.execute(stmt)        
                 self.dbConnection.commit()
