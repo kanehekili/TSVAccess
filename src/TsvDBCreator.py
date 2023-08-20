@@ -15,7 +15,7 @@ print(os.environ.get('secretHost'))
 
 import DBTools
 from DBTools import Connector, OSTools
-import csv
+import csv,re
 from datetime import datetime
 import json, getopt, sys
 from enum import Enum
@@ -378,6 +378,35 @@ def importCSV(filename):
     return list(data.values()) #array of TsvMembers        
     
 
+def checkAssaAbloy(filename):
+    #filename="/home/matze/Documents/TSV/AssaAbloy/Tranponder1.txt"
+    blocked=[]
+    active=[]
+    with open(filename,'r', encoding='utf-8') as file:
+         data=file.readlines()
+         for line in data:
+             token2 = "$".join(re.split("\s+", line.strip(), flags=re.UNICODE))
+             token=token2.split("$")
+             if token[0]=='Valid':
+                 val=token[1][:8].replace('ﬀ',"ff")
+                 active.append(val)
+                 bigInt=int(val,16)
+                 print(">%s = %d"%(val,_convert(bigInt)))
+             else:
+                 blocked.append(token[1])    
+             
+    print("Detected %d valid and %d blocked"%(len(active),len(blocked)))
+    for x in blocked:
+        if x in active:
+            print("Blocked & active:%s"%(x))
+
+def _convert(bigInt):
+    if not bigInt:
+        return 0
+    rbytes = bigInt.to_bytes(5)
+    tmp = rbytes[:-1][::-1]  # little to big endian
+    return int.from_bytes(tmp)
+
 
 class TsvMember():
     PAYOK="-"
@@ -473,7 +502,7 @@ def updateLocationTable():
 def parseOptions(args):
     
     try:
-        opts, args = getopt.getopt(args[1:], "p:v:rls", ["persist=", "verify=", "reset", "updateLocation", "updateScheme"])
+        opts, args = getopt.getopt(args[1:], "p:v:rlst:", ["persist=", "verify=", "reset", "updateLocation", "updateScheme","transponder"])
         if len(opts) == 0:
             print("Use -p, -r, -l or -v")
     except getopt.GetoptError as err:
@@ -491,6 +520,8 @@ def parseOptions(args):
             updateLocationTable()
         elif o in ("-s", "--updateScheme"):
             updateScheme() #Removes data from Zutritt and Beitrag! 
+        elif o in ("-t", "--transponder"):
+            checkAssaAbloy(a)
         else:
             printUsage()
 
@@ -501,6 +532,7 @@ def printUsage():
           "\t-r > !reset the database! (--reset) \n"\
           "\t-l > update location (--updateLocation) \n"\
           "\t-s > !update the database! (--updateScheme) \n"
+          "\t-7 > read transponder (--transponder) \n"
           )
     
 
