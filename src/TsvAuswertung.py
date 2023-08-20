@@ -31,38 +31,25 @@ app = Flask(__name__,
             template_folder='web/templates')
 
 
+'''
+** Kraftraum Section = TsvDBCreator.ACTIVITY_KR
+'''
 @app.route('/' + TsvDBCreator.ACTIVITY_KR)
 def statisticsKraftraum():
-    #TODO
-    dates, counts = barModel.countPeoplePerDay(TsvDBCreator.ACTIVITY_KR)  # count members over time
-    
-    # chat gpt -it forgot to tell about the index.html - hence we have a second one:
-    '''
-    data = [go.Bar(x=dates, y=counts)]
-    layout = go.Layout(title='Besucher pro Tag', xaxis=dict(title='Datum'), yaxis=dict(title='Anzahl'))
-    fig = go.Figure(data=data, layout=layout)
-    plot_div = fig.to_html(full_html=False)
-        
-    return render_template('index2.html', plot_div=plot_div)
-    '''
-    # This results in exact the same bar. Only the index.html is different. 
-    data = [go.Bar(
-       x=dates,
-       y=counts,
-       marker_color='#FFA500'
-    )]
-    layout = go.Layout(title="Nutzung " + TsvDBCreator.ACTIVITY_KR, xaxis=dict(title="Datum"), yaxis=dict(title="Besucher"))
-    fig = go.Figure(data=data, layout=layout)
-    
-    graphJSON = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
+    return statisticsTemplate(TsvDBCreator.ACTIVITY_KR)
+
+@app.route('/accessKR')  # Access kraftraum
+def visitorsKraftraum():
+    #https://stackoverflow.com/questions/58996870/update-flask-web-page-with-python-script
+    people = barModel.currentVisitorPictures(TsvDBCreator.ACTIVITY_KR)
     logo_path = "tsv_logo_100.png"
-    dynamic_location = TsvDBCreator.ACTIVITY_KR
-    return render_template('index.html', graphJSON=graphJSON, logo_path=logo_path, dynamic_location=dynamic_location)
+    dynamic_location = TsvDBCreator.ACTIVITY_KR    
+    return render_template('access.html', people=people, logo_path=logo_path, dynamic_location=dynamic_location)
 
     
 @app.route('/' + TsvDBCreator.ACTIVITY_KR + "Usage")
 def verweilzeitKraftraum():
-    #TODO
+    #TODO -under construction
     dates, counts = barModel.dailyHoursUsage(TsvDBCreator.ACTIVITY_KR)  # reside time per hour     
     data = [go.Bar(
        x=dates,
@@ -79,6 +66,68 @@ def verweilzeitKraftraum():
     return render_template('index.html', graphJSON=graphJSON, logo_path=logo_path, dynamic_location=dynamic_location)        
 
 
+'''
+SAUNA SECTION -> TsvDBCreator.ACTIVITY_SAUNA == Sauna
+'''
+@app.route('/' + TsvDBCreator.ACTIVITY_SAUNA)
+def statisticsSauna():
+    return statisticsTemplate(TsvDBCreator.ACTIVITY_SAUNA)
+
+@app.route('/accessSA')  # Access kraftraum
+def visitorsSauna():
+    people = barModel.currentVisitorPictures(TsvDBCreator.ACTIVITY_SAUNA)
+    logo_path = "tsv_logo_100.png"
+    return render_template('access.html', people=people, logo_path=logo_path, dynamic_location=TsvDBCreator.ACTIVITY_SAUNA)
+
+
+# hook to more sites
+
+
+
+'''
+Root and tools
+'''
+@app.route('/')
+def dashboard():
+    logo_path = "tsv_logo_100.png"
+    return render_template('dashboard.html',logo_path=logo_path)
+
+#save or retrieve pictures for Registration 
+@app.route("/TSVPIC/<picture_name>",methods=['GET', 'POST'])
+def manage_picture(picture_name):
+    """Used to send the requested picture from the pictures folder."""
+    picture_path="TSVPIC/"+picture_name #TODO -get configured
+    if request.method =='GET':
+        Log.debug("Read pic:%s",picture_name)
+        return app.send_static_file(picture_path)
+    elif request.method =='POST':
+        file = request.files['file']
+        Log.debug("Save pic:%s",picture_path)
+        try:
+            file.save(app.static_folder+"/"+picture_path)
+        except:
+            Log.exception("Save picture failed")
+            return None
+        return "200"
+
+def statisticsTemplate(location):
+    dates, counts = barModel.countPeoplePerDay(location)  # count members over time
+    data = [go.Bar(
+       x=dates,
+       y=counts,
+       marker_color='#FFA500'
+    )]
+    layout = go.Layout(title="Nutzung " + location, xaxis=dict(title="Datum"), yaxis=dict(title="Besucher"))
+    fig = go.Figure(data=data, layout=layout)
+    
+    graphJSON = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
+    logo_path = "tsv_logo_100.png"
+    return render_template('index.html', graphJSON=graphJSON, logo_path=logo_path, dynamic_location=location)    
+    
+
+'''
+Test or demo routines
+'''
 @app.route('/fancy')  # just colorfull fake with pandas. Think twice using the library 
 def plot():
     fakeDAta = barModel.pandaData()
@@ -96,12 +145,14 @@ def plot():
     dynamic_location = TsvDBCreator.ACTIVITY_KR
     return render_template('index.html', graphJSON=graphJSON, logo_path=logo_path, dynamic_location=dynamic_location)
 
-#@app.route('/', methods=['GET', 'POST'])
-@app.route('/')
-def dashboard():
+
+@app.route('/ratio')  # Access kraftraum
+def testRatio():
+    people= barModel.testRatio()
     logo_path = "tsv_logo_100.png"
-    return render_template('dashboard.html',logo_path=logo_path)
-    
+    dynamic_location = TsvDBCreator.ACTIVITY_KR    
+    return render_template('access.html', people=people, logo_path=logo_path, dynamic_location=dynamic_location)
+
 '''
 @app.route('/')  # TODO lead to avalaibale pages ==Dashboard
 def plotFigTestWorking():
@@ -121,36 +172,10 @@ def plotFigTestWorking():
     return render_template('index.html', graphJSON=graphJSON, logo_path=logo_path, dynamic_location=dynamic_location)
 '''
 
-@app.route('/accessKR')  # Access kraftraum
-def whoIsThere():
-    #https://stackoverflow.com/questions/58996870/update-flask-web-page-with-python-script
-    people = barModel.currentVisitorPictures(TsvDBCreator.ACTIVITY_KR)
-    logo_path = "tsv_logo_100.png"
-    dynamic_location = TsvDBCreator.ACTIVITY_KR    
-    return render_template('access.html', people=people, logo_path=logo_path, dynamic_location=dynamic_location)
 
-# hook to more acees sites
 
-#save or retrieve pictures for Registration 
-@app.route("/TSVPIC/<picture_name>",methods=['GET', 'POST'])
-def manage_picture(picture_name):
-    """Used to send the requested picture from the pictures folder."""
-    picture_path="TSVPIC/"+picture_name #TODO -get configured
-    if request.method =='GET':
-        Log.debug("Read pic:%s",picture_name)
-        return app.send_static_file(picture_path)
-    elif request.method =='POST':
-        file = request.files['file']
-        Log.debug("Save pic:%s",picture_path)
-        try:
-            file.save(app.static_folder+"/"+picture_path)
-        except:
-            Log.exception("Save picture failed")
-            return None
-        return "200"
-        
-#@app.route("/savePic")
-#def savePicture():
+
+       
 
 
 # model for the access row part - checkin/checkout
@@ -414,6 +439,14 @@ class BarModel():
         Log.info("Checked in:%d", len(people))
         return people
 
+    def testRatio(self):
+        people = []
+        picFolder = "TSVPIC/"
+        pics="/home/matze/Pictures/TSPIC"
+        for filename in os.listdir(pics):
+            print(filename)
+            people.append({'name':filename, 'image_path':picFolder+filename})
+        return people
         
 def main():
     #global Log

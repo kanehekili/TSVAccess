@@ -36,7 +36,7 @@ from DBTools import OSTools
 from TsvDBCreator import SetUpTSVDB
 import DBTools
 from datetime import datetime
-#import paramiko using requests now
+# import paramiko using requests now
 import requests
 import TsvDBCreator
 
@@ -138,7 +138,7 @@ class CVImage(QtGui.QImage):
 
 class VideoWidget(QtWidgets.QFrame):
     """ A class for rendering video coming from OpenCV """
-    #trigger = pyqtSignal(float, float, float)
+    # trigger = pyqtSignal(float, float, float)
     
     def __init__(self, parent):
         QtWidgets.QFrame.__init__(self, parent)
@@ -196,23 +196,23 @@ class VideoWidget(QtWidgets.QFrame):
             self.imageRatio = box.width() / float(box.height())
         self.update()
     
-    
     def showImage(self, img):
         self._image = img
         box = self._image.rect()
         self.imageRatio = box.width() / float(box.height())
         self.update()
-    
         
     def setVideoGeometry(self, ratio, rotation):
         if rotation > 0:
             self.imageRatio = 1.0 / float(ratio)
         else:
             self.imageRatio = float(ratio)       
+
     '''
     def updateUI(self, frameNumber, framecount, timeinfo):
         self.trigger.emit(frameNumber, framecount, timeinfo)
     '''
+
 
 # https://gis.stackexchange.com/questions/350148/qcombobox-multiple-selection-pyqt5
 class CheckableComboBox(QtWidgets.QComboBox):
@@ -669,8 +669,8 @@ class MainFrame(QtWidgets.QMainWindow):
                 self.getErrorDialog("Verbindungsfehler", "Bild konnte nicht gespeichert werden", "Das muss gemeldet werden").show()
                 self.photoTaken = False
                 return  # only all or nothing
-        QTimer.singleShot(0,lambda: self.model.updateMember(mbr))
-        #self.model.updateMember(mbr)
+        QTimer.singleShot(0, lambda: self.model.updateMember(mbr))
+        # self.model.updateMember(mbr)
         # self.model.printMemberCard(mbr)
         self.photoTaken = False
         self._clearFields()
@@ -697,7 +697,7 @@ class MainFrame(QtWidgets.QMainWindow):
         self.capturing = False
         self.updatePhotoButton()
         self.updateAboButton(None)
-        self.cameraThread.showFrame(None)# Icon
+        self.cameraThread.showFrame(None)  # Icon
          
     # dialogs
     def __getInfoDialog(self, text):
@@ -766,8 +766,8 @@ class MainFrame(QtWidgets.QMainWindow):
         self.cameraThread.signal.connect(self._displayFrame)
         self._initModel()
     
-    def _displayMemberFace(self,member):
-        raw=self.model.loadPicture(member)
+    def _displayMemberFace(self, member):
+        raw = self.model.loadPicture(member)
         try:
             img = QtGui.QImage()
             img.loadFromData(raw)
@@ -776,9 +776,6 @@ class MainFrame(QtWidgets.QMainWindow):
             Log.exception("Pic load failed")
             return False
         return True
-        
-        
-    
     
     def _initCapture(self):
         self.capturing = True
@@ -925,6 +922,7 @@ def __DEMO__headRec():
 
 class Registration():
     SAVEPIC = "/tmp/tsv.screenshot.png"   
+
     def __init__(self, cameraIndex):
         # self.accesscodes = []
         self.currentFrame = None
@@ -933,11 +931,12 @@ class Registration():
         self.cameraStatus = None
         self.camIndex = cameraIndex
         self.cam = None
+        self.dimension = [0, 0]
 
     def connect(self):
         self.dbSystem = SetUpTSVDB(SetUpTSVDB.DATABASE, False)  # no heartbeat=False
         self.db = self.dbSystem.db
-        #self.sshClient = self.connectSSH(SetUpTSVDB.HOST);
+        # self.sshClient = self.connectSSH(SetUpTSVDB.HOST);
         return self.dbSystem.isConnected()
     
     # reads the list and passes it to the caller...
@@ -960,9 +959,8 @@ class Registration():
         table = self.dbSystem.MAINTABLE
         fields = Mitglied.FIELD_SAVE_DEF
         data = mbr.dataSaveArray()
-        Log.info("Saving memmber:%s",str(data[0]))
+        Log.info("Saving memmber:%s", str(data[0]))
         self.db.insertMany(table, fields, data)
-        # TODO addon data->Beitrag
         self.updateAboData(mbr) 
     
     def updateAboData(self, mbr):
@@ -970,10 +968,10 @@ class Registration():
         if section is None:
             return
         oldCount = mbr.currentAbo[1]
-        fields=('mitglied_id','section','prepaid')
-        data=[(mbr.id,section,oldCount + 10)]
+        fields = ('mitglied_id', 'section', 'prepaid')
+        data = [(mbr.id, section, oldCount + 10)]
         Log.info("Update ABO prepaid count from %s , %d +10", section, oldCount)
-        self.db.insertMany(self.dbSystem.BEITRAGTABLE,fields,data)
+        self.db.insertMany(self.dbSystem.BEITRAGTABLE, fields, data)
     
     def readAboData(self, mbr):
         section = TsvDBCreator.PREPAID_INDICATOR[0]  # currently only one
@@ -993,6 +991,10 @@ class Registration():
             Log.warning("Camera not found!")
             self.cameraStatus = "Keine Kamera gefunden"
             return False
+
+        self.dimension[0] = self.cam.get(cv2.CAP_PROP_FRAME_WIDTH)  # @UndefinedVariable
+        self.dimension[1] = self.cam.get(cv2.CAP_PROP_FRAME_HEIGHT)  # @UndefinedVariable
+        Log.info("Cam resolution: %d@%d", self.dimension[0], self.dimension[1])
         return True
     
     # we need some sane values.Try with at least 300 pix in size.
@@ -1001,7 +1003,6 @@ class Registration():
         if self.cam is None:
             return
         cap = self.cam    
-        CTHRES = 300  # find out... 
         self.currentFrame = None
         
         # Loading the required haar-cascade xml classifier file
@@ -1022,7 +1023,7 @@ class Registration():
           
                 # Applying the face detection method on the grayscale image
                 # faces_rect = haar_cascade.detectMultiScale(gray_img,scaleFactor=1.1, minNeighbors=9)
-                faces_rect = haar_cascade.detectMultiScale(gray_img, scaleFactor=1.3, minNeighbors=9)
+                faces_rect = haar_cascade.detectMultiScale(gray_img, scaleFactor=1.2, minNeighbors=7, minSize=(100, 120))
                 # Iterating through rectangles of detected faces
                 for (x, y, w, h) in faces_rect:
                     offsetX = round(w / 2)
@@ -1031,22 +1032,27 @@ class Registration():
                     top = y - offsetY
                     right = x + w + offsetX
                     bottom = y + h + offsetY
-                    cv2.rectangle(frame, (left, top), (right, bottom), (0, 255, 0), 2)
-                    # cv2.rectangle(frame, (x - offsetX, y - offsetY), (x + w + offsetX, y + h + offsetY), (0, 255, 0), 2)
-                    # self.borders = [x - offsetX + 2, y - offsetY + 2, w + 2 * offsetX - 4, h + 2 * offsetY - 4]
-                    
+                    col = (0, 255, 0)
+                    bok = True
+                    # raw data
+                    if left < 0 or right > self.dimension[0]:
+                        col = (0 , 0, 255)
+                        bok = False
+                    if top < 0 or bottom > self.dimension[1]:
+                        col = (0 , 0, 255)
+                        bok = False
+
+                    cv2.rectangle(frame, (left, top), (right, bottom), col, 2)
+
                     px = max(0, left + 2)
                     py = max(0, top + 2)
                     dw = right - px - 2
                     dh = bottom - py - 2;
-                    # TODO make sure a face has been regognized.Dos not work!
-                    if dw > CTHRES and dh > CTHRES:
+                    if bok:
                         self.borders = [px, py, dw, dh]
-                    else:
-                        Log.debug("Invalid frame size: %d / %d -> %d/%d", px, py, dw, dh)
+                        self.currentFrame = frame
                 
                 if self.cameraOn: 
-                    self.currentFrame = frame
                     cameraThread.showFrame(frame)
 
     def takeScreenshot(self, path):
@@ -1084,19 +1090,19 @@ class Registration():
         res = DBTools.runExternal(cmd2)
         print(res)
 
-    #beware_ connection could be broken
-    def savePicture(self,member):
+    # beware_ connection could be broken
+    def savePicture(self, member):
         self.db.ensureConnection() 
         saved = Registration.SAVEPIC       
         targetPath = SetUpTSVDB.PICPATH
         pic = member.lastName + "-" + member.primKeyString() + ".png"
         member.picpath = pic
         host = SetUpTSVDB.HOST
-        reqUrl="http://%s:5001/%s/%s"%(host,targetPath,pic)     
+        reqUrl = "http://%s:5001/%s/%s" % (host, targetPath, pic)     
         Log.info("Saving picture :%s" % (reqUrl)) 
-        #reqUrl="http://localhost:5001/TSVPIC/"+pic #works!
-        response = requests.post(reqUrl,files={'file':open(saved,'rb')})
-        return response.status_code==200
+        # reqUrl="http://localhost:5001/TSVPIC/"+pic #works!
+        response = requests.post(reqUrl, files={'file':open(saved, 'rb')})
+        return response.status_code == 200
      
     '''scp example - for other use..    
     def savePicture2(self, member):
@@ -1118,13 +1124,13 @@ class Registration():
         return True           
     '''
       
-    def loadPicture(self,member):
+    def loadPicture(self, member):
         self.db.ensureConnection()
         targetPath = SetUpTSVDB.PICPATH
-        pic=member.picpath
+        pic = member.picpath
         host = SetUpTSVDB.HOST
-        reqUrl="http://%s:5001/%s/%s"%(host,targetPath,pic)
-        print("Load url:",reqUrl)
+        reqUrl = "http://%s:5001/%s/%s" % (host, targetPath, pic)
+        print("Load url:", reqUrl)
         return requests.get(reqUrl).content
  
     '''      
@@ -1243,8 +1249,8 @@ def main(args):
         app = QApplication(argv)
         app.setWindowIcon(getAppIcon())
         WIN = MainFrame(app, args.setCamera)  # keep python reference!
-        #ONLY windoze, if ever: app.setStyleSheet(winStyle())
-        #app.setStyle(QtWidgets.QStyleFactory.create("Fusion"));
+        # ONLY windoze, if ever: app.setStyleSheet(winStyle())
+        # app.setStyle(QtWidgets.QStyleFactory.create("Fusion"));
         app.exec_()
         # logging.shutdown()
     except:
@@ -1252,6 +1258,7 @@ def main(args):
         # ex_type, ex_value, ex_traceback
         sys_tuple = sys.exc_info()
         QtWidgets.QMessageBox.critical(None, "Error!", str(sys_tuple[1]))
+
 
 def winStyle():
     return """
@@ -1296,7 +1303,6 @@ if __name__ == '__main__':
     sys.excepthook = handle_exception
     sys.exit(main(parse()))
 
-
 '''
 QFile File("stylesheet.qss");
 File.open(QFile::ReadOnly);
@@ -1309,5 +1315,4 @@ qApp->setStyleSheet(StyleSheet);
   MainWindow w;
   w.show();
 '''
-
 

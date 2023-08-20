@@ -28,20 +28,39 @@
 		    margin-left: auto;
 		  }
 		.portrait {
+		    width: 200px;
 		    display: inline-block;
 		    text-align: center;
 		    margin: 10px;
 		}
-		.portrait img {
-		    width: 150px;
-		    height: 150px;
+		
+	     .portrait p{
+		 	font-size:1.2em;	
+		    line-height: 1;	   
+		 }
+		
+		@media (any-pointer: coarse) {
+		   .portrait {
+		       width: 400px;
+		   }
+		   .portrait p{
+		       font-size:3em;	
+		       line-height: 1;	   
+		   }
 		}
+		
+		.portrait img {
+		  display: block;
+		  width: 100%;
+		  height: auto;
+		}
+		
     </style>          
 
 <body>
     <h1>
-        <div>Wer trainiert grad im&nbsp</div>
-        <span id="location"> {{ dynamic_location }}?</span>        
+        <div>Anwesenheit&nbsp</div>
+        <span id="location"> {{ dynamic_location }}</span>        
      	<div class="logo-container">
             <img src="{{ logo_path }}" alt="Logo">
         </div>        

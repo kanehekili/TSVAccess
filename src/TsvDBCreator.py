@@ -189,7 +189,7 @@ class SetUpTSVDB():
         self.connectToDatabase(dbName,useHeartbeat)
         
         
-    def connectToDatabase(self, dbName,useHearbeat):
+    def connectToDatabase(self, dbName,_useHearbeat):
         try:
             self.db = Connector(self.HOST, self.USER, self.PASSWORD)
             self.db.connect(dbName)
@@ -197,9 +197,8 @@ class SetUpTSVDB():
             self.db = None
             print(sqlError)
             return False
-        #BIG FAIL-lets get reconnected
-        if useHearbeat:
-            self._intrepidSockets()
+        #if useHearbeat:
+        #    self._intrepidSockets()
         return True
 
     def isConnected(self):
@@ -433,7 +432,10 @@ def persistCSV(fn):
         #todo a.symmetric_difference(b) - two sets of ids! (not arrays)
         lostMembers=symDiff(data, s)
         for pk in lostMembers:
-            s.db.deleteEntry(SetUpTSVDB.MAINTABLE, "id", pk)
+            #we should flag it. Otherwise the accessdata is gone
+            #s.db.deleteEntry(SetUpTSVDB.MAINTABLE, "id", pk)
+            stmt="UPDATE Mitglieder set flag=1 where id=%d"%(pk)
+            s.db.select(stmt)
         s.updateDatabase(data)
     except Exception:
         traceback.print_exc()
@@ -448,8 +450,12 @@ def symDiff(importData,connection):
     diff=[]
     for indb in ids:
         if not indb in currIds:
-            print("Member lost:%d"%(indb))
+            print("!Member lost:%d -will be flagged!"%(indb))
             diff.append(indb)     
+    #the other way:
+    for cid in currIds:
+        if not cid in ids:
+            print("New Member:%d"%(cid))
     return diff
 
 
