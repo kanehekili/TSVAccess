@@ -1025,7 +1025,6 @@ class Registration():
                 # faces_rect = haar_cascade.detectMultiScale(gray_img,scaleFactor=1.1, minNeighbors=9)
                 faces_rect = haar_cascade.detectMultiScale(gray_img, scaleFactor=1.2, minNeighbors=7, minSize=(100, 120))
                 # Iterating through rectangles of detected faces
-                print(len(faces_rect))
                 for (x, y, w, h) in faces_rect:
                     offsetX = round(w / 2)
                     offsetY = round(h / 2)
