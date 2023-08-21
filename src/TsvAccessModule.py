@@ -56,7 +56,7 @@ class RFIDAccessor():
         while not self.dbSystem.isConnected():
             time.sleep(10)
             Log.warning("Reconnect to database")
-            self.dbSystem.connectToDatabase(SetUpTSVDB.DATABASE)    
+            self.dbSystem.connectToDatabase(SetUpTSVDB.DATABASE,False)    
         
         self.db = self.dbSystem.db        
     def readLocation(self):

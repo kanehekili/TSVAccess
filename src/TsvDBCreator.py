@@ -195,11 +195,7 @@ class SetUpTSVDB():
             self.db.connect(dbName)
         except Connector.DBError as sqlError:
             self.db = None
-            print(sqlError)
-            return False
-        #if useHearbeat:
-        #    self._intrepidSockets()
-        return True
+            self.log.warning(sqlError)
 
     def isConnected(self):
         return self.db.isConnected()
