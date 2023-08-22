@@ -1,1 +1,0 @@
-{"HOST": "The dbhost", "DB": "TsvDB", "USER": "someUser", "PASSWORD": "passwort", "MAINTABLE": "Mitglieder", "TIMETABLE": "Zugang", "GRACETIME": "2", "ACCESSPOINTS": ["FF", "FC", "DE", "STH"]}

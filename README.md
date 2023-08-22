@@ -9,12 +9,16 @@ Currently the means of idendification is RFID. Basically two devices are used: a
 This module ist used for the registration of members. It can be used in conjunction of an existing member database, but users can be created without it.
 The module will register a photo, the name and a unique id (primary key). This app may run on an office device - not yet tested on windows since it uses the Qt5 widget kit, opencv and python 
 
-###Dependencies
-python-mysql-connector
-python3-opencv
-python3-opencv-data (haarcascade)
-python3-qt5
+###Dependencies Debian
+* python-mysql-connector (use pip)
+* python3-opencv
+* python3-opencv-data (haarcascade)
+* python3-qt5
 
+###Dependencies Arch
+* python-pyqt5
+* python-opencv
+* python-mysql-connector
 
 Only a member checked in with this module will be able to access the system!
 ![Screenshot](https://github.com/kanehekili/TSVAccess/blob/main/TSV-Register.png)
@@ -25,11 +29,11 @@ This software uses head (not face) recognition (see green rectangle) to get unif
 This app runs on a Raspberry pi (3a), currently controlling a 2 channel relais for lights (Access,non access). Connected ot it is a RC522 RFID reader, which delivers the token uid that has been registered in the TSVREgisterModule.
 ![Screenshot](https://github.com/kanehekili/TSVAccess/blob/main/Hardware1.jpg)
 
-###Dependencies
-python-mysql-connector
-pip3 install RPi.GPIO
-sudo pip3 install spidev
-sudo pip3 install mfrc522
+### Dependencies (Arch Armhf)
+* python-mysql-connector
+* pip3 install RPi.GPIO
+* pip3 install spidev
+* pip3 install mfrc522
 (might use  --break-system-packages on pip calls)
 
 Test spi (RFID access)
@@ -47,12 +51,12 @@ A python flask server, that provides html data:
  * uses flask, plotly and (optional - not decided yet) pandas
 
 ###Dependencies
-python-mysql-connector
-pip install flask,pandas,plotly
+* python-mysql-connector
+* pip install flask,pandas,plotly
 
 #### Only needed for backup:
-pip install scp  
-pip install paramiko
+* pip install scp  
+* pip install paramiko
 
 
 ## TsvDBCreator
@@ -68,10 +72,9 @@ The data/ directory contains the config.json file. This file configures access t
  * "DB": "TsvDB"
  * "USER": "aUSER"
  * "PASSWORD": "PWD"
- * "MAINTABLE": "Mitglieder"
- * "TIMETABLE": "Zugang", 
- * "GRACETIME": "120", 
- * "LOCATION":"Kraftraum"
- * "ACCESSPOINTS": ["KR", "UKR"]
  * "PICPATH": "usr@host:/where/ever/you/go/TSVPIC/"
 
+## Location and access
+The "Location" table contains all of the locations and activities, as well as the allowd access codes and Gracetime.
+Registered hosts can be reconfigured by setting another location entry.
+(eg. Access in room A with course B ist changed to room B and course C) 
