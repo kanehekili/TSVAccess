@@ -568,7 +568,7 @@ class MainFrame(QtWidgets.QMainWindow):
  
     # The widget callbacks
     @QtCore.pyqtSlot(str)
-    # Zugangs kontrolle - not nicht designed
+    # Zugangs kontrolle - not designated
     def _onAccessChanged(self, text):
         Log.info("Accessmode:%s", text)
         # do we need this event?
@@ -604,12 +604,18 @@ class MainFrame(QtWidgets.QMainWindow):
     
     @QtCore.pyqtSlot(str)            
     def _onRFIDRead(self, rfid):
-        # this we need to check
-        if len(rfid) < 10:
+        if len(rfid) < 9:
             return
-        Log.debug("Read slot %s", rfid)
+        Log.info("Checking RFID:%s", rfid)
         if not rfid:
             return;
+        
+        if self.model.containsLegacyAA(rfid):
+            res = self.getQuestionDialog("Vorsicht!", "Hat der Benuzter einen blauen Chip für Zugang?")
+            if not res:
+                Log.warning("Invalid/redundant RFID chip found: %s", rfid)
+                self.ui_RFID.clear()
+                return
         
         mbr = self.ui_SearchEdit.currentData()
         testId = None
@@ -666,7 +672,7 @@ class MainFrame(QtWidgets.QMainWindow):
         if self.photoTaken:
             res = self.model.savePicture(mbr)  # scps the pic to remote and adds uri to db...
             if not res:
-                self.getErrorDialog("Verbindungsfehler", "Bild konnte nicht gespeichert werden", "Das muss gemeldet werden").show()
+                self.getErrorDialog("Verbindungsfehler", "Bild konnte nicht gespeichert werden", "Bitte den Fehler melden!").show()
                 self.photoTaken = False
                 return  # only all or nothing
         QTimer.singleShot(0, lambda: self.model.updateMember(mbr))
@@ -744,6 +750,10 @@ class MainFrame(QtWidgets.QMainWindow):
         # dlg.setMinimumSize(450, 0)
         return dlg;        
     
+    def getQuestionDialog(self, title, text):
+        buttonReply = QtWidgets.QMessageBox().question(self, title, text,);
+        return buttonReply == QtWidgets.QMessageBox.Yes
+    
     def _displayFrame(self):
         self.ui_VideoFrame.showFrame(self.cameraThread.result)
     
@@ -751,10 +761,6 @@ class MainFrame(QtWidgets.QMainWindow):
     def _showCameraError(self, text):
         dlg = self.getErrorDialog("Kamerafehler", text, "Ein Kamerafehler ist aufgetreten. Häufigste Ursache ist, das sie nicht gefunden werden kann.")
         dlg.show()
-    
-    @QtCore.pyqtSlot(str)
-    def _setRFID(self, key):
-        self.ui_RFID.setText(key)
     
     def __queueStarted(self, _state):
         if self.qtQueueRunning:
@@ -768,6 +774,9 @@ class MainFrame(QtWidgets.QMainWindow):
     
     def _displayMemberFace(self, member):
         raw = self.model.loadPicture(member)
+        if raw == None:
+            self.getErrorDialog("Verbindungsproblem", "Server ist nicht erreichbar", "Der Server, der die Bilder  liefern soll ist nicht erreichbar - Bitte umgehend melden").show()
+            return False
         try:
             img = QtGui.QImage()
             img.loadFromData(raw)
@@ -798,7 +807,7 @@ class MainFrame(QtWidgets.QMainWindow):
         res = self.model.connect()
         QApplication.restoreOverrideCursor()
         if not res:
-            dlg = self.getErrorDialog("Datenbank Fehler ", "Datenbank nicht gefunden", "Es besteht keine Verbindung zur Datenbank. Muss gemeldet werden!")
+            dlg = self.getErrorDialog("Datenbank Fehler ", "Datenbank nicht gefunden", "Es besteht keine Verbindung zur Datenbank. Bitte den Fehler melden!")
             dlg.buttonClicked.connect(self._onErrorDialogClicked)
             dlg.show()
         else:
@@ -932,12 +941,33 @@ class Registration():
         self.camIndex = cameraIndex
         self.cam = None
         self.dimension = [0, 0]
+        self.aaTransponders = []
 
     def connect(self):
-        self.dbSystem = SetUpTSVDB(SetUpTSVDB.DATABASE, False)  # no heartbeat=False
+        self.dbSystem = SetUpTSVDB(SetUpTSVDB.DATABASE)
         self.db = self.dbSystem.db
-        # self.sshClient = self.connectSSH(SetUpTSVDB.HOST);
-        return self.dbSystem.isConnected()
+        if self.dbSystem.isConnected():
+            self.readAATransponders()
+            return True
+        return False
+    
+    def readAATransponders(self):
+        # tODO That is TABLE now!
+        '''
+        path = OSTools.getLocalPath(__file__)
+        tr = OSTools.joinPathes(path, "data", "AATransponder")
+        with open(tr,"r") as file:
+            raw=file.read()
+            self.AATransponders=raw.split(';')
+        '''
+        stmt = "Select uuid from %s" % (SetUpTSVDB.ASSAABLOY)
+        rows = self.db.select(stmt)
+        for uuid in rows:
+            self.aaTransponders.append(uuid[0]) 
+        Log.info("Loaded AA Transponders:%d", len(self.aaTransponders))
+    
+    def containsLegacyAA(self, rfid):
+        return rfid in self.aaTransponders
     
     # reads the list and passes it to the caller...
     def getMembers(self):
@@ -1098,17 +1128,19 @@ class Registration():
         pic = member.lastName + "-" + member.primKeyString() + ".png"
         member.picpath = pic
         host = SetUpTSVDB.HOST
-        reqUrl = "http://%s:5001/%s/%s" % (host, targetPath, pic)     
-        Log.info("Saving picture :%s" % (reqUrl)) 
-        # reqUrl="http://localhost:5001/TSVPIC/"+pic #works!
-        response = requests.post(reqUrl, files={'file':open(saved, 'rb')})
-        return response.status_code == 200
+        response = None
+        try:
+            reqUrl = "http://%s:5001/%s/%s" % (host, targetPath, pic)     
+            Log.info("Saving picture :%s" % (reqUrl)) 
+            # reqUrl="http://localhost:5001/TSVPIC/"+pic #works!
+            response = requests.post(reqUrl, files={'file':open(saved, 'rb')})
+        except:
+            Log.error("Pic server not available:")
+            return False;
+        return response != None and response.status_code == 200
      
     '''scp example - for other use..    
     def savePicture2(self, member):
-        #src=/home/matze/Pictures/base.png -> the tmp name
-        #url=http://localhost:5001/TSVPIC/hugo.png -> target name
-        #requests.post(url,files={'file': open(src,'rb')})
         saved = Registration.SAVEPIC
         data = member.lastName + "-" + member.primKeyString() + ".png"
         targetPath = SetUpTSVDB.PICPATH
@@ -1130,19 +1162,14 @@ class Registration():
         pic = member.picpath
         host = SetUpTSVDB.HOST
         reqUrl = "http://%s:5001/%s/%s" % (host, targetPath, pic)
-        print("Load url:", reqUrl)
-        return requests.get(reqUrl).content
+        Log.debug("Load url:%s", reqUrl)
+        try:
+            pic = requests.get(reqUrl).content
+        except:
+            Log.error("Picture Server not present")
+            return None
+        return pic
  
-    '''      
-    def connectSSH(self, server):
-        DBTools.logging.getLogger("paramiko").setLevel(DBTools.logging.WARNING)
-        client = paramiko.SSHClient()
-        client.load_system_host_keys()
-        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        client.connect(server, username=SetUpTSVDB.SSHUSER, password=SetUpTSVDB.SSHPWD, look_for_keys=False, allow_agent=False)
-        return client
-    '''                
-        
     def verifyRfid(self, rfidString, testId):
         # check if rfid  alreay exists ->False
         stmt = "SELECT id from " + self.dbSystem.MAINTABLE + " where uuid=" + rfidString

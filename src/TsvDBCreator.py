@@ -181,15 +181,29 @@ class SetUpTSVDB():
         grace_time SMALLINT UNSIGNED
         )
         """  
-    def __init__(self, dbName, useHeartbeat=True):
+    
+    ASSAABLOY="AssaAbloy"
+    TABLE6 ="""
+    CREATE OR REPLACE TABLE AssaAbloy (
+       uuid VARCHAR(50) PRIMARY KEY,
+       remark VARCHAR(50)
+    )
+    """    
+    
+    ######
+    # HOOK
+    #ALTER TABLE could add a column, while replace does not !
+    #alter table mitglieder add column hugox smallint unsinged (or whatever) default xyz;
+    ######
+    
+    
+    def __init__(self, dbName):
         self.databaseName=dbName
         self.log = DBTools.Log
-        self.heartbeatEvent=None
-        self.stopped=False
-        self.connectToDatabase(dbName,useHeartbeat)
+        self.connectToDatabase(dbName)
         
         
-    def connectToDatabase(self, dbName,_useHearbeat):
+    def connectToDatabase(self, dbName):
         try:
             self.db = Connector(self.HOST, self.USER, self.PASSWORD)
             self.db.connect(dbName)
@@ -219,6 +233,7 @@ class SetUpTSVDB():
         self.db.createTable(self.TABLE3)
         self.db.createTable(self.TABLE4)
         self.db.createTable(self.TABLE5)
+        self.db.createTable(self.TABLE6)
         self.db.close()        
 
     def _fillLocationTable(self):
@@ -261,39 +276,19 @@ class SetUpTSVDB():
         self._fillLocationTable()
         self.close()
 
-    def _intrepidSockets(self):
-        t=threading.Thread(target=self.heartbeat)
-        t.start()
-
-    def heartbeat(self):
-        while True:
-            self.heartbeatEvent=threading.Event()
-            self.heartbeatEvent.wait(3600*6)
-            if self.stopped:
-                return
-            try:
-                self.db.select("Select 1")
-                self.log.info("Heartbeat")
-            except:
-                self.log.warning("Heartbeat too short -reconnecting")
-                self.connectToDatabase(self.databaseName)
-                
-
     def close(self):
         if self.db:
             self.db.close()
-        self.stopped=True            
-        if self.heartbeatEvent:
-            self.heartbeatEvent.set()
+
 
 def basicSetup():
-    s = SetUpTSVDB(SetUpTSVDB.DATABASE,False)
+    s = SetUpTSVDB(SetUpTSVDB.DATABASE)
     s.resetDatabase()
     s.db.connect("")
     s.setupDatabase()    
 
 def updateScheme():
-    s = SetUpTSVDB(SetUpTSVDB.DATABASE,False)
+    s = SetUpTSVDB(SetUpTSVDB.DATABASE)
     s.defineDatabases()
 
 def displayImportFindings(sections, multiSet, mbrCount,rogue):
@@ -302,7 +297,7 @@ def displayImportFindings(sections, multiSet, mbrCount,rogue):
     for key, cnt in multiSet.items():
         print(key + ":", cnt)
     print("Sections:",Counter(sections))
-    print("Those do not have Hauptverein entires:\n %s"%(rogue))
+    print("Those do not have Hauptverein entries:\n %s"%(rogue))
         
 
 def importCSV(filename):
@@ -374,27 +369,36 @@ def importCSV(filename):
     return list(data.values()) #array of TsvMembers        
     
 
-def checkAssaAbloy(filename):
+def updateAssaAbloy(filename):
     #filename="/home/matze/Documents/TSV/AssaAbloy/Tranponder1.txt"
+    s = SetUpTSVDB(SetUpTSVDB.DATABASE)
     blocked=[]
     active=[]
+    final=[]
     with open(filename,'r', encoding='utf-8') as file:
-         data=file.readlines()
-         for line in data:
-             token2 = "$".join(re.split("\s+", line.strip(), flags=re.UNICODE))
-             token=token2.split("$")
-             if token[0]=='Valid':
-                 val=token[1][:8].replace('ﬀ',"ff")
-                 active.append(val)
-                 bigInt=int(val,16)
-                 print(">%s = %d"%(val,_convert(bigInt)))
-             else:
-                 blocked.append(token[1])    
-             
+        data=file.readlines()
+        for line in data:
+            token2 = "$".join(re.split("\s+", line.strip(), flags=re.UNICODE))
+            token=token2.split("$")
+            if token[0]=='Valid':
+                val=token[1][:8].replace('ﬀ',"ff")
+                active.append(val)
+                bigInt=int(val,16)
+                rfid=_convert(bigInt)
+                print(">%s = %d"%(val,rfid))
+                final.append((str(rfid),val))
+            else:
+                blocked.append(token[1])
+
+    fields=('uuid','remark')
+    s.db.createTable(SetUpTSVDB.TABLE6)
+    s.db.insertMany(SetUpTSVDB.ASSAABLOY, fields, final)
+    s.close()                     
     print("Detected %d valid and %d blocked"%(len(active),len(blocked)))
     for x in blocked:
         if x in active:
             print("Blocked & active:%s"%(x))
+    
 
 def _convert(bigInt):
     if not bigInt:
@@ -451,7 +455,7 @@ class TsvMember():
 #TODO if we get only members ,remove those who are  in the database but not in the list...    
 def persistCSV(fn):
     OSTools.setLogLevel("Debug")
-    s = SetUpTSVDB("TsvDB",False)
+    s = SetUpTSVDB("TsvDB")
     try:
         data = importCSV(fn)
         #todo a.symmetric_difference(b) - two sets of ids! (not arrays)
@@ -485,14 +489,14 @@ def symDiff(importData,connection):
 
 
 def updateLocationTable():
-    s = SetUpTSVDB("TsvDB",False)
+    s = SetUpTSVDB("TsvDB")
     try:
         s._fillLocationTable()
     except Exception:
         traceback.print_exc()
     finally:
         s.close()
-    
+#TODO switchLocation(host,loctableID)    
 
     
 def parseOptions(args):
@@ -500,7 +504,7 @@ def parseOptions(args):
     try:
         opts, args = getopt.getopt(args[1:], "p:v:rlst:", ["persist=", "verify=", "reset", "updateLocation", "updateScheme","transponder"])
         if len(opts) == 0:
-            print("Use -p, -r, -l or -v")
+            printUsage()
     except getopt.GetoptError as err:
         printUsage()
         sys.exit(2)
@@ -517,7 +521,7 @@ def parseOptions(args):
         elif o in ("-s", "--updateScheme"):
             updateScheme() #Removes data from Zutritt and Beitrag! 
         elif o in ("-t", "--transponder"):
-            checkAssaAbloy(a)
+            updateAssaAbloy(a)
         else:
             printUsage()
 
@@ -528,7 +532,7 @@ def printUsage():
           "\t-r > !reset the database! (--reset) \n"\
           "\t-l > update location (--updateLocation) \n"\
           "\t-s > !update the database! (--updateScheme) \n"
-          "\t-7 > read transponder (--transponder) \n"
+          "\t-t filename > read transponder (--transponder) \n"
           )
     
 
