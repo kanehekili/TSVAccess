@@ -388,6 +388,7 @@ class MainFrame(QtWidgets.QMainWindow):
         self.ui_SearchEdit.completer().setCompletionMode(QtWidgets.QCompleter.PopupCompletion);
         self.ui_SearchEdit.activated.connect(self._onSearchChanged)
         self.ui_SearchEdit.setToolTip("Nachnamen eingeben, um eine Person zu suchen")
+        #self.ui_SearchEdit.installEventFilter(self)
         
         # self.ui_SearchEdit.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.Preferred)
         
@@ -408,16 +409,12 @@ class MainFrame(QtWidgets.QMainWindow):
         self.ui_LastNameEdit = QtWidgets.QLineEdit(self)
         self.ui_LastNameEdit.setToolTip("Nachname des Mitglieds (Wird bei Suche übernommen)")
 
-        self.ui_BirthLabel = QtWidgets.QLineEdit(self)
-        self.ui_BirthLabel.setText("")
-        self.ui_BirthLabel.setReadOnly(True);
-        self.ui_BirthLabel.setToolTip("Geburtstag (nicht veränderbar)")
-
         self.ui_RFIDLabel = QtWidgets.QLabel(self)
         self.ui_RFIDLabel.setText("RFID Nummer")
         self.ui_RFID = QtWidgets.QLineEdit(self)
         self.ui_RFID.setToolTip("RFID mit Kartenleser einchecken - Erst draufclicken -dann scannen!")
         self.ui_RFID.textEdited.connect(self._onRFIDRead)
+        #self.ui_RFID.installEventFilter(self)
 
         self.ui_AccessLabel = QtWidgets.QLabel(self)
         self.ui_AccessLabel.setText("Merkmale:")
@@ -434,6 +431,11 @@ class MainFrame(QtWidgets.QMainWindow):
         self.ui_AccessCombo.currentTextChanged.connect(self._onAccessChanged)
         # self.ui_AccessCombo.setToolTip("Angabe der Zugangsbereiche (Mehrfachwahl möglich)")
         self.ui_AccessCombo.setToolTip("Angabe des Zugangsbereichs")
+
+        self.ui_BirthLabel = QtWidgets.QLineEdit(self)
+        self.ui_BirthLabel.setText("")
+        self.ui_BirthLabel.setReadOnly(True);
+        self.ui_BirthLabel.setToolTip("Geburtstag (nicht veränderbar)")
 
         self.ui_CreateButton = QtWidgets.QPushButton()
         self.ui_CreateButton.setText("   Speichern")
@@ -464,6 +466,16 @@ class MainFrame(QtWidgets.QMainWindow):
         self.setCentralWidget(wid)        
         wid.setLayout(box)
         self.adjustSize()
+
+    def eventFilter(self,widget,event):
+        if widget != self.ui_SearchEdit:
+            if event.type()==QtCore.QEvent.FocusIn:
+                print("Focus in")
+                self.ui_SearchEdit.clearFocus()
+                #return False
+            #return False
+        return super(MainFrame,self).eventFilter(widget,event)
+                
 
     def init_toolbar(self):
         # QtGui.QAction Py6
@@ -570,8 +582,8 @@ class MainFrame(QtWidgets.QMainWindow):
     @QtCore.pyqtSlot(str)
     # Zugangs kontrolle - not designated
     def _onAccessChanged(self, text):
-        Log.info("Accessmode:%s", text)
-        # do we need this event?
+        #Log.info("Accessmode:%s", text)
+        pass
 
     @QtCore.pyqtSlot()
     def _onPhotoButtonClicked(self):
@@ -590,8 +602,10 @@ class MainFrame(QtWidgets.QMainWindow):
     def _onSearchChanged(self, idx):
         mbr = self.ui_SearchEdit.itemData(idx)
         if mbr:
+            Log.info("Member selected:%s",mbr.searchName())
             self.setEntryFields(mbr)
-            self.ui_RFID.setFocus()
+            #Still having the focus, so add it to the event loop
+            QTimer.singleShot(1, self.ui_RFID.setFocus)
             
             if not (mbr.picpath and self._displayMemberFace(mbr)):
                 self._initCapture()  # fastCam !TODO NO just turn on cam...
@@ -604,7 +618,7 @@ class MainFrame(QtWidgets.QMainWindow):
     
     @QtCore.pyqtSlot(str)            
     def _onRFIDRead(self, rfid):
-        if len(rfid) < 9:
+        if len(rfid) < 9: #typing
             return
         Log.info("Checking RFID:%s", rfid)
         if not rfid:
@@ -613,7 +627,7 @@ class MainFrame(QtWidgets.QMainWindow):
         if self.model.containsLegacyAA(rfid):
             res = self.getQuestionDialog("Vorsicht!", "Hat der Benuzter einen blauen Chip für Zugang?")
             if not res:
-                Log.warning("Invalid/redundant RFID chip found: %s", rfid)
+                Log.warning("AssaAbloy RFID chip found: %s", rfid)
                 self.ui_RFID.clear()
                 return
         
@@ -624,9 +638,11 @@ class MainFrame(QtWidgets.QMainWindow):
         if not self.model.verifyRfid(rfid, testId):
             d = self.getErrorDialog("** RFID **", "Ungültige RFID, bitte einen anderen Token benutzen", "In der Datenbank existiert bereits eine solche RFID Nummer und kann nicht nochmal vergeben werden")
             d.show()
+            self.ui_RFID.clear()
 
     # persist to database (Speichern)
     # Store & contrl picture only if not in mbr
+    @QtCore.pyqtSlot()
     def _onSaveMember(self):
         mbr = self.ui_SearchEdit.currentData()
         idstr = self.ui_IDEdit.text()
@@ -681,6 +697,7 @@ class MainFrame(QtWidgets.QMainWindow):
         self.photoTaken = False
         self._clearFields()
 
+    @QtCore.pyqtSlot()
     def _onOpenAboDialog(self):
         mbr = self.ui_SearchEdit.currentData()
         if not mbr:
@@ -754,6 +771,7 @@ class MainFrame(QtWidgets.QMainWindow):
         buttonReply = QtWidgets.QMessageBox().question(self, title, text,);
         return buttonReply == QtWidgets.QMessageBox.Yes
     
+    @QtCore.pyqtSlot()
     def _displayFrame(self):
         self.ui_VideoFrame.showFrame(self.cameraThread.result)
     
@@ -778,9 +796,12 @@ class MainFrame(QtWidgets.QMainWindow):
             self.getErrorDialog("Verbindungsproblem", "Server ist nicht erreichbar", "Der Server, der die Bilder  liefern soll ist nicht erreichbar - Bitte umgehend melden").show()
             return False
         try:
+            self.model.cameraOn = False
+            self.capturing = False
             img = QtGui.QImage()
             img.loadFromData(raw)
             self.ui_VideoFrame.showImage(img)
+            self.updatePhotoButton()
         except:
             Log.exception("Pic load failed")
             return False
