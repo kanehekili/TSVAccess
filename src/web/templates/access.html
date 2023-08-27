@@ -47,6 +47,10 @@
 		       font-size:3em;	
 		       line-height: 1;	   
 		   }
+		   .location {
+		      font-size:1.8em;
+		      line-height: 1;
+		   }
 		}
 		
 		.portrait img {
@@ -55,16 +59,23 @@
 		  height: auto;
 		}
 		
+		hr.divrounded {
+		  border-top: 8px solid #bbb;
+		  border-radius: 5px;
+		}		
+		
     </style>          
 
 <body>
     <h1>
-        <div>Anwesenheit&nbsp</div>
-        <span id="location"> {{ dynamic_location }}</span>        
+        <div class="location">Anwesenheit&nbsp
+        <span> {{ dynamic_location }} [{{ location_count }}] </span>
+        </div>        
      	<div class="logo-container">
             <img src="{{ logo_path }}" alt="Logo">
         </div>        
     </h1>
+    <hr class="divrounded">
     <div class="container">
         {% for person in people %}
         <div class="portrait">

@@ -44,7 +44,7 @@ def visitorsKraftraum():
     people = barModel.currentVisitorPictures(TsvDBCreator.ACTIVITY_KR)
     logo_path = "tsv_logo_100.png"
     dynamic_location = TsvDBCreator.ACTIVITY_KR    
-    return render_template('access.html', people=people, logo_path=logo_path, dynamic_location=dynamic_location)
+    return render_template('access.html', people=people, logo_path=logo_path, dynamic_location=dynamic_location, location_count=len(people))
 
     
 @app.route('/' + TsvDBCreator.ACTIVITY_KR + "Usage")
@@ -77,7 +77,7 @@ def statisticsSauna():
 def visitorsSauna():
     people = barModel.currentVisitorPictures(TsvDBCreator.ACTIVITY_SAUNA)
     logo_path = "tsv_logo_100.png"
-    return render_template('access.html', people=people, logo_path=logo_path, dynamic_location=TsvDBCreator.ACTIVITY_SAUNA)
+    return render_template('access.html', people=people, logo_path=logo_path, dynamic_location=TsvDBCreator.ACTIVITY_SAUNA,location_count=len(people))
 
 
 # hook to more sites
