@@ -18,14 +18,9 @@ os.uname():
 posix.uname_result(sysname='Linux', nodename='raspi3a', release='6.1.29-2-rpi-ARCH', version='#1 SMP Thu May 25 05:35:29 MDT 2023', machine='armv7l')
 data[4] > armv7l
 '''
+import RaspiTools
+from RaspiTools import RaspberryGPIO, MFRC522Reader,LED7,Clock
 
-try:
-    import RPi.GPIO as GPIO  # @UnresolvedImport
-    from mfrc522 import SimpleMFRC522  # @UnresolvedImport
-    RASPI = True
-except Exception:
-    print("no GPIOS installed")
-    RASPI = False
 
 # import smtplib
 # from email.message import EmailMessage
@@ -39,12 +34,19 @@ class RFIDAccessor():
 
     def __init__(self):
         self.eastereggs = [2229782266]
-        if RASPI:
+        if RaspiTools.RASPI:
             self.gate = RaspberryGPIO()
             self.reader = MFRC522Reader()
         else:
             self.gate = RaspberryFAKE()
             self.reader = RFCUSB() 
+        if RaspiTools.LEDS:
+            self.ledCounter=LED7()
+            self.ledCounter.clear()
+            self.clock=Clock(self.ledCounter.tm)
+            self.clock.runAsync()
+        else:
+            self.ledCounter=None
     
     def connect(self):
         self.dbSystem = SetUpTSVDB(SetUpTSVDB.DATABASE)
@@ -150,8 +152,11 @@ class RFIDAccessor():
             self.db.insertMany(table, ('mitglied_id', 'access_date', 'location'), data)
             if prepaidCount >0: #Dieters Sauna special
                 self.voidPrepaid(key, prepaidCount)
+                self._showCounter(prepaidCount-1)
         else:
             self.gate.tickGracetime()
+            if prepaidCount >0:
+                self._showCounter(prepaidCount)
     
     def checkPrepaid(self,count):
         if self.paySection in TsvDBCreator.PREPAID_INDICATOR:
@@ -162,6 +167,15 @@ class RFIDAccessor():
     def voidPrepaid(self,mid,count):
         stmt="UPDATE %s set prepaid=%d where mitglied_id=%d and section='%s'"%(self.dbSystem.BEITRAGTABLE,count-1,mid,self.paySection)
         self.db.select(stmt) 
+    
+    def _showCounter(self,count):
+        if not self.ledCounter:
+            return
+        self.clock.stop()
+        self.ledCounter.number(count)
+        time.sleep(3)
+        self.clock.runAsync()
+        
      
     def checkValidity(self, eolDate, flag, access):
         if eolDate:
@@ -184,6 +198,14 @@ class RFIDAccessor():
                 Log.warning("Wrong group:%s in:%s", access, self.groups)
             return ok    
         return False
+
+    def shutDown(self):
+        self.dbSystem.close()
+        if self.ledCounter:
+            self.clock.stop()
+            self.ledCounter.text("StOP")
+            del self.ledCounter
+            del self.clock #rm all TM instances!
 
 '''
 import cv2
@@ -276,117 +298,6 @@ class QRAccessor():
  '''       
 
 
-class RaspberryGPIO():
-    PINGREEN = 2
-    PINORANGE = 3
-    PINRED = 17
-    PINSIGNAL = 27
-    LIGHTON = False
-    LIGHTOFF = True  # depends how we cable the relais
-
-    def __init__(self):
-        GPIO.setmode(GPIO.BCM)
-        GPIO.setup(self.PINGREEN, GPIO.OUT)
-        GPIO.setup(self.PINRED, GPIO.OUT)
-        GPIO.setup(self.PINORANGE, GPIO.OUT)
-        GPIO.setup(self.PINSIGNAL, GPIO.OUT)
-        self.reset()  # GPIOS start on hi... 
-        self.timer = None
-        '''
-        using GPIOS:
-        o o
-        o o
-        o x -GND
-        o o                
-        o o
-        x x -Grau(17)-Lila(18)        
-        |--| usb==unten
-    
-        Relais
-        o x 5V Red
-        x o GPIO2 Blue   ->Green light (OK)
-        x o GPIO3 yello   -> yello (WARN)
-        o o                
-        X o -GND Green  
-        x o GPIO 17 orange  -> red (NO ACCESS)
-        x o GPIO27  brown   ->signal (NO ACCESS)       
-        |--| usb==unten
-        
-        '''
-
-    def signalAccess(self):
-        self.reset()
-        GPIO.output(self.PINGREEN, self.LIGHTON)
-        self._restartTimer()        
-        
-    def signalForbidden(self):
-        self.reset()
-        GPIO.output(self.PINRED, self.LIGHTON)        
-        GPIO.output(self.PINSIGNAL, self.LIGHTON)
-        self._restartTimer()
-    
-    def signalAlarm(self):
-        self.reset()
-        GPIO.output(self.PINORANGE, self.LIGHTON)
-        self._restartTimer()
-    
-    #mark if gracetime still in place (=no action)
-    def tickGracetime(self):
-        GPIO.output(self.PINORANGE, self.LIGHTON)
-        time.sleep(0.5)
-        GPIO.output(self.PINORANGE, self.LIGHTOFF)
-        
-    def welcome1(self):
-        self.reset()
-        GPIO.output(self.PINGREEN, self.LIGHTON)
-        time.sleep(0.3)
-        GPIO.output(self.PINORANGE, self.LIGHTON) 
-        time.sleep(0.05)
-        GPIO.output(self.PINGREEN, self.LIGHTOFF)
-        time.sleep(0.3)
-        GPIO.output(self.PINRED, self.LIGHTON)
-        time.sleep(0.05)
-        GPIO.output(self.PINORANGE, self.LIGHTOFF)
-        time.sleep(0.3)
-        GPIO.output(self.PINORANGE, self.LIGHTON)
-        time.sleep(0.05)
-        GPIO.output(self.PINRED, self.LIGHTOFF)
-        time.sleep(0.3)
-        GPIO.output(self.PINGREEN, self.LIGHTON)
-        time.sleep(0.05)
-        GPIO.output(self.PINORANGE, self.LIGHTOFF)
-        time.sleep(0.3)
-        GPIO.output(self.PINGREEN, self.LIGHTOFF)
-    
-    # TODO needs timer
-    def reset(self):
-        GPIO.output(self.PINRED, self.LIGHTOFF)  # true=off, false=ON
-        GPIO.output(self.PINGREEN, self.LIGHTOFF)
-        GPIO.output(self.PINORANGE, self.LIGHTOFF)
-        GPIO.output(self.PINSIGNAL, self.LIGHTOFF)        
-            
-    def _restartTimer(self):
-        if self.timer:
-            self.timer.cancel()
-        self.timer = Timer(5, self.reset)
-        self.timer.start()        
-
-'''
-        RFID READER
-        x o 3.3V red
-        o o
-        o x -GND black
-        o o                
-        o o
-        o o
-        o o
-        o o
-        o o
-        x o SPio Mosi - Green   
-        x x SPIO Miso - Orange / GPIO 25(RST) Blue
-        x x SPIO CLK -  brown  / SPI CSO Yellow     
-        |--| usb==unten
-'''    
     
 
 class RaspberryFAKE():
@@ -444,27 +355,6 @@ class RFCUSB():
         return int(text)
 
 
-# changed due to 100% CPU
-class MFRC522Reader():
-
-    def __init__(self):
-        self.mfrc = SimpleMFRC522()
-        
-    def read_id(self):
-        rfid = None
-        while not rfid:
-            data = self.mfrc.read_id_no_block()
-            if data:
-                return self._convert(data)
-            time.sleep(0.3)
-    
-    def _convert(self, bigInt):
-        if not bigInt:
-            return 0
-        rbytes = bigInt.to_bytes(5)
-        tmp = rbytes[:-1][::-1]  # little to big endian
-        return int.from_bytes(tmp)
-
 '''   
 def playSound(ok):
     base = os.path.dirname(os.path.abspath(__file__)) 
@@ -498,8 +388,7 @@ if __name__ == '__main__':
     except SystemExit as se:
         Log.warning("System exit")
     finally:
-        if RASPI:
-            GPIO.cleanup()
-        ACCESSOR.dbSystem.close()  
+        ACCESSOR.shutDown()  
+        RaspiTools.cleanup()
         Log.info("Accessor clean shut down")     
     # a.sendMail("das hat nicht gefunzt")
