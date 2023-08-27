@@ -5,8 +5,8 @@ After=mariadb.target
 
 [Service]
 Type=simple
-WorkingDirectory=/opt/TSVAccess/src
-ExecStart=/usr/bin/python3 /opt/TSVAccess/src/TsvAuswertung.py
+WorkingDirectory=/opt/tsvserver
+ExecStart=/usr/bin/python3 /opt/tsvserver/TsvAuswertung.py
 
 [Install]
 WantedBy=multi-user.target
