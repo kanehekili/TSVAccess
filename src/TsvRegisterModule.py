@@ -591,7 +591,7 @@ class MainFrame(QtWidgets.QMainWindow):
             self.capturing = False
             if self.model.takeScreenshot("/tmp/tsv.screenshot.png"):
                 self.photoTaken = True
-                self.cameraThread.showFrame(self.model.currentFrame)
+                self.cameraThread.showFrame(self.model.getFrame())
             else:
                 self.getMessageDialog("Kein Photo gespeichert!", "Es konnte kein Gesicht erkannt werden \nBitte nochmals probieren").show()
             self.updatePhotoButton()
@@ -715,7 +715,6 @@ class MainFrame(QtWidgets.QMainWindow):
         self.ui_AccessCombo.clearEditText()       
         self.ui_BirthLabel.clear()
         self.ui_RFID.clear()
-        self.model.currentFrame = None
         self.model.cameraOn = False
         self.capturing = False
         self.updatePhotoButton()
@@ -956,6 +955,7 @@ class Registration():
     def __init__(self, cameraIndex):
         # self.accesscodes = []
         self.currentFrame = None
+        self.croppedPic =None
         self.borders = []
         self.cameraOn = False
         self.cameraStatus = None
@@ -1108,6 +1108,7 @@ class Registration():
 
     def takeScreenshot(self, path):
         self.cameraOn = False
+        self.croppedPic = None
         if self.currentFrame is None or len(self.borders) == 0:
             Log.info("Screenshot failed")
             return False
@@ -1115,11 +1116,13 @@ class Registration():
         y = self.borders[1]
         w = self.borders[2]
         h = self.borders[3]
-        Log.info("Crop photo dim: %d/%d > %d/%d", x, y, w, h)
-        cropped = self.currentFrame[y:y + h, x:x + w].copy()
-        cv2.imwrite(path, cv2.cvtColor(cropped, cv2.COLOR_RGB2BGR))
-        self.currentFrame = cv2.cvtColor(self.currentFrame[y:y + h, x:x + w], cv2.COLOR_RGB2BGR)
+        #Log.info("Crop photo dim: %d/%d > %d/%d", x, y, w, h)
+        self.croppedPic = cv2.cvtColor(self.currentFrame[y:y + h, x:x + w].copy(),cv2.COLOR_RGB2BGR)
+        cv2.imwrite(path, self.croppedPic) #save picture needs that
         return True   
+
+    def getFrame(self):
+        return self.croppedPic
 
     def stopCamera(self):
         self.cameraOn = False
