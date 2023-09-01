@@ -1,0 +1,91 @@
+<!doctype html>
+<html>
+<head>
+    <title>TSV Konfiguration</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>    
+</head> 
+<style>
+* {
+    -webkit-box-sizing: border-box;
+    box-sizing: border-box;
+}
+body {
+    background-color: #272b34;
+    font-family: 'Khula', sans-serif;
+    font-weight: 300;
+    color: white;
+    line-height: 1em;
+    margin: 0;
+  padding: 2em 1em;
+}
+
+  /* CSS for the header */
+  h1 {
+    align-items: flex-start;
+    display: flex;
+  }
+
+  .logo-container {
+    margin-left: auto;
+  }
+  table,th,td {
+     padding: 10px;
+     border: 1px solid yellow;
+     border-collapse: collapse;
+  }
+
+</style>
+
+<body>
+   <h1>
+     <span>TSV Konfiguration</span>
+     <div class="logo-container">
+       <img src="{{ logo_path }}" alt="Logo">
+     </div>
+  </h1>
+   <table class="locTable">
+   <thead>
+    <tr>
+       {% for header in configHeaders %}
+       <th>{{header}}</th>
+       {% endfor %}
+     </tr>
+   </thead>     
+   <tbody>
+      {% for row in configData %}
+      <tr>
+         <td>{{row['config_id']}}</td>
+         <td>{{row['room']}}</td>
+         <td>{{row['activity']}}</td>
+         <td>{{row['paySection']}}</td>
+         <td>{{row['groups']}}</td>
+      </tr>
+     {% endfor %}
+    </tbody>
+	 </table>
+   <br>
+   <div> Aktuelle Einstellung (Webguru needed) </div>
+   <br>
+   
+   <table class="locTable">
+   <thead>
+    <tr>
+       {% for header in locHeaders %}
+       <th>{{header}}</th>
+       {% endfor %}
+     </tr>
+   </thead>     
+   <tbody>
+      {% for row in locData %}
+      <tr>
+         <td>{{row['host_name']}}</td>
+         <td>{{row['config_id']}}</td>
+      </tr>
+     {% endfor %}
+    </tbody>
+	 </table>
+   
+
+</body>
+</html>
+

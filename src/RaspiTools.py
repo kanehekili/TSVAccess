@@ -31,7 +31,10 @@ class RaspberryGPIO():
     LIGHTON = False
     LIGHTOFF = True  # depends how we cable the relais
 
-    def __init__(self):
+    def __init__(self,invertGPIO):
+        if invertGPIO:
+            RaspberryGPIO.LIGHTON=True
+            RaspberryGPIO.LIGHTOFF=False
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(self.PINGREEN, GPIO.OUT)
         GPIO.setup(self.PINRED, GPIO.OUT)

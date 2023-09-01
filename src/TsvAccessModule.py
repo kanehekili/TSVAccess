@@ -4,7 +4,7 @@ Reads some input, checks with remote db and gives a sign (RED=forbidden, GREEN=a
 "Zugangskontrolle auf RASPI"
 @author: matze
 '''
-import time, socket, signal, sys
+import time, socket, signal, sys,threading
 import DBTools
 from DBTools import OSTools
 from TsvDBCreator import SetUpTSVDB
@@ -28,14 +28,14 @@ OSTools.setupRotatingLogger("TSVAccess", True)
 Log = DBTools.Log
 
 
-# TODO take this into consideration:
-# https://www.raspberrypi-spy.co.uk/2018/02/rc522-rfid-tag-read-raspberry-pi/
 class RFIDAccessor():
 
-    def __init__(self):
+    def __init__(self,invertGPIO):
         self.eastereggs = [2229782266]
+        # we might use a time between 8 and 22:00self.latestLocCheck=None
+        self.condLock = threading.Condition()
         if RaspiTools.RASPI:
-            self.gate = RaspberryGPIO()
+            self.gate = RaspberryGPIO(invertGPIO)
             self.reader = MFRC522Reader()
         else:
             self.gate = RaspberryFAKE()
@@ -47,6 +47,7 @@ class RFIDAccessor():
             self.clock.runAsync()
         else:
             self.ledCounter=None
+        
     
     def connect(self):
         self.dbSystem = SetUpTSVDB(SetUpTSVDB.DATABASE)
@@ -76,14 +77,22 @@ class RFIDAccessor():
         self.paySection = data[1]
         self.groups = literal_eval(data[2])
         self.gracetime = data[3]
+
+    def _controlLocation(self):
+        while self.running:
+            with self.condLock:
+                self.condLock.wait(120)
+            if self.running:
+                self.readLocation()
+        print("Ctrl thread stopped")    
         
     def runDeamon(self):
         self.running = True
+        threading.Thread(target=self._controlLocation, name="LocationChecker").start()
         Log.info("Deamon started")
-        #TODO: change of location is not known! we need to check every x seconds between 8:00 and 22:00 -so that's about a hearbeat #use on locs that a changeable
         while self.running:
             try:
-                rfid = self.reader.read_id()  # int
+                rfid = self.reader.read_id()  # int -blocking
                 self.verifyAccess(rfid)    
             except KeyboardInterrupt:
                 print("Exit")
@@ -94,7 +103,8 @@ class RFIDAccessor():
                 self._waitForConnection()
                 rfid = 0
             
-            time.sleep(1)
+            time.sleep(0.5)
+
     
     def verifyAccess(self, rfid):
         # we just read the number... 
@@ -200,6 +210,9 @@ class RFIDAccessor():
         return False
 
     def shutDown(self):
+        self.running=False
+        with self.condLock:            
+            self.condLock.notify_all()
         self.dbSystem.close()
         if self.ledCounter:
             self.clock.stop()
@@ -351,7 +364,8 @@ class RFCUSB():
         pass
     
     def read_id(self):
-        text = input()
+        text = input("USB>>")
+        print("Entered:",text)
         return int(text)
 
 
@@ -376,9 +390,13 @@ if __name__ == '__main__':
     global ACCESSOR
     signal.signal(signal.SIGINT, handleSignals) 
     signal.signal(signal.SIGTERM, handleSignals)
-    signal.signal(signal.SIGHUP, handleSignals)        
+    signal.signal(signal.SIGHUP, handleSignals)  
+    argv = sys.argv
+    invertGPIO=False
+    if len(argv)>1:
+        invertGPIO="-i" == argv[1]      
     try:
-        ACCESSOR = RFIDAccessor()
+        ACCESSOR = RFIDAccessor(invertGPIO)
         if ACCESSOR.connect():
             ACCESSOR.runDeamon()
         else:

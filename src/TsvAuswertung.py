@@ -109,7 +109,7 @@ def manage_picture(picture_name):
             Log.exception("Save picture failed")
             return None
         return "200"
-
+#da fehlt ne route
 def statisticsTemplate(location):
     dates, counts = barModel.countPeoplePerDay(location)  # count members over time
     data = [go.Bar(
@@ -123,6 +123,35 @@ def statisticsTemplate(location):
     graphJSON = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
     logo_path = "tsv_logo_100.png"
     return render_template('index.html', graphJSON=graphJSON, logo_path=logo_path, dynamic_location=location)    
+    
+
+@app.route('/config')
+def manageConfiguration():
+    logo_path = "tsv_logo_100.png"
+    configHeaders=['ID','Raum','Aktivität','Abteilung','Merkmale']
+    fields=['config_id','room','activity','paySection','groups']
+    configData=[]
+    configRows = barModel.configTable()
+    for row in configRows:
+        entry={}
+        for idx in range(0,5):
+            entry[fields[idx]]=row[idx]
+        configData.append(entry)
+    
+    locHeaders=['Gerät','Konfigurations-ID']
+    fields=['host_name','config_id']
+    locRows=barModel.locationTable()
+    locData=[]
+    for row in locRows:
+        entry={}
+        for idx in range(0,2):
+            entry[fields[idx]]=row[idx]
+        locData.append(entry)
+        
+    
+    return render_template('config.html', logo_path=logo_path,configHeaders=configHeaders, configData=configData, locHeaders=locHeaders,locData=locData)
+        
+        
     
 
 '''
@@ -438,6 +467,14 @@ class BarModel():
         # people = [{'name': fn+" "+name+"("+datetime.strftime(accDate,"%H:%M")+")", 'image_path': picFolder+picpath} for id,fn, name, picpath,accDate in present]
         Log.info("Checked in:%d", len(people))
         return people
+
+    def configTable(self):
+        stmt = "SELECT * from Konfig"
+        return self.db.select(stmt)
+    
+    def locationTable(self):
+        stmt ="Select * from Location"
+        return self.db.select(stmt)
 
     def testRatio(self):
         people = []
