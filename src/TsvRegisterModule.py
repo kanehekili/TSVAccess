@@ -26,6 +26,7 @@ or img = Image.open(BytesIO(response.content))
 '''
 
 # Importing OpenCV package
+#TODO use PyQt6
 import cv2, sys, traceback, time, argparse, os
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtCore import pyqtSignal, QTimer
@@ -36,7 +37,6 @@ from DBTools import OSTools
 from TsvDBCreator import SetUpTSVDB
 import DBTools
 from datetime import datetime
-# import paramiko using requests now
 import requests
 import TsvDBCreator
 
@@ -863,8 +863,12 @@ class AboDialog(QtWidgets.QDialog):
         frame1.setFrameStyle(QtWidgets.QFrame.Box | QtWidgets.QFrame.Sunken)
         frame1.setLineWidth(1)
         aboBox = QtWidgets.QVBoxLayout(frame1)
+        hBox = QtWidgets.QHBoxLayout(frame1)
         prepaid = self.model.currentAbo[1]
-        self.check_sauna = QtWidgets.QCheckBox("Sauna 10er Ticket \t(frei:%d)" % (prepaid))
+        self.saunaCount= QtWidgets.QSpinBox()
+        self.saunaCount.setValue(prepaid)
+        self.saunaCount.valueChanged.connect(self._prepaidChanged)
+        self.check_sauna = QtWidgets.QCheckBox("Sauna 10er Ticket \tfrei:")
         
         self.check_sauna.setToolTip("Haken = 10 Tickets kaufen")
         # TODO check current abo count and flag 
@@ -873,7 +877,9 @@ class AboDialog(QtWidgets.QDialog):
         self.check_culprit.setToolTip("Bei Haken wird kein Zugang erlaubt")
         self.check_culprit.setChecked(self.model.flag > 0)
         
-        aboBox.addWidget(self.check_sauna)
+        hBox.addWidget(self.check_sauna)
+        hBox.addWidget(self.saunaCount)
+        aboBox.addLayout(hBox)
         aboBox.addWidget(self.check_culprit)
         
         QBtn = QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel
@@ -886,11 +892,14 @@ class AboDialog(QtWidgets.QDialog):
         outBox.addWidget(buttonBox)
         self.setLayout(outBox)
         self.setMinimumSize(400, 0)
-        # Text aktueller count aus Sauna
-        # Sauna -> checkbox 10er Abo
-        # Abbruch Speichern
 
+    @QtCore.pyqtSlot(int)
+    def _prepaidChanged(self,val):
+        self.model.abo = (TsvDBCreator.ACTIVITY_SAUNA,0)
+        self.model.currentAbo = (TsvDBCreator.ACTIVITY_SAUNA,self.saunaCount.value())
+        
     def accept(self):
+        #Must be possible to change the prepaid data without having checked
         if self.check_sauna.isChecked():
             self.model.abo = (TsvDBCreator.ACTIVITY_SAUNA, 10)
         self.model.flag = int(self.check_culprit.isChecked() == True)
@@ -1020,8 +1029,8 @@ class Registration():
             return
         oldCount = mbr.currentAbo[1]
         fields = ('mitglied_id', 'section', 'prepaid')
-        data = [(mbr.id, section, oldCount + 10)]
-        Log.info("Update ABO prepaid count from %s , %d +10", section, oldCount)
+        data = [(mbr.id, section, oldCount + mbr.abo[1])]
+        Log.info("Update ABO prepaid count from %s , %d +%d", section, oldCount,mbr.abo[1])
         self.db.insertMany(self.dbSystem.BEITRAGTABLE, fields, data)
     
     def readAboData(self, mbr):

@@ -29,7 +29,8 @@ Log = DBTools.Log
 
 
 class RFIDAccessor():
-
+    HOUR_START=8
+    HOUR_END=22
     def __init__(self,invertGPIO):
         self.eastereggs = [2229782266]
         # we might use a time between 8 and 22:00self.latestLocCheck=None
@@ -80,8 +81,14 @@ class RFIDAccessor():
 
     def _controlLocation(self):
         while self.running:
+            now = datetime.now()
+            if now.hour >= self.HOUR_END:
+                dur=(24-self.HOUR_END+self.HOUR_START)*3600
+            else:
+                dur=120
             with self.condLock:
-                self.condLock.wait(120)
+                Log.info("Next location check in %d sec",dur)
+                self.condLock.wait(dur)
             if self.running:
                 self.readLocation()
         print("Ctrl thread stopped")    
