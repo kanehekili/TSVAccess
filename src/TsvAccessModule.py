@@ -8,7 +8,7 @@ import time, socket, signal, sys,threading
 import DBTools
 from DBTools import OSTools
 from TsvDBCreator import SetUpTSVDB
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from threading import Timer
 from ast import literal_eval
 import TsvDBCreator
@@ -82,8 +82,11 @@ class RFIDAccessor():
     def _controlLocation(self):
         while self.running:
             now = datetime.now()
-            if now.hour >= self.HOUR_END:
-                dur=(24-self.HOUR_END+self.HOUR_START)*3600
+            if now.hour >= self.HOUR_END or now.hour < self.HOUR_START:
+                goal = now.replace(hour=self.HOUR_START,minute=0,second=0,microsecond=0)                
+                if now > goal:
+                    goal = goal + timedelta(days=1)  
+                dur = (goal-now).seconds                 
             else:
                 dur=120
             with self.condLock:

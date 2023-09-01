@@ -402,11 +402,30 @@ def calcRFID():
     print("rev:",test," >",int.from_bytes(test))
     print("soll:",hex(ba[3]),hex(ba[2]),hex(ba[1]),hex(ba[0]))
         
+def nextDay():
+    real = datetime.now()
     
+    fakeNow = real.replace(day= 1, hour=7,minute=50,second=0,microsecond=0)
+    #fakeNow = real.replace(hour=1,minute=0,second=0,microsecond=0)
+    #fakeNow = real  
+    print("Now:",fakeNow)
+    
+    if fakeNow.hour >= 22 or fakeNow.hour < 8:
+        goal = fakeNow.replace(hour=8,minute=0,second=0,microsecond=0)
+        print("goal1:",goal)
+        if fakeNow > goal:
+            print("Now is larger")
+            goal = goal + timedelta(days=1)
+        print(goal) 
+        secs = (goal-fakeNow).seconds
+        print(secs,(goal-fakeNow))
+    else:
+        print("No action")
+         
 
 if __name__ == '__main__':
     #testAccessNow()
-    testDailyCount()
+    #testDailyCount()
     #generateJsonConfig()
     #calcRFID()
     #testTimer()
@@ -415,4 +434,5 @@ if __name__ == '__main__':
     #rand_name()
     #testSelect()
     #testCreateAccessData()
+    nextDay()
     pass

@@ -11,6 +11,8 @@ RestartSec=5s
 Type=simple
 WorkingDirectory=/opt/TSVAccess
 ExecStart=/usr/bin/python3 /opt/TSVAccess/TsvAccessModule.py
+#use this for LEDs only (not relais)
+#ExecStart=/usr/bin/python3 /opt/TSVAccess/TsvAccessModule.py -i
 
 [Install]
 WantedBy=multi-user.target
