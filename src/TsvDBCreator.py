@@ -170,6 +170,8 @@ class SetUpTSVDB():
         config_id SMALLINT UNSIGNED
      )   
     """
+    #mode: currently only SHARED: Shold check for alternating locations
+    CONFIG_MODE_SHARED=1
     CONFIGTABLE="Konfig"
     TABLE5 ="""
         CREATE OR REPLACE TABLE Konfig (
@@ -178,7 +180,8 @@ class SetUpTSVDB():
         activity VARCHAR(50),
         paySection VARCHAR(50),
         groups VARCHAR(150),
-        grace_time SMALLINT UNSIGNED
+        grace_time SMALLINT UNSIGNED,
+        mode TINYINT UNSIGNED
         )
         """  
     
@@ -244,12 +247,12 @@ class SetUpTSVDB():
         self.db.createTable(self.TABLE5)
                 
         table=self.CONFIGTABLE
-        fields = ('config_id', 'room', 'activity',"paySection","groups", "grace_time")
+        fields = ('config_id', 'room', 'activity',"paySection","groups", "grace_time","mode")
         entries=[]
-        entries.append((0,LOC_KRAFTRAUM,ACTIVITY_KR,SECTION_FIT, "['KR','ÜL','UKR']",120))
-        entries.append((1,LOC_SPIEGELSAAL,ACTIVITY_GYM,SECTION_FIT, "[GROUP]",3600))
-        entries.append((2,LOC_SPIEGELSAAL,ACTIVITY_SPINNING,SECTION_LA, "[]",3600))
-        entries.append((3,LOC_SAUNA,ACTIVITY_SAUNA,SECTION_SAUNA,"[]",3600*4)) #Login every 4 hours, no logout
+        entries.append((0,LOC_KRAFTRAUM,ACTIVITY_KR,SECTION_FIT, "['KR','ÜL','UKR']",120,0))
+        entries.append((1,LOC_SPIEGELSAAL,ACTIVITY_GYM,SECTION_FIT, "[GROUP]",3600,self.CONFIG_MODE_SHARED))
+        entries.append((2,LOC_SPIEGELSAAL,ACTIVITY_SPINNING,SECTION_LA, "[]",3600,self.CONFIG_MODE_SHARED))
+        entries.append((3,LOC_SAUNA,ACTIVITY_SAUNA,SECTION_SAUNA,"[]",3600*4,0)) #Login every 4 hours, no logout
         self.db.insertMany(table, fields, entries)
         
         table = self.LOCATIONTABLE

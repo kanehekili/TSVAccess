@@ -69,7 +69,7 @@ class RFIDAccessor():
         table1 = self.dbSystem.LOCATIONTABLE
         table2 = self.dbSystem.CONFIGTABLE
         host = socket.gethostname()
-        stmt = "select activity,paySection,groups,grace_time from %s loc JOIN %s conf where loc.config_id=conf.config_id and loc.host_name='%s'"%(table1,table2,host)
+        stmt = "select activity,paySection,groups,grace_time,mode from %s loc JOIN %s conf where loc.config_id=conf.config_id and loc.host_name='%s'"%(table1,table2,host)
         rows = self.db.select(stmt)
         if len(rows) == 0:
             raise Exception("No location data - exiting")
@@ -78,10 +78,12 @@ class RFIDAccessor():
         self.paySection = data[1]
         self.groups = literal_eval(data[2])
         self.gracetime = data[3]
+        self.configShared=data[4]==self.dbSystem.CONFIG_MODE_SHARED
 
     def _controlLocation(self):
         while self.running:
             now = datetime.now()
+
             if now.hour >= self.HOUR_END or now.hour < self.HOUR_START:
                 goal = now.replace(hour=self.HOUR_START,minute=0,second=0,microsecond=0)                
                 if now > goal:
@@ -89,6 +91,7 @@ class RFIDAccessor():
                 dur = (goal-now).seconds                 
             else:
                 dur=120
+
             with self.condLock:
                 Log.info("Next location check in %d sec",dur)
                 self.condLock.wait(dur)
@@ -98,8 +101,11 @@ class RFIDAccessor():
         
     def runDeamon(self):
         self.running = True
-        threading.Thread(target=self._controlLocation, name="LocationChecker").start()
-        Log.info("Deamon started")
+        if self.configShared:
+            threading.Thread(target=self._controlLocation, name="LocationChecker").start()
+            Log.info("Deamon started")
+        else:
+            Log.info("Static config - no location poll")
         while self.running:
             try:
                 rfid = self.reader.read_id()  # int -blocking
