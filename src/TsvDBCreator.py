@@ -19,8 +19,10 @@ import csv,re
 from datetime import datetime
 import json, getopt, sys
 from enum import Enum
-import threading, time, traceback
+import traceback
 from collections import Counter
+import smtplib,ssl
+from email.message import EmailMessage
 
 # codes found on migration
 ACCESSCODES = ["GROUP","ÜL","FFA","KR","JUGGLING","UKR"]
@@ -122,7 +124,12 @@ class SetUpTSVDB():
         USER = dic["USER"]             
         PASSWORD = dic["PASSWORD"]    
         #---------- RegisterModule only -----------
-        PICPATH = dic["PICPATH"]
+        PICPATH = dic.get("PICPATH",None)
+        MAILSERVER=dic.get("MAILSERVER",None)
+        MAILPWD=dic.get("MAILPWD",None)
+        MAILTO=dic.get("MAILTO",None)
+        MAILERROR=dic.get("MAILERROR",None)
+        MAILSENDER=dic.get("MAILSENDER",None)
         
     MAINTABLE ="Mitglieder"
     TABLE1 = """
@@ -279,10 +286,31 @@ class SetUpTSVDB():
         self._fillLocationTable()
         self.close()
 
+
     def close(self):
         if self.db:
             self.db.close()
 
+
+def sendEmail(subject,to,messageText):
+    port = 587  # For starttls
+    smtp_server = SetUpTSVDB.MAILSERVER
+    password = SetUpTSVDB.MAILPWD
+
+    msg = EmailMessage()
+    msg['Subject'] = subject
+    msg['From'] = SetUpTSVDB.MAILSENDER
+    #msg['To'] = "%s@tsv-weilheim.com"%(to)
+    msg['To'] = to
+    msg.set_content(messageText)
+    try:
+        context = ssl.create_default_context()  
+        with smtplib.SMTP(smtp_server, port) as server:
+            server.starttls(context=context)
+            server.login(SetUpTSVDB.MAILSENDER, password)
+            server.send_message(msg) 
+    except:
+        DBTools.Log.error("Mail cound be sent!")
 
 def basicSetup():
     s = SetUpTSVDB(SetUpTSVDB.DATABASE)

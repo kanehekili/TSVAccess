@@ -1,3 +1,3 @@
-{"HOST": "DBHOST", "DB": "TsvDB", "USER": "aUSER", "PASSWORD": "PWD","PICPATH": "TSVPIC"}
+{"HOST": "DBHOST", "DB": "TsvDB", "USER": "aUSER", "PASSWORD": "PWD","PICPATH": "TSVPIC","MAILSENDER":"adminsender@server.x", "MAILSERVER":"mailserver","MAILPWD":"pwd","MAILTO":"receipient@server.x","MAILERROR":"admin@server.x"}
 
 

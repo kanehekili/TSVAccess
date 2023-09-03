@@ -1028,9 +1028,14 @@ class Registration():
         if section is None:
             return
         oldCount = mbr.currentAbo[1]
+        newCount=mbr.abo[1]
         fields = ('mitglied_id', 'section', 'prepaid')
         data = [(mbr.id, section, oldCount + mbr.abo[1])]
-        Log.info("Update ABO prepaid count from %s , %d +%d", section, oldCount,mbr.abo[1])
+        Log.info("Update ABO prepaid count from %s , %d +%d", section, oldCount,newCount)
+        if newCount>0: #stays 0 if old has been changed
+            msg="Mitglied Nr %d (%s %s) \nhat heute ein 10er Abo bestellt - als Erinnerung zum abbuchen \U0001f604"%(mbr.id,mbr.firstName,mbr.lastName)
+            TsvDBCreator.sendEmail("Sauna Abo Daten", self.dbSystem.MAILTO, msg)
+            
         self.db.insertMany(self.dbSystem.BEITRAGTABLE, fields, data)
     
     def readAboData(self, mbr):
@@ -1249,6 +1254,8 @@ class Mitglied():
         return datetime.strftime(self.birthdate, '%d.%m.%Y')
     
     def asDBDate(self, stringDate):
+        if len(stringDate)<6:
+            return None
         return datetime.strptime(stringDate, '%d.%m.%Y')
     
     def primKeyString(self):
