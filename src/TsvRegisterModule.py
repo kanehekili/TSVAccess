@@ -688,7 +688,7 @@ class MainFrame(QtWidgets.QMainWindow):
         if self.photoTaken:
             res = self.model.savePicture(mbr)  # scps the pic to remote and adds uri to db...
             if not res:
-                self.getErrorDialog("Verbindungsfehler", "Bild konnte nicht gespeichert werden", "Bitte den Fehler melden!").show()
+                self.getErrorDialog("Verbindungsfehler", "Bild konnte nicht gespeichert werden", "Der Fehler wurde per eMail gemeldet!").show()
                 self.photoTaken = False
                 return  # only all or nothing
         QTimer.singleShot(0, lambda: self.model.updateMember(mbr))
@@ -747,6 +747,8 @@ class MainFrame(QtWidgets.QMainWindow):
         spacer = QtWidgets.QSpacerItem(300, 50, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
         layout = dlg.layout()
         layout.addItem(spacer, layout.rowCount(), 0, 1, layout.columnCount())
+        msg=infoText+"\n DETAIL:"+detailedText
+        self.model.mailError(msg)
         return dlg
     
     def getMessageDialog(self, text, infoText):
@@ -792,7 +794,7 @@ class MainFrame(QtWidgets.QMainWindow):
     def _displayMemberFace(self, member):
         raw = self.model.loadPicture(member)
         if raw == None:
-            self.getErrorDialog("Verbindungsproblem", "Server ist nicht erreichbar", "Der Server, der die Bilder  liefern soll ist nicht erreichbar - Bitte umgehend melden").show()
+            self.getErrorDialog("Verbindungsproblem", "Server ist nicht erreichbar", "Der Server, der die Bilder  liefern soll ist nicht erreichbar - Der Fehler wurde per eMail gemeldet").show()
             return False
         try:
             self.model.cameraOn = False
@@ -827,7 +829,7 @@ class MainFrame(QtWidgets.QMainWindow):
         res = self.model.connect()
         QApplication.restoreOverrideCursor()
         if not res:
-            dlg = self.getErrorDialog("Datenbank Fehler ", "Datenbank nicht gefunden", "Es besteht keine Verbindung zur Datenbank. Bitte den Fehler melden!")
+            dlg = self.getErrorDialog("Datenbank Fehler ", "Datenbank nicht gefunden", "Es besteht keine Verbindung zur Datenbank. Der Fehler wurde per eMail gemeldet!")
             dlg.buttonClicked.connect(self._onErrorDialogClicked)
             dlg.show()
         else:
@@ -1037,7 +1039,7 @@ class Registration():
             self.dbSystem.sendEmail("Sauna Abo Daten", True, msg)
             
         self.db.insertMany(self.dbSystem.BEITRAGTABLE, fields, data)
-    
+
     def readAboData(self, mbr):
         section = TsvDBCreator.PREPAID_INDICATOR[0]  # currently only one
         stmt = "select prepaid from BEITRAG where mitglied_id=%d and section='%s'" % (mbr.id, section)
@@ -1047,6 +1049,9 @@ class Registration():
             return
         mbr.currentAbo = (section, rows[0][0])
         Log.info("Abo count:%d", rows[0][0])
+    
+    def mailError(self,msg):
+        self.dbSystem.sendEmail("Registration Error Msg", False, msg)
     
     def startCamera(self):
         self.cam = OpenCV3.getCamera(self.camIndex)
