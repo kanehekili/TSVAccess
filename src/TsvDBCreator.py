@@ -125,11 +125,6 @@ class SetUpTSVDB():
         PASSWORD = dic["PASSWORD"]    
         #---------- RegisterModule only -----------
         PICPATH = dic.get("PICPATH",None)
-        MAILSERVER=dic.get("MAILSERVER",None)
-        MAILPWD=dic.get("MAILPWD",None)
-        MAILTO=dic.get("MAILTO",None)
-        MAILERROR=dic.get("MAILERROR",None)
-        MAILSENDER=dic.get("MAILSENDER",None)
         
     MAINTABLE ="Mitglieder"
     TABLE1 = """
@@ -199,6 +194,20 @@ class SetUpTSVDB():
        remark VARCHAR(50)
     )
     """    
+
+    MAILTABLE="MailConfig"
+    TABLE7 ="""
+    CREATE OR REPLACE TABLE MailConfig (
+       server VARCHAR(50),
+       port SMALLINT UNSIGNED,
+       sender VARCHAR(50),
+       passwd VARCHAR(50),
+       mailTo VARCHAR(50),
+       mailErr VARCHAR(50),
+       addText VARCHAR(150)
+    )
+    """    
+
     
     ######
     # HOOK
@@ -269,6 +278,26 @@ class SetUpTSVDB():
         entries.append(("tsvaccess2",3))
         entries.append(("msi",0))
         self.db.insertMany(table, fields, entries)     
+    
+    def _fillMailTable(self):
+        self.db.createTable(self.TABLE7)
+        
+        path = OSTools.getLocalPath(__file__)
+        cfg = OSTools.joinPathes(path, "data", "mail.json")
+        with open(cfg, "r") as jr:
+            dic = json.load(jr)
+            server=dic["MAILSERVER"]
+            port=dic["MAILPORT"]
+            passwd=dic["MAILPWD"]
+            mailTo=dic["MAILTO"]
+            mailErr=dic["MAILERROR"]
+            sender=dic["MAILSENDER"]
+            
+        fields=('server','port','sender','passwd','mailTo','mailErr','addText')
+        data=[(server,port,sender,passwd,mailTo,mailErr,"TSV Access")]    
+        table=self.MAILTABLE
+        self.db.insertMany(table, fields, data)
+        
         
     def updateDatabase(self,tsvMembers):
         table = self.MAINTABLE
@@ -284,6 +313,7 @@ class SetUpTSVDB():
         table=self.BEITRAGTABLE
         self.db.insertMany(table, fields, sections)
         self._fillLocationTable()
+        self._fillMailTable()
         self.close()
 
 
@@ -292,25 +322,40 @@ class SetUpTSVDB():
             self.db.close()
 
 
-def sendEmail(subject,to,messageText):
-    port = 587  # For starttls
-    smtp_server = SetUpTSVDB.MAILSERVER
-    password = SetUpTSVDB.MAILPWD
-
-    msg = EmailMessage()
-    msg['Subject'] = subject
-    msg['From'] = SetUpTSVDB.MAILSENDER
-    #msg['To'] = "%s@tsv-weilheim.com"%(to)
-    msg['To'] = to
-    msg.set_content(messageText)
-    try:
-        context = ssl.create_default_context()  
-        with smtplib.SMTP(smtp_server, port) as server:
-            server.starttls(context=context)
-            server.login(SetUpTSVDB.MAILSENDER, password)
-            server.send_message(msg) 
-    except:
-        DBTools.Log.error("Mail cound be sent!")
+    def sendEmail(self,subject,isMsg,messageText):
+        stmt="select * from %s"%(self.MAILTABLE)
+        rows = self.db.select(stmt)
+        #'server'0,'port'1,'sender'2,'passwd'3,'mailTo'4,'mailErr'5,'addText'6)
+        if len(rows)==0:
+            self.log.warning("No mail config - aborting")
+            return
+        data=rows[0]
+        smtp_server = data[0]
+        port = data[1]
+        sender=data[2]
+        password =data[3] 
+        if isMsg:
+            to=data[4]
+        else:
+            to=data[5]
+        footer=data[6]
+        msg = EmailMessage()
+        msg['Subject'] = subject
+        msg['From'] = sender
+        #msg['To'] = "%s@tsv-weilheim.com"%(to)
+        msg['To'] = to
+        fn=to.split('.')[0]
+        fullMessage="Griasdi %s,\n\n%s\n\n%s"%(fn,messageText,footer)
+        
+        msg.set_content(fullMessage)
+        try:
+            context = ssl.create_default_context()  
+            with smtplib.SMTP(smtp_server, port) as server:
+                server.starttls(context=context)
+                server.login(sender, password)
+                server.send_message(msg) 
+        except:
+            DBTools.Log.error("Mail could not be sent!")
 
 def basicSetup():
     s = SetUpTSVDB(SetUpTSVDB.DATABASE)
@@ -529,11 +574,19 @@ def updateLocationTable():
         s.close()
 #TODO switchLocation(host,loctableID)    
 
+def updateMailTable():
+    s = SetUpTSVDB("TsvDB")
+    try:
+        s._fillMailTable()
+    except Exception:
+        traceback.print_exc()
+    finally:
+        s.close()
     
 def parseOptions(args):
     
     try:
-        opts, args = getopt.getopt(args[1:], "p:v:rlst:", ["persist=", "verify=", "reset", "updateLocation", "updateScheme","transponder"])
+        opts, args = getopt.getopt(args[1:], "p:v:rlmst:", ["persist=", "verify=", "reset", "updateLocation", "updateMail" "updateScheme","transponder"])
         if len(opts) == 0:
             printUsage()
     except getopt.GetoptError as err:
@@ -549,6 +602,8 @@ def parseOptions(args):
             importCSV(a)
         elif o in ("-l", "--updateLocation"):
             updateLocationTable()
+        elif o in ("-m", "--updateMail"):
+            updateMailTable()            
         elif o in ("-s", "--updateScheme"):
             updateScheme() #Removes data from Zutritt and Beitrag! 
         elif o in ("-t", "--transponder"):

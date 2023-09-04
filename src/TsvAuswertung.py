@@ -125,7 +125,9 @@ def statisticsTemplate(location):
     return render_template('index.html', graphJSON=graphJSON, logo_path=logo_path, dynamic_location=location)    
     
 
-@app.route('/config')
+@app.route('/config',methods=["GET", "POST"])
+#https://www.digitalocean.com/community/tutorials/how-to-use-web-forms-in-a-flask-application
+#basic: https://plainenglish.io/blog/how-to-create-a-basic-form-in-python-flask-af966ee493fa
 def manageConfiguration():
     logo_path = "tsv_logo_100.png"
     configHeaders=['ID','Raum','Aktivität','Abteilung','Merkmale']
@@ -138,6 +140,7 @@ def manageConfiguration():
             entry[fields[idx]]=row[idx]
         configData.append(entry)
     
+    #just open a form
     locHeaders=['Gerät','Konfigurations-ID']
     fields=['host_name','config_id']
     locRows=barModel.locationTable()

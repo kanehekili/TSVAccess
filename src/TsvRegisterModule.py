@@ -1034,7 +1034,7 @@ class Registration():
         Log.info("Update ABO prepaid count from %s , %d +%d", section, oldCount,newCount)
         if newCount>0: #stays 0 if old has been changed
             msg="Mitglied Nr %d (%s %s) \nhat heute ein 10er Abo bestellt - als Erinnerung zum abbuchen \U0001f604"%(mbr.id,mbr.firstName,mbr.lastName)
-            TsvDBCreator.sendEmail("Sauna Abo Daten", self.dbSystem.MAILTO, msg)
+            self.dbSystem.sendEmail("Sauna Abo Daten", True, msg)
             
         self.db.insertMany(self.dbSystem.BEITRAGTABLE, fields, data)
     
