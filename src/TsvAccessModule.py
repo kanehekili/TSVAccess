@@ -128,7 +128,12 @@ class RFIDAccessor():
         # we just read the number... 
         if rfid:
             if rfid in self.eastereggs:
-                self.gate.welcome1()
+                if self.ledCounter:
+                    self.ledCounter.text("CHEF") 
+                if self.db.isConnected():
+                    self.gate.welcome1()
+                else:
+                    self.gate.signalAlarm()                  
                 return
             #rfid & paysection must fit ->if section in PREPAID-> decrease count
             stmt = "SELECT id,access,flag,payuntil_date,prepaid from " + self.dbSystem.MAINTABLE + " m JOIN " + self.dbSystem.BEITRAGTABLE + " b ON m.id=b.mitglied_id where m.uuid=" + str(rfid) + " and b.section='" + self.paySection + "'"
