@@ -33,6 +33,7 @@ class RFIDAccessor():
     HOUR_END=22
     def __init__(self,invertGPIO):
         self.eastereggs = [2229782266]
+        self.writeTimer=None
         # we might use a time between 8 and 22:00self.latestLocCheck=None
         self.condLock = threading.Condition()
         if RaspiTools.RASPI:
@@ -109,7 +110,8 @@ class RFIDAccessor():
         while self.running:
             try:
                 rfid = self.reader.read_id()  # int -blocking
-                self.verifyAccess(rfid)    
+                self.verifyAccess(rfid)  
+                self.__syncWriteTimer()  
             except KeyboardInterrupt:
                 print("Exit")
                 return
@@ -143,7 +145,13 @@ class RFIDAccessor():
                 self.gate.signalForbidden()
                 Log.info("Reject:%d", rfid)
         else:
-            Log.warning("Invalid token %s", rfid)    
+            Log.warning("Invalid token %s", rfid)   
+        
+    def __syncWriteTimer(self):
+        if self.writeTimer is None:
+            return
+        self.writeTimer.join()
+        self.writeTimer=None 
         
     def validateRow(self, rfid, row):
         if row is None or len(row) == 0:
@@ -160,7 +168,8 @@ class RFIDAccessor():
         if not self.checkPrepaid(prepaidCount): 
             return False
         # Allowd. That person needs an entry
-        Timer(0, self.__forkWriteAccess, [key,prepaidCount]).start()
+        self.writeTimer=Timer(0, self.__forkWriteAccess, [key,prepaidCount])
+        self.writeTimer.start()
         
         return True        
 

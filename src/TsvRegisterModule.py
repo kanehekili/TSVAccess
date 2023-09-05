@@ -594,6 +594,7 @@ class MainFrame(QtWidgets.QMainWindow):
                 self.cameraThread.showFrame(self.model.getFrame())
             else:
                 self.getMessageDialog("Kein Photo gespeichert!", "Es konnte kein Gesicht erkannt werden \nBitte nochmals probieren").show()
+                self.photoTaken = False
             self.updatePhotoButton()
         else:
             self._initCapture()
@@ -668,7 +669,7 @@ class MainFrame(QtWidgets.QMainWindow):
             msg = msg + "RFID Code ? \n"
            
         if len(msg) > 0: 
-            self.getErrorDialog("Eingabefehler", "Bitte alle Felder ausfüllen", msg).show()
+            self.getErrorDialog("Eingabefehler", "Bitte alle Felder ausfüllen", msg,mail=False).show()
             Log.warning("Data error:%s", msg)
             return
 
@@ -735,7 +736,7 @@ class MainFrame(QtWidgets.QMainWindow):
         layout.addWidget(label)
         return dlg
 
-    def getErrorDialog(self, text, infoText, detailedText):
+    def getErrorDialog(self, text, infoText, detailedText,mail=True):
         dlg = QtWidgets.QMessageBox(self)
         dlg.setIcon(QtWidgets.QMessageBox.Warning)
         dlg.setWindowModality(QtCore.Qt.WindowModal)
@@ -748,7 +749,8 @@ class MainFrame(QtWidgets.QMainWindow):
         layout = dlg.layout()
         layout.addItem(spacer, layout.rowCount(), 0, 1, layout.columnCount())
         msg=infoText+"\n DETAIL:"+detailedText
-        self.model.mailError(msg)
+        if mail:
+            self.model.mailError(msg)
         return dlg
     
     def getMessageDialog(self, text, infoText):
@@ -829,7 +831,7 @@ class MainFrame(QtWidgets.QMainWindow):
         res = self.model.connect()
         QApplication.restoreOverrideCursor()
         if not res:
-            dlg = self.getErrorDialog("Datenbank Fehler ", "Datenbank nicht gefunden", "Es besteht keine Verbindung zur Datenbank. Der Fehler wurde per eMail gemeldet!")
+            dlg = self.getErrorDialog("Datenbank Fehler ", "Datenbank nicht gefunden", "Es besteht keine Verbindung zur Datenbank. Bitte melden!",mail=False)
             dlg.buttonClicked.connect(self._onErrorDialogClicked)
             dlg.show()
         else:
@@ -1169,7 +1171,7 @@ class Registration():
         saved = Registration.SAVEPIC       
         targetPath = SetUpTSVDB.PICPATH
         pic = member.lastName + "-" + member.primKeyString() + ".png"
-        member.picpath = pic
+        
         host = SetUpTSVDB.HOST
         response = None
         try:
@@ -1180,7 +1182,10 @@ class Registration():
         except:
             Log.error("Pic server not available:")
             return False;
-        return response != None and response.status_code == 200
+        saveOK = response != None and response.status_code == 200
+        if saveOK:
+           member.picpath = pic
+        return saveOK 
      
     '''scp example - for other use..    
     def savePicture2(self, member):
