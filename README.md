@@ -1,4 +1,4 @@
-# TSVAccess
+# TSVAccess  ![Screenshot](https://github.com/kanehekili/TSVAccess/blob/main/src/web/static/TSV-big.png)
 Area access for the TSV Weilheim
 
 The TSV Weilheim is one of largest "Sportvereine" in the bavarian "Oberland". This project implements an access system to certain areas (like fitnesse == gym) using embedded devices (raspi) and linux servers. 
@@ -6,6 +6,7 @@ Currently the means of identification is RFID. Basically two devices are used: a
 
 The "access" devices are configurable. Therfore it is possible to have one or more devices in the system, that control different "courses or activities".
 
+This is a Linux project. No windoze support.
 
 ## TsvRegisterModule
 This module ist used for the registration of members. It can be used in conjunction of an existing member database, but users can be created without it.
@@ -23,6 +24,18 @@ The module will register a photo, the name and a unique id (primary key). This a
 * python-opencv
 * python-mysql-connector
 * python-requests
+
+The app has been written in QT5. To get the original design in GTK env you need to:
+* install qt5ct
+* Set interface to gtk2 in the qt5ct app
+* Select a theme that supports gtk2
+* install gtk-engine-murrine
+* install qt5-styleplugins
+* Set in /etc/environment:
+QT_QPA_PLATFORMTHEME=gtk2 or QT_QPA_PLATFORMTHEME=qt5ct
+(depends on your distro)
+
+There is a basic support for windows, but not currently tested or in any way supported.
 
 Only a member checked in with this module will be able to access the system!
 ![Screenshot](https://github.com/kanehekili/TSVAccess/blob/main/TSV-Register.png)
