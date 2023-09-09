@@ -1,4 +1,4 @@
-# TSVAccess  ![Screenshot](https://github.com/kanehekili/TSVAccess/blob/main/src/web/static/TSV-big.png)
+# TSVAccess  ![Screenshot](https://github.com/kanehekili/TSVAccess/blob/main/src/web/static/tsv_logo_100.png)
 Area access for the TSV Weilheim
 
 The TSV Weilheim is one of largest "Sportvereine" in the bavarian "Oberland". This project implements an access system to certain areas (like fitnesse == gym) using embedded devices (raspi) and linux servers. 
