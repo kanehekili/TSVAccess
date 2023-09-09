@@ -50,8 +50,10 @@ class OpenCV3():
     @classmethod
     def getBestCameraIndex(cls):
         best = (-1, -1)  # indx,w*h
-        for i in range(8, 0, -1):
+        for i in range(4, 0, -1):
             vc = cv2.VideoCapture(i, cv2.CAP_V4L2)
+            #vc.set(cv2.CAP_PROP_FRAME_WIDTH, 800)
+            #vc.set(cv2.CAP_PROP_FRAME_HEIGHT, 600)
             if vc.isOpened():
                 rval, frame = vc.read()
                 if rval:
@@ -64,6 +66,7 @@ class OpenCV3():
                     print("Camera ", i, "found, no read")                    
             else:
                 print("Camera ", i, "fails")
+            vc.release()
         camIndex = best[0]
         if camIndex < 0:
             camIndex = 0
@@ -76,6 +79,8 @@ class OpenCV3():
         if cap.isOpened():
             rval, _frame = cap.read()
             if rval: 
+                cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+                cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)#least common nominator
                 return cap
         return None
 
@@ -378,6 +383,10 @@ class MainFrame(QtWidgets.QMainWindow):
         self.ui_PhotoButton.clicked.connect(self._onPhotoButtonClicked)
         self.ui_PhotoButton.setToolTip("Wechsel zwischen Video und Photo machen")
         
+        self.ui_FaceCheck=QtWidgets.QCheckBox("Face")
+        self.ui_FaceCheck.stateChanged.connect(self._onFaceChange)
+        self.ui_FaceCheck.setCheckState(QtCore.Qt.Checked)
+        
         self.ui_SearchLabel = QtWidgets.QLabel(self)
         self.ui_SearchLabel.setText("Suche:")
         
@@ -470,7 +479,6 @@ class MainFrame(QtWidgets.QMainWindow):
     def eventFilter(self,widget,event):
         if widget != self.ui_SearchEdit:
             if event.type()==QtCore.QEvent.FocusIn:
-                print("Focus in")
                 self.ui_SearchEdit.clearFocus()
                 #return False
             #return False
@@ -529,9 +537,11 @@ class MainFrame(QtWidgets.QMainWindow):
         gridLayout.addWidget(self.ui_VideoFrame, 0, 1, 4, -1);
 
         gridLayout.addWidget(self.ui_SearchLabel, 4, 1, 1, 1)
-        gridLayout.addWidget(self.ui_SearchEdit, 4, 2, 1, 3)
+        gridLayout.addWidget(self.ui_SearchEdit, 4, 2, 1, 4)
         
-        gridLayout.addWidget(self.ui_PhotoButton, 4, 5, 1, 1)
+        gridLayout.addWidget(self.ui_FaceCheck, 4, 6, 1, 1)
+        gridLayout.addWidget(self.ui_PhotoButton, 4, 7, 1, 1)
+        
         
         line = QtWidgets.QFrame();
         line.setFrameShape(QtWidgets.QFrame.HLine);
@@ -540,20 +550,20 @@ class MainFrame(QtWidgets.QMainWindow):
         gridLayout.addWidget(line, 5, 1, 1, -1)
         
         gridLayout.addWidget(self.ui_IDLabel, 7, 1, 1, 1)
-        gridLayout.addWidget(self.ui_IDEdit, 7, 2, 1, 4)
+        gridLayout.addWidget(self.ui_IDEdit, 7, 2, 1, 5)
 
         gridLayout.addWidget(self.ui_FirstNameLabel, 8, 1, 1, 1)
-        gridLayout.addWidget(self.ui_FirstNameEdit, 8, 2, 1, 4)
+        gridLayout.addWidget(self.ui_FirstNameEdit, 8, 2, 1, 5)
 
         gridLayout.addWidget(self.ui_LastNameLabel, 9, 1, 1, 1)
-        gridLayout.addWidget(self.ui_LastNameEdit, 9, 2, 1, 4)
+        gridLayout.addWidget(self.ui_LastNameEdit, 9, 2, 1, 5)
 
         gridLayout.addWidget(self.ui_RFIDLabel, 10, 1, 1, 1)
-        gridLayout.addWidget(self.ui_RFID, 10, 2, 1, 4)
+        gridLayout.addWidget(self.ui_RFID, 10, 2, 1, 5)
         
         gridLayout.addWidget(self.ui_AccessLabel, 11, 1, 1, 1)
         gridLayout.addWidget(self.ui_AccessCombo, 11, 2, 1, 2)
-        gridLayout.addWidget(self.ui_BirthLabel, 11, 4, 1, 2)
+        gridLayout.addWidget(self.ui_BirthLabel, 11, 4, 1, 3)
         
         line = QtWidgets.QFrame();
         line.setFrameShape(QtWidgets.QFrame.HLine);
@@ -562,8 +572,8 @@ class MainFrame(QtWidgets.QMainWindow):
         gridLayout.addWidget(line, 12, 1, 1, -1)
         
         gridLayout.addWidget(self.ui_ExitButton, 13, 1, 1, 1)
-        gridLayout.addWidget(self.ui_AboButton, 13, 3, 1, 1)
-        gridLayout.addWidget(self.ui_CreateButton, 13, 5, 1, 1)
+        gridLayout.addWidget(self.ui_AboButton, 13, 4, 1, 1,QtCore.Qt.AlignCenter)
+        gridLayout.addWidget(self.ui_CreateButton, 13, 7, 1, 1,QtCore.Qt.AlignRight)
         
         gridLayout.setRowStretch(1, 1)
 
@@ -599,6 +609,14 @@ class MainFrame(QtWidgets.QMainWindow):
         else:
             self._initCapture()
 
+
+    @QtCore.pyqtSlot(int)
+    def _onFaceChange(self,state):
+        if state==QtCore.Qt.Checked:
+            self.model.faceActive=True
+        else:
+            self.model.faceActive=False
+
     @QtCore.pyqtSlot(int)
     def _onSearchChanged(self, idx):
         mbr = self.ui_SearchEdit.itemData(idx)
@@ -610,6 +628,8 @@ class MainFrame(QtWidgets.QMainWindow):
             
             if not (mbr.picpath and self._displayMemberFace(mbr)):
                 self._initCapture()  # fastCam !TODO NO just turn on cam...
+            else:
+                self.photoTaken=False
             self.updateAboButton(mbr)
 
     @QtCore.pyqtSlot()
@@ -637,7 +657,7 @@ class MainFrame(QtWidgets.QMainWindow):
         if mbr:
             testId = mbr.id
         if not self.model.verifyRfid(rfid, testId):
-            d = self.getErrorDialog("** RFID **", "Ungültige RFID, bitte einen anderen Token benutzen", "In der Datenbank existiert bereits eine solche RFID Nummer und kann nicht nochmal vergeben werden")
+            d = self.getErrorDialog("** RFID **", "Ungültige RFID, bitte einen anderen Token benutzen", "In der Datenbank existiert bereits die RFID Nummer %s und kann nicht nochmal vergeben werden. Nimm den Token und leg ihn weg!"%(rfid))
             d.show()
             self.ui_RFID.clear()
 
@@ -695,7 +715,6 @@ class MainFrame(QtWidgets.QMainWindow):
         QTimer.singleShot(0, lambda: self.model.updateMember(mbr))
         # self.model.updateMember(mbr)
         # self.model.printMemberCard(mbr)
-        self.photoTaken = False
         self._clearFields()
 
     @QtCore.pyqtSlot()
@@ -718,6 +737,7 @@ class MainFrame(QtWidgets.QMainWindow):
         self.ui_RFID.clear()
         self.model.cameraOn = False
         self.capturing = False
+        self.photoTaken = False
         self.updatePhotoButton()
         self.updateAboButton(None)
         self.cameraThread.showFrame(None)  # Icon
@@ -812,6 +832,7 @@ class MainFrame(QtWidgets.QMainWindow):
     
     def _initCapture(self):
         self.capturing = True
+        self.photoTaken=False
         QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         self.updatePhotoButton()
         self.cameraThread.start()
@@ -976,6 +997,7 @@ class Registration():
         self.cam = None
         self.dimension = [0, 0]
         self.aaTransponders = []
+        self.faceActive=True
 
     def connect(self):
         self.dbSystem = SetUpTSVDB(SetUpTSVDB.DATABASE)
@@ -1009,7 +1031,6 @@ class Registration():
         # stmt = "SELECT id,first_name,last_name from " + self.dbSystem.MAINTABLE
         stmt = "SELECT " + fields + " from " + self.dbSystem.MAINTABLE
         col = []
-        # currently: [(1234, 'Merti', 'quanz'), (1236, 'Cora', 'Schnell')]
         res = self.db.select(stmt)
         for titem in res:
             # id(int) (str) (str) (str) date! int
@@ -1056,6 +1077,8 @@ class Registration():
         self.dbSystem.sendEmail("Registration Error Msg", False, msg)
     
     def startCamera(self):
+        if self.camIndex==-1:
+            self.camIndex = OpenCV3.getBestCameraIndex()
         self.cam = OpenCV3.getCamera(self.camIndex)
         Log.info("cam found")
         self.cameraStatus = None       
@@ -1076,6 +1099,7 @@ class Registration():
             return
         cap = self.cam    
         self.currentFrame = None
+        fixFrame=[[230,150,180,180]] #based on a 640@480 resolution...
         
         # Loading the required haar-cascade xml classifier file
         # TODO won't work on windows add it locally: https://github.com/opencv/opencv/tree/master/data/haarcascades
@@ -1095,8 +1119,12 @@ class Registration():
           
                 # Applying the face detection method on the grayscale image
                 # faces_rect = haar_cascade.detectMultiScale(gray_img,scaleFactor=1.1, minNeighbors=9)
-                faces_rect = haar_cascade.detectMultiScale(gray_img, scaleFactor=1.2, minNeighbors=7, minSize=(100, 120))
+                if self.faceActive:
+                    faces_rect = haar_cascade.detectMultiScale(gray_img, scaleFactor=1.2, minNeighbors=7, minSize=(100, 120))
+                else:
+                    faces_rect = fixFrame
                 # Iterating through rectangles of detected faces
+                
                 for (x, y, w, h) in faces_rect:
                     offsetX = round(w / 2)
                     offsetY = round(h / 2)
@@ -1137,8 +1165,8 @@ class Registration():
         y = self.borders[1]
         w = self.borders[2]
         h = self.borders[3]
-        #Log.info("Crop photo dim: %d/%d > %d/%d", x, y, w, h)
-        self.croppedPic = cv2.cvtColor(self.currentFrame[y:y + h, x:x + w].copy(),cv2.COLOR_RGB2BGR)
+        conv=self.currentFrame[y:y + h, x:x + w]
+        self.croppedPic = cv2.cvtColor(conv,cv2.COLOR_RGB2BGR)
         cv2.imwrite(path, self.croppedPic) #save picture needs that
         return True   
 
@@ -1184,7 +1212,7 @@ class Registration():
             return False;
         saveOK = response != None and response.status_code == 200
         if saveOK:
-           member.picpath = pic
+            member.picpath = pic
         return saveOK 
      
     '''scp example - for other use..    
@@ -1222,9 +1250,6 @@ class Registration():
         # check if rfid  alreay exists ->False
         stmt = "SELECT id from " + self.dbSystem.MAINTABLE + " where uuid=" + rfidString
         res = self.db.select(stmt)
-        if res is None:
-            Log.warning("invalid rfid:%s", rfidString)
-            return False            
         if len(res) > 0:
             if res[0][0] == testId:
                 return True  # it belongs to him..
@@ -1237,6 +1262,7 @@ class Mitglied():
     FIELD_DEF = ('id', 'first_name', 'last_name', 'access', 'birth_date', 'picpath', 'uuid', 'flag')
     FIELD_SAVE_DEF = ('id', 'first_name', 'last_name', 'access', 'picpath', 'uuid', 'flag')
 
+    #                  id(int) (str) (str) (str) date!      int
     def __init__(self, mid_int, fn, ln, access, birthdate, rfid_int):  # id, firstname, lastname, DOB, access1, access2
         # special handling
         self.picpath = None
@@ -1300,7 +1326,7 @@ def handle_exception(exc_type, exc_value, exc_traceback):
 def parse():
     parser = argparse.ArgumentParser(description="Registration")
     parser.add_argument('-s', dest="searchCamera", action='store_true', help="Search for a camera")
-    parser.add_argument('-c', dest="setCamera", type=int, default=0, help="set a camera index")
+    parser.add_argument('-c', dest="setCamera", type=int, default=-1, help="set a camera index")
     parser.add_argument('-d', dest="debug", action='store_true', help="Debug logs")
     return parser.parse_args()    
 

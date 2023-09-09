@@ -15,7 +15,7 @@ print(os.environ.get('secretHost'))
 
 import DBTools
 from DBTools import Connector, OSTools
-import csv,re
+import csv,re,socket
 from datetime import datetime
 import json, getopt, sys
 from enum import Enum
@@ -336,16 +336,18 @@ class SetUpTSVDB():
         password =data[3] 
         if isMsg:
             to=data[4]
+            origin=""
         else:
             to=data[5]
+            origin=socket.gethostname()
+            
         footer=data[6]
         msg = EmailMessage()
         msg['Subject'] = subject
         msg['From'] = sender
-        #msg['To'] = "%s@tsv-weilheim.com"%(to)
         msg['To'] = to
         fn=to.split('.')[0]
-        fullMessage="Griasdi %s,\n\n%s\n\n%s"%(fn,messageText,footer)
+        fullMessage="Griasdi %s,\n\n%s\n%s\n%s"%(fn,messageText,origin,footer)
         
         msg.set_content(fullMessage)
         try:
@@ -459,8 +461,8 @@ def updateAssaAbloy(filename):
             if token[0]=='Valid':
                 val=token[1][:8].replace('ﬀ',"ff")
                 active.append(val)
-                bigInt=int(val,16)
-                rfid=_convert(bigInt)
+                #bigInt=int(val,16)
+                rfid=_convertMSB(val)#str
                 print(">%s = %d"%(val,rfid))
                 final.append((str(rfid),val))
             else:
@@ -474,15 +476,15 @@ def updateAssaAbloy(filename):
     for x in blocked:
         if x in active:
             print("Blocked & active:%s"%(x))
-    
 
-def _convert(bigInt):
-    if not bigInt:
+
+def _convertMSB(hexStr):
+    if not hexStr:
         return 0
-    rbytes = bigInt.to_bytes(5)
-    tmp = rbytes[:-1][::-1]  # little to big endian
+    tmpBytes=bytes.fromhex(hexStr)
+    tmp=bytearray(tmpBytes)
+    tmp.reverse()
     return int.from_bytes(tmp)
-
 
 class TsvMember():
     PAYOK="-"
