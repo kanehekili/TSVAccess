@@ -449,6 +449,11 @@ def importCSV(filename):
 
 def updateAssaAbloy(filename):
     #filename="/home/matze/Documents/TSV/AssaAbloy/Tranponder1.txt"
+    '''
+    Text is created with:
+    pdfgrep Valid SCALA-transponders.pdf >Tranponder1.txt
+    pdfgrep Blocked SCALA-transponders.pdf >>Tranponder1.txt
+    '''
     s = SetUpTSVDB(SetUpTSVDB.DATABASE)
     blocked=[]
     active=[]
@@ -461,7 +466,6 @@ def updateAssaAbloy(filename):
             if token[0]=='Valid':
                 val=token[1][:8].replace('ﬀ',"ff")
                 active.append(val)
-                #bigInt=int(val,16)
                 rfid=_convertMSB(val)#str
                 print(">%s = %d"%(val,rfid))
                 final.append((str(rfid),val))
