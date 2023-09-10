@@ -9,6 +9,7 @@ print pic +code
 add that user to the TsvDB
 @author: matze
 '''
+from PyQt5.Qt import QGuiApplication
 '''
 TODO -read directly from usb - we need the event to pop up...
 https://stackoverflow.com/questions/67017165/read-data-from-usb-rfid-reader-using-python
@@ -355,6 +356,7 @@ class MainFrame(QtWidgets.QMainWindow):
         self.qtQueueRunning = False
         self.capturing = False
         self.photoTaken = False
+        self.mbrPhoto=None
         
         super(MainFrame, self).__init__()
         self.setWindowIcon(getAppIcon())
@@ -472,10 +474,18 @@ class MainFrame(QtWidgets.QMainWindow):
         
         # Without central widget it won't work
         wid = QtWidgets.QWidget(self)
-        self.setCentralWidget(wid)        
+        self.setCentralWidget(wid)    
+        #TODO: self.resize
         wid.setLayout(box)
-        self.adjustSize()
+        self.resize(621, 755) #fits for 640@480 camera resolution
 
+    '''
+    #Trace to get current win size
+    def resizeEvent(self, event):
+        print("Window has been resized",event.size())
+        QtWidgets.QMainWindow.resizeEvent(self, event)
+    '''
+        
     def eventFilter(self,widget,event):
         if widget != self.ui_SearchEdit:
             if event.type()==QtCore.QEvent.FocusIn:
@@ -522,9 +532,10 @@ class MainFrame(QtWidgets.QMainWindow):
 
     # fill the search combo
     def fillSearchCombo(self, memberList):
+        sortedList =sorted(memberList, key=lambda mbr: mbr.searchName())
         self.ui_SearchEdit.clear()
         self.ui_SearchEdit.addItem("", None)
-        for member in memberList:
+        for member in sortedList:
             entry = member.searchName()
             self.ui_SearchEdit.addItem(entry, member)
             
@@ -583,7 +594,8 @@ class MainFrame(QtWidgets.QMainWindow):
         self.ui_IDEdit.setText(mbr.primKeyString())
         self.ui_FirstNameEdit.setText(mbr.firstName)
         self.ui_LastNameEdit.setText(mbr.lastName)
-        self.ui_AccessCombo.setCurrentText(mbr.access)
+        acc= '-' if not mbr.access else mbr.access 
+        self.ui_AccessCombo.setCurrentText(acc)
         self.ui_BirthLabel.setText(mbr.birthdayString())
         self.ui_RFID.setText(mbr.rfidString())
         # self.ui_AccessCombo.do-sth    
@@ -627,7 +639,7 @@ class MainFrame(QtWidgets.QMainWindow):
             QTimer.singleShot(1, self.ui_RFID.setFocus)
             
             if not (mbr.picpath and self._displayMemberFace(mbr)):
-                self._initCapture()  # fastCam !TODO NO just turn on cam...
+                self._initCapture()  #start capturing again
             else:
                 self.photoTaken=False
             self.updateAboButton(mbr)
@@ -693,6 +705,7 @@ class MainFrame(QtWidgets.QMainWindow):
             Log.warning("Data error:%s", msg)
             return
 
+        QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         mid = int(idstr)
         rfid_int = int(rfid)
         # we should update in the correct form
@@ -711,10 +724,12 @@ class MainFrame(QtWidgets.QMainWindow):
             if not res:
                 self.getErrorDialog("Verbindungsfehler", "Bild konnte nicht gespeichert werden", "Der Fehler wurde per eMail gemeldet!").show()
                 self.photoTaken = False
+                QApplication.restoreOverrideCursor()
                 return  # only all or nothing
         QTimer.singleShot(0, lambda: self.model.updateMember(mbr))
         # self.model.updateMember(mbr)
         # self.model.printMemberCard(mbr)
+        QApplication.restoreOverrideCursor()
         self._clearFields()
 
     @QtCore.pyqtSlot()
@@ -811,7 +826,15 @@ class MainFrame(QtWidgets.QMainWindow):
         
         self.cameraThread = CameraThread(self.model.activateCamera)
         self.cameraThread.signal.connect(self._displayFrame)
+        self.cameraThread.finished.connect(self._handleFramesDone)
         self._initModel()
+    
+    @QtCore.pyqtSlot()
+    def _handleFramesDone(self):
+        if self.mbrPhoto:
+            self.ui_VideoFrame.showImage(self.mbrPhoto)
+            self.updatePhotoButton()
+        self.mbrPhoto=None    
     
     def _displayMemberFace(self, member):
         raw = self.model.loadPicture(member)
@@ -819,12 +842,14 @@ class MainFrame(QtWidgets.QMainWindow):
             self.getErrorDialog("Verbindungsproblem", "Server ist nicht erreichbar", "Der Server, der die Bilder  liefern soll ist nicht erreichbar - Der Fehler wurde per eMail gemeldet").show()
             return False
         try:
+            camOn=self.model.cameraOn
             self.model.cameraOn = False
             self.capturing = False
             img = QtGui.QImage()
             img.loadFromData(raw)
-            self.ui_VideoFrame.showImage(img)
-            self.updatePhotoButton()
+            self.mbrPhoto=img #that will be handled async by _handleFramesDone
+            if not camOn:
+                self._handleFramesDone()
         except:
             Log.exception("Pic load failed")
             return False
@@ -933,9 +958,8 @@ class AboDialog(QtWidgets.QDialog):
 
 class CameraThread(QtCore.QThread):
     signal = pyqtSignal()
-    # error= pyqtSignal(str)
     result = None
-
+    
     def __init__(self, func):
         QtCore.QThread.__init__(self)
         self.func = func
