@@ -1,12 +1,14 @@
-#!/usr/bin/env xdg-open
 [Desktop Entry]
 Encoding=UTF-8
 Version=1.0
 Type=Application
-Exec=python3 /opt/TSVAccess/TsvRegisterModule.py
 Name=TSV Registrierung
+Exec=python3 /opt/TSVAccess/TsvRegisterModule.py -c 0
+#Exec=python3 /opt/TSVAccess/TsvRegisterModule.py
 Comment=Mitglieder Registration
-Icon=/opt/TSVAccess/web/static/tsv_logo_100.png
-NoDisplay=false
-StartupWMClass=TsvRegisterModule.py 
+Icon=/opt/TSVAccess/web/static/TSV-big.png
+##StartupWMClass=TsvRegisterModule.py 
+#StartupWMClass=Registrierung für TSV Mitglieder 
 Categories=GTK;
+Terminal=false
+StartupNotify=true
