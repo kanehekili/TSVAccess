@@ -1036,7 +1036,7 @@ class Registration():
             # id(int) (str) (str) (str) date! int
             m = Mitglied(titem[0], titem[1], titem[2], titem[3], titem[4], titem[6])
             m.picpath = titem[5]
-            m.flag = titem[7]
+            m.setFlag(titem[7])
             col.append(m)
         return col
     
@@ -1062,6 +1062,22 @@ class Registration():
             self.dbSystem.sendEmail("Sauna Abo Daten", True, msg)
             
         self.db.insertMany(self.dbSystem.BEITRAGTABLE, fields, data)
+
+    def updateAccessData(self,mbr):
+        key=mbr.access
+        if key is None or len(key)==1:
+            return
+        #only create a section if KR or group -notfall
+        #section lesen - nur wenn notig und nicht leer
+        stmt="select paySection from Konfig where groups like '%%s%'"%(key) #TESTEN!
+        rows = self.db.select(stmt)
+        if len(rows<1):
+            return;
+        section=rows[0][0]
+        fields = ('mitglied_id', 'section')
+        data = [(mbr.id, section)]
+        self.db.insertMany(self.dbSystem.BEITRAGTABLE, fields, data)
+        
 
     def readAboData(self, mbr):
         section = TsvDBCreator.PREPAID_INDICATOR[0]  # currently only one
@@ -1273,6 +1289,13 @@ class Mitglied():
         
     def searchName(self):
         return self.lastName + " " + self.firstName
+
+    def setFlag(self,aFlag):
+        if aFlag is None:
+            self.flag=0
+        else:
+            self.flag=aFlag
+        
 
     def update(self, mid_int, fn, ln, access, birthdate, rfid_int):
         self.id = mid_int  # This is int
