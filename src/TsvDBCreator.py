@@ -207,7 +207,14 @@ class SetUpTSVDB():
        addText VARCHAR(150)
     )
     """    
-
+    #will be set whenever a "new" token has been issued - just for Abrechnung
+    REGISTERTABLE="RegisterList"
+    TABLE8="""
+    CREATE OR REPLACE TABLE RegisterList (
+       mitglied_id INT PRIMARY KEY,
+       register_date DATETIME
+    )   
+    """
     
     ######
     # HOOK
@@ -253,6 +260,8 @@ class SetUpTSVDB():
         self.db.createTable(self.TABLE4)
         self.db.createTable(self.TABLE5)
         self.db.createTable(self.TABLE6)
+        self.db.createTable(self.TABLE7)
+        self.db.createTable(self.TABLE8)
         self.db.close()        
 
     def _fillLocationTable(self):
