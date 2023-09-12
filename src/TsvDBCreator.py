@@ -211,10 +211,12 @@ class SetUpTSVDB():
     REGISTERTABLE="RegisterList"
     TABLE8="""
     CREATE OR REPLACE TABLE RegisterList (
-       mitglied_id INT PRIMARY KEY,
-       register_date DATETIME
+       register_date DATETIME,
+       mitglied_id INT
     )   
     """
+    #select per month: 
+    #SELECT * from RegisterList where month(register_date)=9; (September)
     
     ######
     # HOOK

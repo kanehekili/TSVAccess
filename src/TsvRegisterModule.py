@@ -668,6 +668,9 @@ class MainFrame(QtWidgets.QMainWindow):
         testId = None
         if mbr:
             testId = mbr.id
+        if not testId.isdigit():
+            self.getMessageDialog("***RFID ***", "Die sieht nicht gültig aus - nur Zahlen!")
+            return 
         if not self.model.verifyRfid(rfid, testId):
             d = self.getErrorDialog("** RFID **", "Ungültige RFID, bitte einen anderen Token benutzen", "In der Datenbank existiert bereits die RFID Nummer %s und kann nicht nochmal vergeben werden. Nimm den Token und leg ihn weg!"%(rfid))
             d.show()
@@ -815,7 +818,7 @@ class MainFrame(QtWidgets.QMainWindow):
     
     @QtCore.pyqtSlot(str)
     def _showCameraError(self, text):
-        dlg = self.getErrorDialog("Kamerafehler", text, "Ein Kamerafehler ist aufgetreten. Häufigste Ursache ist, das sie nicht gefunden werden kann.")
+        dlg = self.getErrorDialog("Kamerafehler", text, "Die Kamera wurde nicht erkannt!",mail=False)
         dlg.show()
     
     def __queueStarted(self, _state):
@@ -1070,7 +1073,9 @@ class Registration():
         data = mbr.dataSaveArray()
         Log.info("Saving memmber:%s", str(data[0]))
         self.db.insertMany(table, fields, data)
-        self.updateAboData(mbr) 
+        self.updateAboData(mbr)
+        self.updateAccessData(mbr)
+        self.updateRFIDAbrechnung(mbr)
     
     def updateAboData(self, mbr):
         section = mbr.abo[0]
@@ -1088,19 +1093,31 @@ class Registration():
         self.db.insertMany(self.dbSystem.BEITRAGTABLE, fields, data)
 
     def updateAccessData(self,mbr):
+        if mbr.initalAccess == mbr.access: #no change
+            print("No access change")
+            return
         key=mbr.access
         if key is None or len(key)==1:
             return
         #only create a section if KR or group -notfall
         #section lesen - nur wenn notig und nicht leer
-        stmt="select paySection from Konfig where groups like '%%s%'"%(key) #TESTEN!
+        stmt="select paySection from Konfig where groups like '%%%s%%'"%(key) 
         rows = self.db.select(stmt)
-        if len(rows<1):
+        if len(rows)<1:
             return;
         section=rows[0][0]
         fields = ('mitglied_id', 'section')
         data = [(mbr.id, section)]
         self.db.insertMany(self.dbSystem.BEITRAGTABLE, fields, data)
+     
+    def updateRFIDAbrechnung(self,mbr):
+        if mbr.initialRFID == mbr.rfid:
+            print("No refid change")
+            return
+        now = datetime.now().isoformat()
+        data = []
+        data.append((now,mbr.id))
+        self.db.insertMany(self.dbSystem.REGISTERTABLE, ('register_date','mitglied_id'), data)
         
 
     def readAboData(self, mbr):
@@ -1120,12 +1137,12 @@ class Registration():
         if self.camIndex==-1:
             self.camIndex = OpenCV3.getBestCameraIndex()
         self.cam = OpenCV3.getCamera(self.camIndex)
-        Log.info("cam found")
         self.cameraStatus = None       
         if self.cam is None or not self.cam.isOpened():
             Log.warning("Camera not found!")
             self.cameraStatus = "Keine Kamera gefunden"
             return False
+        Log.info("cam found")
 
         self.dimension[0] = self.cam.get(cv2.CAP_PROP_FRAME_WIDTH)  # @UndefinedVariable
         self.dimension[1] = self.cam.get(cv2.CAP_PROP_FRAME_HEIGHT)  # @UndefinedVariable
@@ -1308,7 +1325,9 @@ class Mitglied():
         self.picpath = None
         self.flag = 0
         self.abo = (None, 0)  # TsvDBCrator SECTION, count (str,int)
-        self.currentAbo = (None, 0)  # TsvDBCrator SECTION, count (str,int)             
+        self.currentAbo = (None, 0)  # TsvDBCrator SECTION, count (str,int)  
+        self.initalAccess=access
+        self.initialRFID=rfid_int           
         self.update(mid_int, fn, ln, access, birthdate, rfid_int)
         
     def searchName(self):
