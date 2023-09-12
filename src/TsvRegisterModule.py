@@ -668,9 +668,12 @@ class MainFrame(QtWidgets.QMainWindow):
         testId = None
         if mbr:
             testId = mbr.id
-        if not testId.isdigit():
-            self.getMessageDialog("***RFID ***", "Die sieht nicht gültig aus - nur Zahlen!")
+        
+        if not rfid.isdigit():
+            self.ui_RFID.setStyleSheet("QLineEdit { background: rgb(212,0,0); color:white}");
             return 
+        else:
+            self.ui_RFID.setStyleSheet("")
         if not self.model.verifyRfid(rfid, testId):
             d = self.getErrorDialog("** RFID **", "Ungültige RFID, bitte einen anderen Token benutzen", "In der Datenbank existiert bereits die RFID Nummer %s und kann nicht nochmal vergeben werden. Nimm den Token und leg ihn weg!"%(rfid))
             d.show()
@@ -1094,7 +1097,6 @@ class Registration():
 
     def updateAccessData(self,mbr):
         if mbr.initalAccess == mbr.access: #no change
-            print("No access change")
             return
         key=mbr.access
         if key is None or len(key)==1:
@@ -1112,7 +1114,6 @@ class Registration():
      
     def updateRFIDAbrechnung(self,mbr):
         if mbr.initialRFID == mbr.rfid:
-            print("No refid change")
             return
         now = datetime.now().isoformat()
         data = []
