@@ -438,7 +438,7 @@ class MainFrame(QtWidgets.QMainWindow):
         self.ui_AccessCombo.addItem("-")
         for item in themes:
             self.ui_AccessCombo.addItem(item)
-        self.ui_AccessCombo.setCurrentText("")  # self.model.iconSet
+        #self.ui_AccessCombo.setCurrentText("")  # self.model.iconSet
         self.ui_AccessCombo.currentTextChanged.connect(self._onAccessChanged)
         # self.ui_AccessCombo.setToolTip("Angabe der Zugangsbereiche (Mehrfachwahl möglich)")
         self.ui_AccessCombo.setToolTip("Angabe des Zugangsbereichs")
@@ -753,7 +753,7 @@ class MainFrame(QtWidgets.QMainWindow):
         self.ui_IDEdit.clear()
         self.ui_FirstNameEdit.clear()
         self.ui_LastNameEdit.clear()
-        self.ui_AccessCombo.clearEditText()       
+        self.ui_AccessCombo.setCurrentText('-')   
         self.ui_BirthLabel.clear()
         self.ui_RFID.clear()
         self.model.cameraOn = False
@@ -1111,6 +1111,7 @@ class Registration():
         fields = ('mitglied_id', 'section')
         data = [(mbr.id, section)]
         self.db.insertMany(self.dbSystem.BEITRAGTABLE, fields, data)
+        mbr.initalAccess = mbr.access
      
     def updateRFIDAbrechnung(self,mbr):
         if mbr.initialRFID == mbr.rfid:
