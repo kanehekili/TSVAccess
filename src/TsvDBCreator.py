@@ -35,7 +35,7 @@ LOC_SAUNA="Sauna"
 LOC_NORD="HalleNord"
 LOC_DOJO="Dojo"
 
-#Use for Zugangstable &   
+#Use for Zugangstable & Auswertung  
 ACTIVITY_KR="Kraftraum"
 ACTIVITY_GYM = "Gym"
 ACTIVITY_SPINNING="Spinning"
@@ -287,6 +287,8 @@ class SetUpTSVDB():
         entries=[]
         entries.append(("tsvaccess1",0))
         entries.append(("tsvaccess2",3))
+        entries.append(("tsvaccess3",1))
+        entries.append(("tsvaccess4",2))
         entries.append(("msi",0))
         self.db.insertMany(table, fields, entries)     
     
