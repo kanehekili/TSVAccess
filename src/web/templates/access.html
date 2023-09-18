@@ -11,17 +11,18 @@
 	body {
 	    background-color: #272b34;
 	    font-family: 'Khula', sans-serif;
-	    font-weight: 300;
 	    color: white;
-	    line-height: 1em;
 	    margin: 0;
-	  padding: 2em 1em;
+	  padding: 1em 1em;
 	}	    
 	  /* CSS for the header */
 		  h1 {
+	    	margin-top:0;
+	    	margin-bottom:0;		  
 		    color:white;
 		    align-items: flex-start;
 		    display: flex;
+		    font-size:3em;  
 		  }
 		
 		  .logo-container {
@@ -37,9 +38,14 @@
 	     .portrait p{
 		 	font-size:1.2em;	
 		    line-height: 1;	   
+		    color:white;
 		 }
 		
 		@media (any-pointer: coarse) {
+			h1 {
+			    margin-top:1em;
+				font-size:2em;  
+			}
 		   .portrait {
 		       width: 400px;
 		   }
@@ -72,6 +78,7 @@
         <span> {{ dynamic_location }} [{{ location_count }}] </span>
         </div>        
      	<div class="logo-container">
+     		<a href="/" data-toogle="back" title="Zurück zum Dashboard">
             <img src="{{ logo_path }}" alt="Logo">
         </div>        
     </h1>
@@ -84,5 +91,8 @@
         </div>
         {% endfor %}
     </div>
+    <script>
+        $(function () { $("[data-toggle='back']").tooltip(); });
+    </script>  
 </body>
 </html>

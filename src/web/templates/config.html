@@ -12,9 +12,7 @@
 body {
     background-color: #272b34;
     font-family: 'Khula', sans-serif;
-    font-weight: 300;
     color: white;
-    line-height: 1em;
     margin: 0;
   padding: 2em 1em;
 }
@@ -23,7 +21,14 @@ body {
   h1 {
     align-items: flex-start;
     display: flex;
+    font-size:3em;  
   }
+
+	@media (any-pointer: coarse) {
+		h1 {
+			font-size:2em;  
+		}
+	}
 
   .logo-container {
     margin-left: auto;
@@ -40,7 +45,9 @@ body {
    <h1>
      <span>TSV Konfiguration</span>
      <div class="logo-container">
+       <a href="/" data-toogle="back" title="Zurück zum Dashboard">
        <img src="{{ logo_path }}" alt="Logo">
+       </a>
      </div>
   </h1>
    <table class="locTable">
@@ -84,7 +91,10 @@ body {
      {% endfor %}
     </tbody>
 	 </table>
-   
+
+      <script>
+         $(function () { $("[data-toggle='back']").tooltip(); });
+      </script>   
 
 </body>
 </html>
