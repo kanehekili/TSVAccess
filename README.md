@@ -38,7 +38,7 @@ QT_QPA_PLATFORMTHEME=gtk2 or QT_QPA_PLATFORMTHEME=qt5ct
 There is a basic support for windows, but not currently tested or in any way supported.
 
 Only a member checked in with this module will be able to access the system!
-![Screenshot](https://github.com/kanehekili/TSVAccess/blob/main/TSV-Register.png)
+![Screenshot](https://github.com/kanehekili/TSVAccess/blob/main/Register.png)
 
 This software uses head (not face) recognition (see green rectangle) to get uniform portraits. The UI language is german, no current plan to use NLS. It needs a private ssh key to connect to a ssh server for saving the photos.
 
@@ -46,6 +46,12 @@ This software uses head (not face) recognition (see green rectangle) to get unif
 This app runs on a Raspberry pi (3a), currently controlling a 2 channel relais for lights (Access,non access). Connected ot it is a RC522 RFID reader, which delivers the token uid that has been registered in the TSVREgisterModule.
 ![Screenshot](https://github.com/kanehekili/TSVAccess/blob/main/Hardware1.jpg)
 There is a variant, that uses a LED 7-Segment display to show time and the count of an abo. 
+
+### The big room solution
+![Screenshot](https://github.com/kanehekili/TSVAccess/blob/main/ampel.jpg)
+
+### The sauna solution
+![Screenshot](https://github.com/kanehekili/TSVAccess/blob/main/Sauna.jpg)
 
 
 ### Dependencies (Arch Armhf)
@@ -69,6 +75,10 @@ A python flask server, that provides html data:
  * uses flask, plotly and (optional - not decided yet) pandas
 
 It usually resides in the "server" which is comprised of the database service and the "Auswertung". All "access" devices are connected to this server.
+
+This module runs, together with mariadb on an plain Raspi 2:
+![Screenshot](https://github.com/kanehekili/TSVAccess/blob/main/server.jpg)
+
 
 ### Dependencies
 * python-mysql-connector
