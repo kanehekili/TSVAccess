@@ -78,8 +78,10 @@
         <span> {{ dynamic_location }} [{{ location_count }}] </span>
         </div>        
      	<div class="logo-container">
+     	    <a href="" title="Refresh"> 
+     	    <img src="reload.png" width="100" height="100"></a>
      		<a href="/" data-toogle="back" title="Zurück zum Dashboard">
-            <img src="{{ logo_path }}" alt="Logo">
+            <img src="{{ logo_path }}"></a>
         </div>        
     </h1>
     <hr class="divrounded">
@@ -91,8 +93,6 @@
         </div>
         {% endfor %}
     </div>
-    <script>
-        $(function () { $("[data-toggle='back']").tooltip(); });
-    </script>  
+
 </body>
 </html>

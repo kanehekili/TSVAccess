@@ -1,0 +1,14 @@
+[Desktop Entry]
+Encoding=UTF-8
+Version=1.0
+Type=Application
+Name=TSV Bearbeitung
+Exec=python3 /opt/TSVAccess/TsvRegisterModule.py -r
+#Exec=python3 /opt/TSVAccess/TsvRegisterModule.py
+Comment=Mitglieder Bearbeitung
+Icon=/opt/TSVAccess/web/static/TSV-check.png
+##StartupWMClass=TsvRegisterModule.py 
+#StartupWMClass=Registrierung für TSV Mitglieder 
+Categories=GTK;
+Terminal=false
+StartupNotify=true

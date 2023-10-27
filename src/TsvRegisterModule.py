@@ -349,7 +349,7 @@ class CheckableComboBox(QtWidgets.QComboBox):
 # #Main App Window. 
 class MainFrame(QtWidgets.QMainWindow):
     
-    def __init__(self, qapp, cameraIndex):
+    def __init__(self, qapp, cameraIndex, rfidMode):
         self._isStarted = False
         self.__qapp = qapp
         self.model = Registration(cameraIndex)
@@ -358,6 +358,7 @@ class MainFrame(QtWidgets.QMainWindow):
         self.capturing = False
         self.photoTaken = False
         self.mbrPhoto = None
+        self.controller= RFIDController(self) if rfidMode else RegisterController(self)
         
         super(MainFrame, self).__init__()
         self.setWindowIcon(getAppIcon())
@@ -396,6 +397,7 @@ class MainFrame(QtWidgets.QMainWindow):
         self.ui_SearchEdit = QtWidgets.QComboBox(self)
         self.ui_SearchEdit.setEditable(True)  # Is that right??
         # self.ui_SearchEdit.currentIndexChanged.connect(self._onSearchChanged)
+
         self.ui_SearchEdit.setInsertPolicy(QtWidgets.QComboBox.NoInsert);
         self.ui_SearchEdit.completer().setCompletionMode(QtWidgets.QCompleter.PopupCompletion);
         self.ui_SearchEdit.activated.connect(self._onSearchChanged)
@@ -530,6 +532,8 @@ class MainFrame(QtWidgets.QMainWindow):
         else: 
             self.ui_PhotoButton.setText("Web Cam")            
 
+        self.ui_PhotoButton.setEnabled(self.controller.supportsCamera())
+                
     # fill the search combo
     def fillSearchCombo(self, memberList):
         sortedList = sorted(memberList, key=lambda mbr: mbr.searchName())
@@ -645,10 +649,31 @@ class MainFrame(QtWidgets.QMainWindow):
     @QtCore.pyqtSlot()
     def _onNewClicked(self):
         self.ui_SearchEdit.setCurrentIndex(-1)
-        self._clearFields()        
+        self._clearFields()  
+        self.controller.setInitialFocus()      
     
-    @QtCore.pyqtSlot(str)            
+    
+    @QtCore.pyqtSlot(str)     
     def _onRFIDRead(self, str_Rfid):
+        self.controller.handleRFIDChanged(str_Rfid)
+    
+    #slot if rfid search is active (controller)
+    def searchWithRFID(self,str_RFID):
+        res=next((mbr for mbr in self.model.memberList if mbr.rfidString()==str_RFID),None)
+        if res:
+            print("Found:",res.searchName())
+            idx=self.ui_SearchEdit.findData(res)
+            if idx>0:
+                self.ui_SearchEdit.setCurrentIndex(idx)
+                #fill all, but no photo
+                self._onSearchChanged(idx)
+            else:
+                Log.warning("Member %s does not exist in Search Combo index: %d",res.searchName(),idx)
+        else:
+            Log.warning("RFID %s could not be found in memberList and RFID MODE",str_RFID)
+        
+    #slot if rfid is filled manually/name search - Registration (controller)
+    def verifyRFID(self, str_Rfid):
         if len(str_Rfid) < 9:  # typing
             return
         Log.info("Checking RFID:%s", str_Rfid)
@@ -736,6 +761,7 @@ class MainFrame(QtWidgets.QMainWindow):
         # self.model.printMemberCard(mbr)
         QApplication.restoreOverrideCursor()
         self._clearFields()
+        self.controller.setInitialFocus()
 
     @QtCore.pyqtSlot()
     def _onOpenAboDialog(self):
@@ -862,7 +888,9 @@ class MainFrame(QtWidgets.QMainWindow):
             return False
         return True
     
-    def _initCapture(self):
+    def _initCapture(self): ###RegisterCam!
+        if not self.controller.supportsCamera():
+            return
         self.capturing = True
         self.photoTaken = False
         QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
@@ -878,8 +906,10 @@ class MainFrame(QtWidgets.QMainWindow):
 
     def _initModel(self):
         QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
-        if not self.model.startCamera():
-            self._showCameraError(self.model.cameraStatus)
+        ###RegisterCam
+        if self.controller.supportsCamera():
+            if not self.model.startCamera():
+                self._showCameraError(self.model.cameraStatus)
         
         res = self.model.connect()
         QApplication.restoreOverrideCursor()
@@ -890,6 +920,8 @@ class MainFrame(QtWidgets.QMainWindow):
         else:
             memberList = self.model.getMembers()
             self.fillSearchCombo(memberList)
+
+        self.controller.setInitialFocus()
             
         return res
 
@@ -1013,6 +1045,40 @@ def __DEMO__headRec():
     
     cv2.destroyWindow(window_name)
 
+'''
+We need controllers for mode register (you search for names and have a camera)
+and mode rfid (you have a registered user and search it with the rfid token)
+'''
+class RegisterController():
+    def __init__(self,ui):
+        self.mainFrame=ui
+
+    def handleRFIDChanged(self,str_RFID):
+        self.mainFrame.verifyRFID(str_RFID)
+
+    def supportsCamera(self):
+        return True
+
+    def setInitialFocus(self):
+        self.mainFrame.ui_SearchEdit.setFocus()
+        self.mainFrame.ui_SearchEdit.setStyleSheet("QComboBox,QComboBox::editable { background: rgb(0,160,0); color:white}");
+
+        
+
+class RFIDController(RegisterController):
+    def __init__(self, ui):
+        RegisterController.__init__(self,ui)        
+
+    #slot if rfid search is active (mode)
+    def handleRFIDChanged(self,str_RFID):
+        self.mainFrame.searchWithRFID(str_RFID)
+
+    def supportsCamera(self):
+        return False
+
+    def setInitialFocus(self):
+        self.mainFrame.ui_RFID.setFocus()
+        self.mainFrame.ui_RFID.setStyleSheet("QLineEdit { background: rgb(0,160,0); color:white}");
 
 class Registration():
     SAVEPIC = "/tmp/tsv.screenshot.png"   
@@ -1028,6 +1094,7 @@ class Registration():
         self.dimension = [0, 0]
         self.aaTransponders = []
         self.faceActive = True
+        self.memberList=None
 
     def connect(self):
         self.dbSystem = SetUpTSVDB(SetUpTSVDB.DATABASE)
@@ -1060,15 +1127,15 @@ class Registration():
         fields = ','.join(Mitglied.FIELD_DEF)  # FIELD_DEF=('id','first_name','last_name','access','birth_date,picpath,uuid,flag') 
         # stmt = "SELECT id,first_name,last_name from " + self.dbSystem.MAINTABLE
         stmt = "SELECT " + fields + " from " + self.dbSystem.MAINTABLE
-        col = []
+        self.memberList = []
         res = self.db.select(stmt)
         for titem in res:
             # id(int) (str) (str) (str) date! int
             m = Mitglied(titem[0], titem[1], titem[2], titem[3], titem[4], titem[6])
             m.picpath = titem[5]
             m.setFlag(titem[7])
-            col.append(m)
-        return col
+            self.memberList.append(m)
+        return self.memberList
     
     def updateMember(self, mbr):
         table = self.dbSystem.MAINTABLE
@@ -1398,6 +1465,7 @@ def parse():
     parser.add_argument('-s', dest="searchCamera", action='store_true', help="Search for a camera")
     parser.add_argument('-c', dest="setCamera", type=int, default=-1, help="set a camera index")
     parser.add_argument('-d', dest="debug", action='store_true', help="Debug logs")
+    parser.add_argument('-r', dest="rfidMode", action='store_true', help="RFID MODE")
     return parser.parse_args()    
 
 
@@ -1421,7 +1489,8 @@ def main(args):
         argv = sys.argv
         app = QApplication(argv)
         app.setWindowIcon(getAppIcon())
-        WIN = MainFrame(app, args.setCamera)  # keep python reference!
+        rfidMode=True if args.rfidMode else False
+        WIN = MainFrame(app, args.setCamera,rfidMode)  # keep python reference!
         # ONLY windoze, if ever: app.setStyleSheet(winStyle())
         # app.setStyle(QtWidgets.QStyleFactory.create("Fusion"));
         app.exec_()
