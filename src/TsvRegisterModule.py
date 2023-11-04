@@ -9,7 +9,6 @@ print pic +code
 add that user to the TsvDB
 @author: matze
 '''
-from PyQt5.Qt import QGuiApplication
 '''
 TODO -read directly from usb - we need the event to pop up...
 https://stackoverflow.com/questions/67017165/read-data-from-usb-rfid-reader-using-python
@@ -40,7 +39,7 @@ import DBTools
 from datetime import datetime
 import requests
 import TsvDBCreator
-
+global WIN
 
 class OpenCV3():
 
@@ -1061,7 +1060,8 @@ class RegisterController():
 
     def setInitialFocus(self):
         self.mainFrame.ui_SearchEdit.setFocus()
-        self.mainFrame.ui_SearchEdit.setStyleSheet("QComboBox,QComboBox::editable { background: rgb(0,160,0); color:white}");
+        #self.mainFrame.ui_SearchEdit.setStyleSheet("QComboBox,QComboBox::editable { background: rgb(0,160,0); color:white}");
+        self.mainFrame.ui_SearchEdit.setStyleSheet("QComboBox { padding: 2px; border-radius: 4px; border: 2px solid rgb(0,160,0);}");
 
         
 
@@ -1078,7 +1078,9 @@ class RFIDController(RegisterController):
 
     def setInitialFocus(self):
         self.mainFrame.ui_RFID.setFocus()
-        self.mainFrame.ui_RFID.setStyleSheet("QLineEdit { background: rgb(0,160,0); color:white}");
+        #self.mainFrame.ui_RFID.setStyleSheet("QLineEdit { background: rgb(0,160,0); color:white}");
+        self.mainFrame.ui_RFID.setStyleSheet("QLineEdit {padding: 2px; border-radius: 4px; border: 2px solid rgb(0,160,0); }");
+
 
 class Registration():
     SAVEPIC = "/tmp/tsv.screenshot.png"   
@@ -1187,6 +1189,7 @@ class Registration():
         data = []
         data.append((now, mbr.id))
         self.db.insertMany(self.dbSystem.REGISTERTABLE, ('register_date', 'mitglied_id'), data)
+        Log.info("Dispensing NEW Chip %d to member %d",mbr.rfid,mbr.id)
 
     def readAboData(self, mbr):
         section = TsvDBCreator.PREPAID_INDICATOR[0]  # currently only one
@@ -1470,15 +1473,19 @@ def parse():
 
 
 def main(args):
+
     # todo speed up camera lookup. check log and promote: -c nbr
+    if OSTools.checkIfInstanceRunning("TsvRegisterModule"):
+        print("App already running")
+        sys.exit()
     if args.searchCamera:
         OpenCV3.getBestCameraIndex()
         sys.exit()
         
     try:
-        global WIN
+
         global Log
-        wd = OSTools().getLocalPath(__file__)
+        wd = OSTools.getLocalPath(__file__)
         OSTools.setMainWorkDir(wd)
         OSTools.setupRotatingLogger("TSVAccess", True)
         Log = DBTools.Log

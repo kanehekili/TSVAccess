@@ -10,6 +10,7 @@ import gzip,time
 import logging
 from logging.handlers import RotatingFileHandler
 import subprocess
+from subprocess import Popen
 
 class Connector():
     DBError=mysql.Error
@@ -274,10 +275,9 @@ class OSTools():
         elif levelString == "Error":
             Log.setLevel(logging.ERROR)
 
-    '''
     #will not work in windows
     @classmethod
-    def checkIfInstanceRunning(moduleName):
+    def checkIfInstanceRunning(cls,moduleName):
         process = Popen(["ps aux |grep -v grep | grep "+moduleName],shell=True,stdout=subprocess.PIPE)
         result = process.communicate()
         rows = result[0].decode('utf8').splitlines()
@@ -285,8 +285,8 @@ class OSTools():
         for line in rows:
             if line:
                 instanceCount+=1
-        return instanceCount == 1
-    '''
+        return instanceCount > 1
+
 
 Log=logging.getLogger("TSV")
 

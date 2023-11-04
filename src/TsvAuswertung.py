@@ -164,8 +164,10 @@ def manageConfiguration():
     
     return render_template('config.html', logo_path=logo_path,configHeaders=configHeaders, configData=configData, locHeaders=locHeaders,locData=locData)
         
-        
-    
+#list for Siggi --new chips:
+#  select m.id,m.first_name,m.last_name,m.access,m.uuid,r.register_Date from Mitglieder m,RegisterList r where m.id = r.mitglied_id;
+# form: select id,register_date,first_name,last_name,birth_date,access from Mitglieder m join RegisterList r where m.id=r.mitglied_id and month(register_date)=9;      
+#TODO: why 4 times the same person?    
 
 '''
 Test or demo routines
