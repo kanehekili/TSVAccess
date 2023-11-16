@@ -659,6 +659,7 @@ class MainFrame(QtWidgets.QMainWindow):
     #slot if rfid search is active (controller)
     def searchWithRFID(self,str_RFID):
         res=next((mbr for mbr in self.model.memberList if mbr.rfidString()==str_RFID),None)
+        found=False
         if res:
             print("Found:",res.searchName())
             idx=self.ui_SearchEdit.findData(res)
@@ -666,10 +667,14 @@ class MainFrame(QtWidgets.QMainWindow):
                 self.ui_SearchEdit.setCurrentIndex(idx)
                 #fill all, but no photo
                 self._onSearchChanged(idx)
+                found=True
             else:
                 Log.warning("Member %s does not exist in Search Combo index: %d",res.searchName(),idx)
         else:
             Log.warning("RFID %s could not be found in memberList and RFID MODE",str_RFID)
+        if not found:
+            dlg=self.getMessageDialog("Chip unbekannt", "Der Chip ist nicht registriert")
+            dlg.show()
         
     #slot if rfid is filled manually/name search - Registration (controller)
     def verifyRFID(self, str_Rfid):
@@ -1071,7 +1076,14 @@ class RFIDController(RegisterController):
 
     #slot if rfid search is active (mode)
     def handleRFIDChanged(self,str_RFID):
-        self.mainFrame.searchWithRFID(str_RFID)
+        #String may have a leading zero.
+        try:
+            tmp=int(str_RFID)
+        except:
+            self.mainFrame.searchWithRFID(str_RFID)
+            return
+        clean=str(tmp)
+        self.mainFrame.searchWithRFID(clean)
 
     def supportsCamera(self):
         return False
@@ -1190,6 +1202,7 @@ class Registration():
         data.append((now, mbr.id))
         self.db.insertMany(self.dbSystem.REGISTERTABLE, ('register_date', 'mitglied_id'), data)
         Log.info("Dispensing NEW Chip %d to member %d",mbr.rfid,mbr.id)
+        mbr.initialRFID = mbr.rfid
 
     def readAboData(self, mbr):
         section = TsvDBCreator.PREPAID_INDICATOR[0]  # currently only one
