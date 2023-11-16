@@ -128,8 +128,11 @@ class RFIDAccessor():
         # we just read the number... 
         if rfid:
             if rfid in self.eastereggs:
+                Log.info("Master check %s",rfid)
                 if self.ledCounter:
                     self.ledCounter.text("CHEF") 
+                    time.sleep(3)
+                self.db.ensureConnection()
                 if self.db.isConnected():
                     self.gate.welcome1()
                 else:
