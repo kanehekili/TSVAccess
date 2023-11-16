@@ -78,6 +78,10 @@ class RaspberryGPIO():
     def signalAlarm(self):
         self.reset()
         GPIO.output(self.PINORANGE, self.LIGHTON)
+        sleep(0.5)
+        GPIO.output(self.PINORANGE, self.LIGHTOFF)
+        sleep(0.3)
+        GPIO.output(self.PINORANGE, self.LIGHTON)
         self._restartTimer()
     
     #mark if gracetime still in place (=no action)
