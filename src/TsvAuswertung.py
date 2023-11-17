@@ -8,7 +8,6 @@ Show graphs per Month or year.
 # using  plotly and flask. 
 # pip install flask,plotly,pandas
 from flask import Flask, render_template,request#, has_request_context, session, url_for
-from werkzeug.utils import secure_filename
 import pandas as pd
 import json
 import plotly
@@ -41,7 +40,7 @@ def statisticsKraftraum():
 @app.route('/accessKR')  # Access kraftraum
 def visitorsKraftraum():
     #https://stackoverflow.com/questions/58996870/update-flask-web-page-with-python-script
-    people = barModel.currentVisitorPictures(TsvDBCreator.ACTIVITY_KR)
+    people = barModel.currentVisitorPictures(TsvDBCreator.ACTIVITY_KR,150) #checkout after 150 mins
     logo_path = "tsv_logo_100.png"
     dynamic_location = TsvDBCreator.ACTIVITY_KR    
     return render_template('access.html', people=people, logo_path=logo_path, dynamic_location=dynamic_location, location_count=len(people))
@@ -163,6 +162,22 @@ def manageConfiguration():
         
     
     return render_template('config.html', logo_path=logo_path,configHeaders=configHeaders, configData=configData, locHeaders=locHeaders,locData=locData)
+
+@app.route('/registrationS',methods=["GET", "POST"])
+def showChipRegistration():
+    logo_path = "tsv_logo_100.png"
+    chipHeaders=['ID','Datum','Nachname','Burtstag','Merkmal']
+    fields=['id','date','name','bday','access'] #feldnamen
+    configData=[]
+    dataRows = barModel.registerTable()
+    for row in dataRows:
+        entry={}
+        for idx in range(0,5):
+            entry[fields[idx]]=row[idx]
+        configData.append(entry)
+    
+    return render_template('register.html',logo_path=logo_path,chipHeaders=chipHeaders, chipData=configData)
+
         
 #list for Siggi --new chips:
 #  select m.id,m.first_name,m.last_name,m.access,m.uuid,r.register_Date from Mitglieder m,RegisterList r where m.id = r.mitglied_id;
@@ -224,7 +239,7 @@ def plotFigTestWorking():
 
 # model for the access row part - checkin/checkout
 class AccessRow():
-
+    dwellMinutes=-1 #we dont care
     def __init__(self, dbRow):
         self.id = dbRow[0]
         self.da = dbRow[4]  # datetime
@@ -240,6 +255,18 @@ class AccessRow():
     def toggleChecked(self, acDate):
         self.checked = not self.checked
         self.da = acDate
+    
+    def isInPlace(self):
+        if not self.checked:
+            return False #has gone
+        if AccessRow.dwellMinutes < 0:
+            return self.checked
+        now = datetime.now()
+        delta= now-self.da
+        secs=delta.total_seconds()
+        mins = secs / 60
+        return mins < AccessRow.dwellMinutes
+        
         
     def __lt__(self, other):
         return self.da < other.da
@@ -454,13 +481,14 @@ class BarModel():
         return members
     
     # show pic and names of those that are curently in the location
-    def currentVisitorPictures(self, location):
+    def currentVisitorPictures(self, location, dwellMinutes=-1):
         mbrTable = self.dbSystem.MAINTABLE
         timetable = self.dbSystem.TIMETABLE
         daysplit = "13"  # time between morning and afternoon
         members = {}
+        AccessRow.dwellMinutes=dwellMinutes #Automatic checkout, negative means: we don't care (Sauna)
         picFolder = self.dbSystem.PICPATH+"/"
-        stmt = "SELECT id,first_name,last_name,picpath,access_date FROM " + mbrTable + " m JOIN " + timetable + " z ON m.id = z.mitglied_id WHERE DATE(z.access_date) = CURDATE() AND ((HOUR(z.access_date) < " + daysplit + " AND HOUR(CURTIME()) < " + daysplit + ") OR (HOUR(z.access_date) > " + daysplit + " AND HOUR(CURTIME()) > " + daysplit + ")) and location='" + location + "' ORDER By z.access_date DESC"
+        stmt = "SELECT id,first_name,last_name,picpath,access_date FROM " + mbrTable + " m JOIN " + timetable + " z ON m.id = z.mitglied_id WHERE DATE(z.access_date) = CURDATE()-1 AND ((HOUR(z.access_date) < " + daysplit + " AND HOUR(CURTIME()) < " + daysplit + ") OR (HOUR(z.access_date) > " + daysplit + " AND HOUR(CURTIME()) > " + daysplit + ")) and location='" + location + "' ORDER By z.access_date DESC"
         # print(stmt) 
         rows = self.db.select(stmt)
         Log.info("Visitor rows:%d", len(rows))
@@ -474,7 +502,7 @@ class BarModel():
                 members[mid].toggleChecked(row[4])
                 # Log.debug("Visitor toggle: %s",members[mid].checked)
         
-        present = [item for item in members.values() if item.checked]     
+        present = [item for item in members.values() if item.isInPlace()]     
         # people = [{'name': fn+" "+name+"("+datetime.strftime(accDate,"%H:%M")+")", 'image_path': picFolder+picpath} for fn, name, picpath,accDate in rows]
         people = []
         for row in present:
@@ -485,6 +513,10 @@ class BarModel():
 
     def configTable(self):
         stmt = "SELECT * from Konfig"
+        return self.db.select(stmt)
+    
+    def registerTable(self):
+        stmt = "select id,register_date,last_name,CAST(birth_date AS DATE),access from Mitglieder m join RegisterList r where m.id=r.mitglied_id and month(register_date)>month(CURDATE())-2;"
         return self.db.select(stmt)
     
     def locationTable(self):

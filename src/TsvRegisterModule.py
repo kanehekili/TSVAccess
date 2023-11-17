@@ -427,6 +427,7 @@ class MainFrame(QtWidgets.QMainWindow):
         self.ui_RFID = QtWidgets.QLineEdit(self)
         self.ui_RFID.setToolTip("RFID mit Kartenleser einchecken - Erst draufclicken -dann scannen!")
         self.ui_RFID.textEdited.connect(self._onRFIDRead)
+        #TEST:self.ui_RFID.editingFinished.connect(self._onRFIDDone)
         # self.ui_RFID.installEventFilter(self)
 
         self.ui_AccessLabel = QtWidgets.QLabel(self)
@@ -652,14 +653,18 @@ class MainFrame(QtWidgets.QMainWindow):
         self.controller.setInitialFocus()      
     
     
+    @QtCore.pyqtSlot()
+    def _onRFIDDone(self):
+        print("Done:",self.ui_RFID.text())
+         
     @QtCore.pyqtSlot(str)     
     def _onRFIDRead(self, str_Rfid):
-        self.controller.handleRFIDChanged(str_Rfid)
+        if len(str_Rfid) > 9:  # typing
+            self.controller.handleRFIDChanged(str_Rfid)
     
     #slot if rfid search is active (controller)
     def searchWithRFID(self,str_RFID):
         res=next((mbr for mbr in self.model.memberList if mbr.rfidString()==str_RFID),None)
-        found=False
         if res:
             print("Found:",res.searchName())
             idx=self.ui_SearchEdit.findData(res)
@@ -667,19 +672,16 @@ class MainFrame(QtWidgets.QMainWindow):
                 self.ui_SearchEdit.setCurrentIndex(idx)
                 #fill all, but no photo
                 self._onSearchChanged(idx)
-                found=True
             else:
                 Log.warning("Member %s does not exist in Search Combo index: %d",res.searchName(),idx)
         else:
             Log.warning("RFID %s could not be found in memberList and RFID MODE",str_RFID)
-        if not found:
-            dlg=self.getMessageDialog("Chip unbekannt", "Der Chip ist nicht registriert")
-            dlg.show()
+        #if not found:
+        #    dlg=self.getMessageDialog("Chip unbekannt", "Der Chip ist nicht registriert")
+        #    dlg.show()
         
     #slot if rfid is filled manually/name search - Registration (controller)
     def verifyRFID(self, str_Rfid):
-        if len(str_Rfid) < 9:  # typing
-            return
         Log.info("Checking RFID:%s", str_Rfid)
         if not str_Rfid:
             return;
