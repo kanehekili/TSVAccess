@@ -488,7 +488,7 @@ class BarModel():
         members = {}
         AccessRow.dwellMinutes=dwellMinutes #Automatic checkout, negative means: we don't care (Sauna)
         picFolder = self.dbSystem.PICPATH+"/"
-        stmt = "SELECT id,first_name,last_name,picpath,access_date FROM " + mbrTable + " m JOIN " + timetable + " z ON m.id = z.mitglied_id WHERE DATE(z.access_date) = CURDATE()-1 AND ((HOUR(z.access_date) < " + daysplit + " AND HOUR(CURTIME()) < " + daysplit + ") OR (HOUR(z.access_date) > " + daysplit + " AND HOUR(CURTIME()) > " + daysplit + ")) and location='" + location + "' ORDER By z.access_date DESC"
+        stmt = "SELECT id,first_name,last_name,picpath,access_date FROM " + mbrTable + " m JOIN " + timetable + " z ON m.id = z.mitglied_id WHERE DATE(z.access_date) = CURDATE() AND ((HOUR(z.access_date) < " + daysplit + " AND HOUR(CURTIME()) < " + daysplit + ") OR (HOUR(z.access_date) > " + daysplit + " AND HOUR(CURTIME()) > " + daysplit + ")) and location='" + location + "' ORDER By z.access_date DESC"
         # print(stmt) 
         rows = self.db.select(stmt)
         Log.info("Visitor rows:%d", len(rows))
