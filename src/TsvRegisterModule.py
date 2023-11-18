@@ -426,9 +426,9 @@ class MainFrame(QtWidgets.QMainWindow):
         self.ui_RFIDLabel.setText("RFID Nummer")
         self.ui_RFID = QtWidgets.QLineEdit(self)
         self.ui_RFID.setToolTip("RFID mit Kartenleser einchecken - Erst draufclicken -dann scannen!")
-        self.ui_RFID.textEdited.connect(self._onRFIDRead)
-        #TEST:self.ui_RFID.editingFinished.connect(self._onRFIDDone)
-        # self.ui_RFID.installEventFilter(self)
+        #self.ui_RFID.textEdited.connect(self._onRFIDRead)#too manyevent
+        #self.ui_RFID.editingFinished.connect(self._onRFIDDone) alt least two events (return & focus)
+        self.ui_RFID.returnPressed.connect(self._onRFIDDone)
 
         self.ui_AccessLabel = QtWidgets.QLabel(self)
         self.ui_AccessLabel.setText("Merkmale:")
@@ -655,9 +655,11 @@ class MainFrame(QtWidgets.QMainWindow):
     
     @QtCore.pyqtSlot()
     def _onRFIDDone(self):
-        print("Done:",self.ui_RFID.text())
+        str_Rfid = self.ui_RFID.text()
+        print("Enter;",str_Rfid)
+        self.controller.handleRFIDChanged(str_Rfid)
          
-    @QtCore.pyqtSlot(str)     
+    @QtCore.pyqtSlot(str) #Deprecated, since flooding    
     def _onRFIDRead(self, str_Rfid):
         if len(str_Rfid) > 9:  # typing
             self.controller.handleRFIDChanged(str_Rfid)
@@ -675,10 +677,9 @@ class MainFrame(QtWidgets.QMainWindow):
             else:
                 Log.warning("Member %s does not exist in Search Combo index: %d",res.searchName(),idx)
         else:
-            Log.warning("RFID %s could not be found in memberList and RFID MODE",str_RFID)
-        #if not found:
-        #    dlg=self.getMessageDialog("Chip unbekannt", "Der Chip ist nicht registriert")
-        #    dlg.show()
+            Log.warning("RFID %s could not be found in memberList(RFID MODE)",str_RFID)
+            dlg=self.getMessageDialog("Chip unbekannt", "Der Chip ist nicht registriert")
+            dlg.show()
         
     #slot if rfid is filled manually/name search - Registration (controller)
     def verifyRFID(self, str_Rfid):
