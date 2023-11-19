@@ -108,7 +108,7 @@ def manage_picture(picture_name):
             Log.exception("Save picture failed")
             return None
         return "200"
-#da fehlt ne route
+#subcall:
 def statisticsTemplate(location):
     '''
     fig2 = go.Figure()
@@ -132,7 +132,23 @@ def statisticsTemplate(location):
     graphJSON = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
     logo_path = "tsv_logo_100.png"
     return render_template('index.html', graphJSON=graphJSON, logo_path=logo_path, dynamic_location=location)    
+
+@app.route('/sectionS',methods=["GET", "POST"])
+def drawSectionMembers():  
+    sections, counts = barModel.countSectionMembers()  #list members per abteilung
+    data = [go.Bar(
+       x=sections,
+       y=counts,
+       text=counts,
+       textposition='auto',
+       marker_color='#FFA500'
+    )]
+    layout = go.Layout(title="Abteilungen und deren Mitglieder", xaxis=dict(title="Abteilung"), yaxis=dict(title="Mitglieder"))
+    fig = go.Figure(data=data, layout=layout)
     
+    graphJSON = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
+    logo_path = "tsv_logo_100.png"
+    return render_template('index.html', graphJSON=graphJSON, logo_path=logo_path, dynamic_location="Hauptverein") 
 
 @app.route('/config',methods=["GET", "POST"])
 #https://www.digitalocean.com/community/tutorials/how-to-use-web-forms-in-a-flask-application
@@ -178,6 +194,9 @@ def showChipRegistration():
     
     return render_template('register.html',logo_path=logo_path,chipHeaders=chipHeaders, chipData=configData)
 
+@app.route('/sectionS',methods=["GET", "POST"])
+def drawMembersPerSection():
+    logo_path = "tsv_logo_100.png"  
         
 #list for Siggi --new chips:
 #  select m.id,m.first_name,m.last_name,m.access,m.uuid,r.register_Date from Mitglieder m,RegisterList r where m.id = r.mitglied_id;
@@ -480,6 +499,18 @@ class BarModel():
                 members[date_str][mid].updateAccess(row)    
         return members
     
+    def countSectionMembers(self):
+        myTable = self.dbSystem.BEITRAGTABLE
+        stmt = "SELECT section , COUNT(section) AS CountOf from %s GROUP BY section;"%(myTable)
+        rows = self.db.select(stmt)
+        x_values=[]
+        y_values=[]    
+        for row in rows:
+            x_values.append(row[0])
+            y_values.append(row[1])
+        return (x_values, y_values)
+        
+        
     # show pic and names of those that are curently in the location
     def currentVisitorPictures(self, location, dwellMinutes=-1):
         mbrTable = self.dbSystem.MAINTABLE
