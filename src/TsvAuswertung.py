@@ -166,13 +166,13 @@ def manageConfiguration():
 @app.route('/registrationS',methods=["GET", "POST"])
 def showChipRegistration():
     logo_path = "tsv_logo_100.png"
-    chipHeaders=['ID','Datum','Nachname','Burtstag','Merkmal']
-    fields=['id','date','name','bday','access'] #feldnamen
+    chipHeaders=['ID','Datum','Nachname','Burtstag','Merkmal','Chip']
+    fields=['id','date','name','bday','access','RFID'] #feldnamen
     configData=[]
     dataRows = barModel.registerTable()
     for row in dataRows:
         entry={}
-        for idx in range(0,5):
+        for idx in range(0,6):
             entry[fields[idx]]=row[idx]
         configData.append(entry)
     
@@ -516,7 +516,8 @@ class BarModel():
         return self.db.select(stmt)
     
     def registerTable(self):
-        stmt = "select id,register_date,last_name,CAST(birth_date AS DATE),access from Mitglieder m join RegisterList r where m.id=r.mitglied_id and month(register_date)>month(CURDATE())-2;"
+        #list only NON Assa Abloy keys
+        stmt = "select id,register_date,last_name,CAST(birth_date AS DATE),access,m.uuid from Mitglieder m LEFT JOIN AssaAbloy a on a.uuid=m.uuid join RegisterList r on m.id=r.mitglied_id where a.uuid IS NULL and month(register_date)>month(CURDATE())-2 ORDER BY r.register_date ASC;"
         return self.db.select(stmt)
     
     def locationTable(self):
