@@ -548,7 +548,7 @@ class BarModel():
     
     def registerTable(self):
         #list only NON Assa Abloy keys
-        stmt = "select id,register_date,last_name,CAST(birth_date AS DATE),access,m.uuid from Mitglieder m LEFT JOIN AssaAbloy a on a.uuid=m.uuid join RegisterList r on m.id=r.mitglied_id where a.uuid IS NULL and month(register_date)>month(CURDATE())-2 ORDER BY r.register_date ASC;"
+        stmt = "select id,register_date,last_name,CAST(birth_date AS DATE),access,m.uuid from Mitglieder m LEFT JOIN AssaAbloy a on a.uuid=m.uuid join RegisterList r on m.id=r.mitglied_id where a.uuid IS NULL and month(register_date)>month(CURDATE())-3 ORDER BY r.register_date ASC;"
         return self.db.select(stmt)
     
     def locationTable(self):
