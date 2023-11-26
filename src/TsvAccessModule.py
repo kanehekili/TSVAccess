@@ -183,7 +183,7 @@ class RFIDAccessor():
     def __forkWriteAccess(self, key,prepaidCount):
         now = datetime.now().isoformat()
         table = self.dbSystem.TIMETABLE
-        stmt = "SELECT mitglied_id,access_date from " + table + " where mitglied_id=" + str(key) + " AND location="+self.activity+" AND TIMESTAMPDIFF(SECOND,access_date,NOW()) <= " + str(self.gracetime)
+        stmt = "SELECT mitglied_id,access_date from " + table + " where mitglied_id=" + str(key) + " AND location='"+self.activity+"' AND TIMESTAMPDIFF(SECOND,access_date,NOW()) <= " + str(self.gracetime)
         timerows = self.db.select(stmt) 
         if len(timerows) == 0: 
             #gracetime period is over, checkout/recheck in possible
