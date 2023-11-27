@@ -8,7 +8,9 @@ from datetime import datetime, timedelta
 #from faker import Faker
 import json
 from TsvAccessModule import RaspberryFAKE
-import TsvDBCreator
+import smtplib,ssl
+from email.message import EmailMessage
+
 '''
 def setupDB():
     c=Connector()
@@ -421,6 +423,23 @@ def nextDay():
         print(secs,(goal-fakeNow))
     else:
         print("No action")
+
+def sendEmail():
+    port = 587  # For starttls
+    smtp_server = "w00d4ed3.kasserver.com"
+    password = "TSV1847#MS"
+
+    msg = EmailMessage()
+    msg['Subject'] = "Sauna Abo"
+    msg['From'] = "it@tsv-weilheim.com"
+    msg['To'] = "mathias.wegmann@tsv-weilheim.com"
+    msg.set_content("Mitglied %s hat 10 Sauna Punkte gekauft"%("Hugo"))
+
+    context = ssl.create_default_context()  
+    with smtplib.SMTP(smtp_server, port) as server:
+        server.starttls(context=context)
+        server.login("it@tsv-weilheim.com", password)
+        server.send_message(msg)
          
 
 if __name__ == '__main__':
@@ -434,5 +453,6 @@ if __name__ == '__main__':
     #rand_name()
     #testSelect()
     #testCreateAccessData()
-    nextDay()
+    #nextDay()
+    sendEmail()
     pass

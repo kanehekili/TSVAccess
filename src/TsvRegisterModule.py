@@ -627,9 +627,9 @@ class MainFrame(QtWidgets.QMainWindow):
     @QtCore.pyqtSlot(int)
     def _onFaceChange(self, state):
         if state == QtCore.Qt.Checked:
-            self.model.faceActive = True
+            self.cam.faceActive = True
         else:
-            self.model.faceActive = False
+            self.cam.faceActive = False
 
     @QtCore.pyqtSlot(int)
     def _onSearchChanged(self, idx):
@@ -1061,6 +1061,7 @@ class CamModule():
         self._camIndex = cameraIndex
         self._cvCam = None
         self._dimension = [0, 0]
+        self.faceActive = True
     
     def startCamera(self):
         if self._camIndex == -1:

@@ -2,5 +2,4 @@
 *.py[cod]
 __pycache__/
 
-/TSVAuswertung.log
-/TSVRegister.log
+/*.log

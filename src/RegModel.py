@@ -61,7 +61,6 @@ class Registration():
         # self.accesscodes = []
         self.borders = []
         self.aaTransponders = []
-        self.faceActive = True
         self.memberList=None
         self.activity=None #one of DBCreator.ALL_ACTIVITIES which is "location" in Zugang Table ...
 
