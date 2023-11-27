@@ -426,8 +426,6 @@ class MainFrame(QtWidgets.QMainWindow):
         self.ui_RFIDLabel.setText("RFID Nummer")
         self.ui_RFID = QtWidgets.QLineEdit(self)
         self.ui_RFID.setToolTip("RFID mit Kartenleser einchecken - Erst draufclicken -dann scannen!")
-        # self.ui_RFID.textEdited.connect(self._onRFIDRead)#too manyevent
-        # self.ui_RFID.editingFinished.connect(self._onRFIDDone) alt least two events (return & focus)
         self.ui_RFID.returnPressed.connect(self._onRFIDDone)
 
         self.ui_AccessLabel = QtWidgets.QLabel(self)
@@ -435,15 +433,11 @@ class MainFrame(QtWidgets.QMainWindow):
         self.ui_AccessLabel.setToolTip("Hier kann der Zugangscode (Multi3) angepasst werden - aktuell nur einer")
         
         self.ui_AccessCombo = QtWidgets.QComboBox(self)
-        # self.ui_AccessCombo = CheckableComboBox(self)
-        # TODO Wrong- location/group agnostic... 
         themes = TsvDBCreator.ACCESSCODES
         self.ui_AccessCombo.addItem("-")
         for item in themes:
             self.ui_AccessCombo.addItem(item)
-        # self.ui_AccessCombo.setCurrentText("")  # self.model.iconSet
         self.ui_AccessCombo.currentTextChanged.connect(self._onAccessChanged)
-        # self.ui_AccessCombo.setToolTip("Angabe der Zugangsbereiche (Mehrfachwahl möglich)")
         self.ui_AccessCombo.setToolTip("Angabe des Zugangsbereichs")
 
         self.ui_BirthLabel = QtWidgets.QLineEdit(self)
@@ -595,6 +589,7 @@ class MainFrame(QtWidgets.QMainWindow):
 
     def setEntryFields(self, mbr):  # TODO
         self.ui_IDEdit.setText(mbr.primKeyString())
+        self.ui_IDEdit.setReadOnly(True);
         self.ui_FirstNameEdit.setText(mbr.firstName)
         self.ui_LastNameEdit.setText(mbr.lastName)
         acc = '-' if not mbr.access else mbr.access 
@@ -658,11 +653,6 @@ class MainFrame(QtWidgets.QMainWindow):
         print("Enter;", str_Rfid)
         self.controller.handleRFIDChanged(str_Rfid)
          
-    @QtCore.pyqtSlot(str)  # Deprecated, since flooding    
-    def _onRFIDRead(self, str_Rfid):
-        if len(str_Rfid) > 9:  # typing
-            self.controller.handleRFIDChanged(str_Rfid)
-    
     # slot if rfid search is active (controller)
     def searchWithRFID(self, str_RFID):
         res = next((mbr for mbr in self.model.memberList if mbr.rfidString() == str_RFID), None)
@@ -682,11 +672,12 @@ class MainFrame(QtWidgets.QMainWindow):
         
     # slot if rfid is filled manually/name search - Registration (controller)
     def verifyRFID(self, str_Rfid):
-        Log.info("Checking RFID:%s", str_Rfid)
+        cnt=len(str_Rfid)
+        Log.info("Checking RFID:%s len:%d", str_Rfid, cnt)
         if not str_Rfid:
             return;
         
-        if not str_Rfid.isdigit():
+        if not str_Rfid.isdigit() or cnt> 10:
             self.ui_RFID.setStyleSheet("QLineEdit { background: rgb(212,0,0); color:white}");
             return             
         self.ui_RFID.setStyleSheet("")
@@ -733,8 +724,8 @@ class MainFrame(QtWidgets.QMainWindow):
             msg = msg + "Zugangscode ? \n"
         if not (self.photoTaken or photoSaved):
             msg = msg + "Photo ? \n"
-        if not rfid:
-            msg = msg + "RFID Code ? \n"
+        if not rfid or len(rfid)>10:
+            msg = msg + "RFID Code (max 10 Zeichen)? \n"
            
         if len(msg) > 0: 
             self.getErrorDialog("Eingabefehler", "Bitte alle Felder ausfüllen", msg, mail=False).show()
@@ -782,17 +773,19 @@ class MainFrame(QtWidgets.QMainWindow):
     def _clearFields(self):
         self.ui_SearchEdit.clearEditText()
         self.ui_IDEdit.clear()
+        self.ui_IDEdit.setReadOnly(False);
         self.ui_FirstNameEdit.clear()
         self.ui_LastNameEdit.clear()
         self.ui_AccessCombo.setCurrentText('-')   
         self.ui_BirthLabel.clear()
         self.ui_RFID.clear()
+        self.ui_RFID.setStyleSheet("")
         self.cam.cameraOn = False
         self.capturing = False
         self.photoTaken = False
         self.updatePhotoButton()
         self.updateAboButton(None)
-        self.cameraThread.showFrame(None)  # Icon
+        self.ui_VideoFrame.showFrame(None)
          
     # dialogs
     def __getInfoDialog(self, text):
@@ -1160,7 +1153,7 @@ class CamModule():
         
         conv = self._currentFrame[y:y + h, x:x + w].copy()
         croppedPic = cv2.cvtColor(conv, cv2.COLOR_RGB2BGR)
-        cv2.imwrite(self.SAVEPIC, croppedPic)  # save picture needs that
+        cv2.imwrite(Registration.SAVEPIC, croppedPic)  # save picture needs that
         return croppedPic
 
     def stopCamera(self):
