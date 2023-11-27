@@ -82,6 +82,8 @@ class RFIDAccessor():
         self.configShared=data[4]==self.dbSystem.CONFIG_MODE_SHARED
 
     def _controlLocation(self):
+        #No polling. create/extend table with weekday start & endtime.
+        #Beware: we may have the same location (eg Studio with KR (always) and GROUP (only mondays))
         while self.running:
             now = datetime.now()
 
@@ -183,7 +185,8 @@ class RFIDAccessor():
     def __forkWriteAccess(self, key,prepaidCount):
         now = datetime.now().isoformat()
         table = self.dbSystem.TIMETABLE
-        stmt = "SELECT mitglied_id,access_date from " + table + " where mitglied_id=" + str(key) + " AND location='"+self.activity+"' AND TIMESTAMPDIFF(SECOND,access_date,NOW()) <= " + str(self.gracetime)
+        #stmt = "SELECT mitglied_id,access_date from " + table + " where mitglied_id=" + str(key) + " AND location='"+self.activity+"' AND TIMESTAMPDIFF(SECOND,access_date,NOW()) <= " + str(self.gracetime)
+        stmt = "SELECT mitglied_id,access_date from %s where mitglied_id=%s AND location='%s' AND TIMESTAMPDIFF(SECOND,access_date,NOW()) <= %s"%(table,str(key),self.activity,str(self.gracetime))
         timerows = self.db.select(stmt) 
         if len(timerows) == 0: 
             #gracetime period is over, checkout/recheck in possible

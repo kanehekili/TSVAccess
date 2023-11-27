@@ -34,12 +34,11 @@ from PyQt5 import QtWidgets, QtGui, QtCore
 from PyQt5.QtCore import QRegExp
 from PyQt5.QtGui import QRegExpValidator
 from DBTools import OSTools
-from TsvDBCreator import SetUpTSVDB
 import DBTools
-from datetime import datetime
-import requests
 import TsvDBCreator
-global WIN
+from RegModel import Mitglied, RegisterController, RFIDController, Registration
+WIN = None
+
 
 class OpenCV3():
 
@@ -351,13 +350,14 @@ class MainFrame(QtWidgets.QMainWindow):
     def __init__(self, qapp, cameraIndex, rfidMode):
         self._isStarted = False
         self.__qapp = qapp
-        self.model = Registration(cameraIndex)
+        self.model = Registration()
+        self.cam = CamModule(cameraIndex)
         self.cameraThread = None
         self.qtQueueRunning = False
         self.capturing = False
         self.photoTaken = False
         self.mbrPhoto = None
-        self.controller= RFIDController(self) if rfidMode else RegisterController(self)
+        self.controller = RFIDController(self) if rfidMode else RegisterController(self)
         
         super(MainFrame, self).__init__()
         self.setWindowIcon(getAppIcon())
@@ -426,8 +426,8 @@ class MainFrame(QtWidgets.QMainWindow):
         self.ui_RFIDLabel.setText("RFID Nummer")
         self.ui_RFID = QtWidgets.QLineEdit(self)
         self.ui_RFID.setToolTip("RFID mit Kartenleser einchecken - Erst draufclicken -dann scannen!")
-        #self.ui_RFID.textEdited.connect(self._onRFIDRead)#too manyevent
-        #self.ui_RFID.editingFinished.connect(self._onRFIDDone) alt least two events (return & focus)
+        # self.ui_RFID.textEdited.connect(self._onRFIDRead)#too manyevent
+        # self.ui_RFID.editingFinished.connect(self._onRFIDDone) alt least two events (return & focus)
         self.ui_RFID.returnPressed.connect(self._onRFIDDone)
 
         self.ui_AccessLabel = QtWidgets.QLabel(self)
@@ -451,11 +451,11 @@ class MainFrame(QtWidgets.QMainWindow):
         self.ui_BirthLabel.setReadOnly(True);
         self.ui_BirthLabel.setToolTip("Geburtstag (nicht veränderbar)")
 
-        self.ui_CreateButton = QtWidgets.QPushButton()
-        self.ui_CreateButton.setText("   Speichern")
-        self.ui_CreateButton.setIcon(QtGui.QIcon("./web/static/save.png"))
-        self.ui_CreateButton.clicked.connect(self._onSaveMember)
-        self.ui_CreateButton.setToolTip("In Datenbank speichern und Zugang erlauben")
+        self.ui_SaveButton = QtWidgets.QPushButton()
+        self.ui_SaveButton.setText("   Speichern")
+        self.ui_SaveButton.setIcon(QtGui.QIcon("./web/static/save.png"))
+        self.ui_SaveButton.clicked.connect(self._onSaveMember)
+        self.ui_SaveButton.setToolTip("In Datenbank speichern und Zugang erlauben")
 
         self.ui_AboButton = QtWidgets.QPushButton()
         self.ui_AboButton.setText("  Abo + Sperren")
@@ -465,13 +465,13 @@ class MainFrame(QtWidgets.QMainWindow):
         self.ui_AboButton.setEnabled(False)
 
         # geht immer
-        self.ui_ExitButton = QtWidgets.QPushButton()
-        # self.ui_ExitButton = QtWidgets.QToolButton()
-        # self.ui_ExitButton.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
-        self.ui_ExitButton.setText("            Neu")
-        self.ui_ExitButton.setIcon(QtGui.QIcon("./web/static/new.png"))
-        self.ui_ExitButton.clicked.connect(self._onNewClicked)
-        self.ui_ExitButton.setToolTip("Ein weiters Mitglied einchecken")
+        self.ui_NewButton = QtWidgets.QPushButton()
+        # self.ui_NewButton = QtWidgets.QToolButton()
+        # self.ui_NewButton.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
+        self.ui_NewButton.setText("            Neu")
+        self.ui_NewButton.setIcon(QtGui.QIcon("./web/static/new.png"))
+        self.ui_NewButton.clicked.connect(self._onNewClicked)
+        self.ui_NewButton.setToolTip("Ein weiters Mitglied einchecken")
         
         box = self.makeGridLayout()
         
@@ -585,9 +585,9 @@ class MainFrame(QtWidgets.QMainWindow):
         
         gridLayout.addWidget(line, 12, 1, 1, -1)
         
-        gridLayout.addWidget(self.ui_ExitButton, 13, 1, 1, 1)
+        gridLayout.addWidget(self.ui_NewButton, 13, 1, 1, 1)
         gridLayout.addWidget(self.ui_AboButton, 13, 4, 1, 1, QtCore.Qt.AlignCenter)
-        gridLayout.addWidget(self.ui_CreateButton, 13, 7, 1, 1, QtCore.Qt.AlignRight)
+        gridLayout.addWidget(self.ui_SaveButton, 13, 7, 1, 1, QtCore.Qt.AlignRight)
         
         gridLayout.setRowStretch(1, 1)
 
@@ -614,7 +614,7 @@ class MainFrame(QtWidgets.QMainWindow):
     def _onPhotoButtonClicked(self):
         if self.capturing:
             self.capturing = False
-            if self.model.takeScreenshot():
+            if self.cam.takeScreenshot():
                 self.photoTaken = True
                 # self.cameraThread.showFrame(self.model.getFrame()) TODO TEst
             else:
@@ -652,36 +652,35 @@ class MainFrame(QtWidgets.QMainWindow):
         self._clearFields()  
         self.controller.setInitialFocus()      
     
-    
     @QtCore.pyqtSlot()
     def _onRFIDDone(self):
         str_Rfid = self.ui_RFID.text()
-        print("Enter;",str_Rfid)
+        print("Enter;", str_Rfid)
         self.controller.handleRFIDChanged(str_Rfid)
          
-    @QtCore.pyqtSlot(str) #Deprecated, since flooding    
+    @QtCore.pyqtSlot(str)  # Deprecated, since flooding    
     def _onRFIDRead(self, str_Rfid):
         if len(str_Rfid) > 9:  # typing
             self.controller.handleRFIDChanged(str_Rfid)
     
-    #slot if rfid search is active (controller)
-    def searchWithRFID(self,str_RFID):
-        res=next((mbr for mbr in self.model.memberList if mbr.rfidString()==str_RFID),None)
+    # slot if rfid search is active (controller)
+    def searchWithRFID(self, str_RFID):
+        res = next((mbr for mbr in self.model.memberList if mbr.rfidString() == str_RFID), None)
         if res:
-            print("Found:",res.searchName())
-            idx=self.ui_SearchEdit.findData(res)
-            if idx>0:
+            print("Found:", res.searchName())
+            idx = self.ui_SearchEdit.findData(res)
+            if idx > 0:
                 self.ui_SearchEdit.setCurrentIndex(idx)
-                #fill all, but no photo
+                # fill all, but no photo
                 self._onSearchChanged(idx)
             else:
-                Log.warning("Member %s does not exist in Search Combo index: %d",res.searchName(),idx)
+                Log.warning("Member %s does not exist in Search Combo index: %d", res.searchName(), idx)
         else:
-            Log.warning("RFID %s could not be found in memberList(RFID MODE)",str_RFID)
-            dlg=self.getMessageDialog("Chip unbekannt", "Der Chip ist nicht registriert")
+            Log.warning("RFID %s could not be found in memberList(RFID MODE)", str_RFID)
+            dlg = self.getMessageDialog("Chip unbekannt", "Der Chip ist nicht registriert")
             dlg.show()
         
-    #slot if rfid is filled manually/name search - Registration (controller)
+    # slot if rfid is filled manually/name search - Registration (controller)
     def verifyRFID(self, str_Rfid):
         Log.info("Checking RFID:%s", str_Rfid)
         if not str_Rfid:
@@ -788,7 +787,7 @@ class MainFrame(QtWidgets.QMainWindow):
         self.ui_AccessCombo.setCurrentText('-')   
         self.ui_BirthLabel.clear()
         self.ui_RFID.clear()
-        self.model.cameraOn = False
+        self.cam.cameraOn = False
         self.capturing = False
         self.photoTaken = False
         self.updatePhotoButton()
@@ -862,7 +861,7 @@ class MainFrame(QtWidgets.QMainWindow):
         self.qtQueueRunning = True
         self.ui_VideoFrame.showFrame(None)
         
-        self.cameraThread = CameraThread(self.model.activateCamera)
+        self.cameraThread = CameraThread(self.cam.activateCamera)
         self.cameraThread.signal.connect(self._displayFrame)
         self.cameraThread.finished.connect(self._handleFramesDone)
         self._initModel()
@@ -873,7 +872,7 @@ class MainFrame(QtWidgets.QMainWindow):
             self.ui_VideoFrame.showImage(self.mbrPhoto)
             self.updatePhotoButton()
         else:
-            self.ui_VideoFrame.showFrame(self.model.saveCroppedScreenShot())
+            self.ui_VideoFrame.showFrame(self.cam.saveCroppedScreenShot())
         self.mbrPhoto = None    
     
     def _displayMemberFace(self, member):
@@ -882,8 +881,8 @@ class MainFrame(QtWidgets.QMainWindow):
             self.getErrorDialog("Verbindungsproblem", "Server ist nicht erreichbar", "Der Server, der die Bilder  liefern soll ist nicht erreichbar - Der Fehler wurde per eMail gemeldet").show()
             return False
         try:
-            camOn = self.model.cameraOn
-            self.model.cameraOn = False
+            camOn = self.cam.cameraOn
+            self.cam.cameraOn = False
             self.capturing = False
             img = QtGui.QImage()
             img.loadFromData(raw)
@@ -895,7 +894,7 @@ class MainFrame(QtWidgets.QMainWindow):
             return False
         return True
     
-    def _initCapture(self): ###RegisterCam!
+    def _initCapture(self):  # ##RegisterCam!
         if not self.controller.supportsCamera():
             return
         self.capturing = True
@@ -903,20 +902,20 @@ class MainFrame(QtWidgets.QMainWindow):
         QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         self.updatePhotoButton()
         self.cameraThread.start()
-        while not self.model.cameraOn:
-            if self.model.cameraStatus is None:
+        while not self.cam.cameraOn:
+            if self.cam.cameraStatus is None:
                 time.sleep(0.2)
             else:
-                self._showCameraError(self.model.cameraStatus)
+                self._showCameraError(self.cam.cameraStatus)
                 break
         QApplication.restoreOverrideCursor()
 
     def _initModel(self):
         QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
-        ###RegisterCam
+        # ##RegisterCam
         if self.controller.supportsCamera():
-            if not self.model.startCamera():
-                self._showCameraError(self.model.cameraStatus)
+            if not self.cam.startCamera():
+                self._showCameraError(self.cam.cameraStatus)
         
         res = self.model.connect()
         QApplication.restoreOverrideCursor()
@@ -936,7 +935,7 @@ class MainFrame(QtWidgets.QMainWindow):
         self.close()
 
     def closeEvent(self, event):
-        self.model.stopCamera()
+        self.cam.stopCamera()
         self.cameraThread.quit()
         self.cameraThread.wait()
         try:
@@ -1052,197 +1051,39 @@ def __DEMO__headRec():
     
     cv2.destroyWindow(window_name)
 
-'''
-We need controllers for mode register (you search for names and have a camera)
-and mode rfid (you have a registered user and search it with the rfid token)
-'''
-class RegisterController():
-    def __init__(self,ui):
-        self.mainFrame=ui
-
-    def handleRFIDChanged(self,str_RFID):
-        self.mainFrame.verifyRFID(str_RFID)
-
-    def supportsCamera(self):
-        return True
-
-    def setInitialFocus(self):
-        self.mainFrame.ui_SearchEdit.setFocus()
-        #self.mainFrame.ui_SearchEdit.setStyleSheet("QComboBox,QComboBox::editable { background: rgb(0,160,0); color:white}");
-        self.mainFrame.ui_SearchEdit.setStyleSheet("QComboBox { padding: 2px; border-radius: 4px; border: 2px solid rgb(0,160,0);}");
-
         
-
-class RFIDController(RegisterController):
-    def __init__(self, ui):
-        RegisterController.__init__(self,ui)        
-
-    #slot if rfid search is active (mode)
-    def handleRFIDChanged(self,str_RFID):
-        #String may have a leading zero.
-        try:
-            tmp=int(str_RFID)
-        except:
-            self.mainFrame.searchWithRFID(str_RFID)
-            return
-        clean=str(tmp)
-        self.mainFrame.searchWithRFID(clean)
-
-    def supportsCamera(self):
-        return False
-
-    def setInitialFocus(self):
-        self.mainFrame.ui_RFID.setFocus()
-        #self.mainFrame.ui_RFID.setStyleSheet("QLineEdit { background: rgb(0,160,0); color:white}");
-        self.mainFrame.ui_RFID.setStyleSheet("QLineEdit {padding: 2px; border-radius: 4px; border: 2px solid rgb(0,160,0); }");
-
-
-class Registration():
-    SAVEPIC = "/tmp/tsv.screenshot.png"   
+class CamModule():
 
     def __init__(self, cameraIndex):
-        # self.accesscodes = []
-        self.currentFrame = None
-        self.borders = []
+        self._currentFrame = None
         self.cameraOn = False
         self.cameraStatus = None
-        self.camIndex = cameraIndex
-        self.cam = None
-        self.dimension = [0, 0]
-        self.aaTransponders = []
-        self.faceActive = True
-        self.memberList=None
-
-    def connect(self):
-        self.dbSystem = SetUpTSVDB(SetUpTSVDB.DATABASE)
-        self.db = self.dbSystem.db
-        if self.dbSystem.isConnected():
-            self.readAATransponders()
-            return True
-        return False
-    
-    def readAATransponders(self):
-        # tODO That is TABLE now!
-        '''
-        path = OSTools.getLocalPath(__file__)
-        tr = OSTools.joinPathes(path, "data", "AATransponder")
-        with open(tr,"r") as file:
-            raw=file.read()
-            self.AATransponders=raw.split(';')
-        '''
-        stmt = "Select uuid from %s" % (SetUpTSVDB.ASSAABLOY)
-        rows = self.db.select(stmt)
-        for uuid in rows:
-            self.aaTransponders.append(uuid[0]) 
-        Log.info("Loaded AA Transponders:%d", len(self.aaTransponders))
-    
-    def containsLegacyAA(self, rfid):
-        return rfid in self.aaTransponders
-    
-    # reads the list and passes it to the caller...
-    def getMembers(self):
-        fields = ','.join(Mitglied.FIELD_DEF)  # FIELD_DEF=('id','first_name','last_name','access','birth_date,picpath,uuid,flag') 
-        # stmt = "SELECT id,first_name,last_name from " + self.dbSystem.MAINTABLE
-        stmt = "SELECT " + fields + " from " + self.dbSystem.MAINTABLE
-        self.memberList = []
-        res = self.db.select(stmt)
-        for titem in res:
-            # id(int) (str) (str) (str) date! int
-            m = Mitglied(titem[0], titem[1], titem[2], titem[3], titem[4], titem[6])
-            m.picpath = titem[5]
-            m.setFlag(titem[7])
-            self.memberList.append(m)
-        return self.memberList
-    
-    def updateMember(self, mbr):
-        table = self.dbSystem.MAINTABLE
-        fields = Mitglied.FIELD_SAVE_DEF
-        data = mbr.dataSaveArray()
-        Log.info("Saving member:%s", str(data[0]))
-        self.db.insertMany(table, fields, data)
-        self.updateAboData(mbr)
-        self.updateAccessData(mbr)
-        self.updateRFIDAbrechnung(mbr)
-    
-    def updateAboData(self, mbr):
-        section = mbr.abo[0]
-        if section is None:
-            return
-        oldCount = mbr.currentAbo[1]
-        newCount = mbr.abo[1]
-        fields = ('mitglied_id', 'section', 'prepaid')
-        data = [(mbr.id, section, oldCount + mbr.abo[1])]
-        Log.info("Update ABO prepaid count from %s , %d +%d", section, oldCount, newCount)
-        if newCount > 0:  # stays 0 if old has been changed
-            msg = "Mitglied Nr %d (%s %s) \nhat heute ein 10er Abo bestellt - als Erinnerung zum abbuchen \U0001f604" % (mbr.id, mbr.firstName, mbr.lastName)
-            self.dbSystem.sendEmail("Sauna Abo Daten", True, msg)
-            
-        self.db.insertMany(self.dbSystem.BEITRAGTABLE, fields, data)
-
-    def updateAccessData(self, mbr):
-        if mbr.initalAccess == mbr.access:  # no change
-            return
-        key = mbr.access
-        if key is None or len(key) == 1:
-            return
-        # only create a section if KR or group -notfall
-        # section lesen - nur wenn notig und nicht leer
-        stmt = "select paySection from Konfig where groups like '%%%s%%'" % (key) 
-        rows = self.db.select(stmt)
-        if len(rows) < 1:
-            return;
-        section = rows[0][0]
-        fields = ('mitglied_id', 'section')
-        data = [(mbr.id, section)]
-        self.db.insertMany(self.dbSystem.BEITRAGTABLE, fields, data)
-        mbr.initalAccess = mbr.access
-     
-    def updateRFIDAbrechnung(self, mbr):
-        if mbr.initialRFID == mbr.rfid:
-            return
-        now = datetime.now().isoformat()
-        data = []
-        data.append((now, mbr.id))
-        self.db.insertMany(self.dbSystem.REGISTERTABLE, ('register_date', 'mitglied_id'), data)
-        Log.info("Dispensing NEW Chip %d to member %d",mbr.rfid,mbr.id)
-        mbr.initialRFID = mbr.rfid
-
-    def readAboData(self, mbr):
-        section = TsvDBCreator.PREPAID_INDICATOR[0]  # currently only one
-        stmt = "select prepaid from BEITRAG where mitglied_id=%d and section='%s'" % (mbr.id, section)
-        rows = self.db.select(stmt)
-        if len(rows) == 0:
-            Log.debug("No Abo data")
-            return
-        mbr.currentAbo = (section, rows[0][0])
-        Log.info("Abo count:%d", rows[0][0])
-    
-    def mailError(self, msg):
-        self.dbSystem.sendEmail("Registration Error Msg", False, msg)
+        self._camIndex = cameraIndex
+        self._cvCam = None
+        self._dimension = [0, 0]
     
     def startCamera(self):
-        if self.camIndex == -1:
-            self.camIndex = OpenCV3.getBestCameraIndex()
-        self.cam = OpenCV3.getCamera(self.camIndex)
+        if self._camIndex == -1:
+            self._camIndex = OpenCV3.getBestCameraIndex()
+        self._cvCam = OpenCV3.getCamera(self._camIndex)
         self.cameraStatus = None       
-        if self.cam is None or not self.cam.isOpened():
+        if self._cvCam is None or not self._cvCam.isOpened():
             Log.warning("Camera not found!")
             self.cameraStatus = "Keine Kamera gefunden"
             return False
-        Log.info("cam found")
 
-        self.dimension[0] = self.cam.get(cv2.CAP_PROP_FRAME_WIDTH)  # @UndefinedVariable
-        self.dimension[1] = self.cam.get(cv2.CAP_PROP_FRAME_HEIGHT)  # @UndefinedVariable
-        Log.info("Cam resolution: %d@%d", self.dimension[0], self.dimension[1])
+        self._dimension[0] = self._cvCam.get(cv2.CAP_PROP_FRAME_WIDTH)  # @UndefinedVariable
+        self._dimension[1] = self._cvCam.get(cv2.CAP_PROP_FRAME_HEIGHT)  # @UndefinedVariable
+        Log.info("Cam resolution: %d@%d", self._dimension[0], self._dimension[1])
         return True
     
     # we need some sane values.Try with at least 300 pix in size.
     def activateCamera(self, cameraThread):
         self.borders = []
-        if self.cam is None:
+        if self._cvCam is None:
             return
-        cap = self.cam    
-        self.currentFrame = None
+        cap = self._cvCam    
+        self._currentFrame = None
         fixFrame = [[230, 150, 180, 180]]  # based on a 640@480 resolution...
         
         # Loading the required haar-cascade xml classifier file
@@ -1279,10 +1120,10 @@ class Registration():
                     col = (0, 255, 0)
                     bok = True
                     # raw data
-                    if left < 0 or right > self.dimension[0]:
+                    if left < 0 or right > self._dimension[0]:
                         col = (0 , 0, 255)
                         bok = False
-                    if top < 0 or bottom > self.dimension[1]:
+                    if top < 0 or bottom > self._dimension[1]:
                         col = (0 , 0, 255)
                         bok = False
 
@@ -1293,7 +1134,7 @@ class Registration():
                     dw = right - px - 2
                     dh = bottom - py - 2;
                     if bok and self.cameraOn:
-                        self.currentFrame = frame
+                        self._currentFrame = frame
                         self.borders = [px, py, dw, dh]
                 
                 if self.cameraOn: 
@@ -1302,13 +1143,13 @@ class Registration():
     def takeScreenshot(self):
         
         self.cameraOn = False
-        if self.currentFrame is None or len(self.borders) == 0:
+        if self._currentFrame is None or len(self.borders) == 0:
             Log.info("Screenshot failed")
             return False
         return True   
 
     def saveCroppedScreenShot(self):
-        if len(self.borders) == 0 or self.currentFrame is None:
+        if len(self.borders) == 0 or self._currentFrame is None:
             return None
         
         x = self.borders[0]
@@ -1316,15 +1157,15 @@ class Registration():
         w = self.borders[2]
         h = self.borders[3]
         
-        conv = self.currentFrame[y:y + h, x:x + w].copy()
+        conv = self._currentFrame[y:y + h, x:x + w].copy()
         croppedPic = cv2.cvtColor(conv, cv2.COLOR_RGB2BGR)
         cv2.imwrite(self.SAVEPIC, croppedPic)  # save picture needs that
         return croppedPic
 
     def stopCamera(self):
         self.cameraOn = False
-        if self.cam:
-            self.cam.release()        
+        if self._cvCam:
+            self._cvCam.release()        
         
     # dont- save pic with member name on remote device via scp or smb.     
     def __deprecated_printMemberCard(self, member):
@@ -1340,130 +1181,6 @@ class Registration():
         cmd2 = ["/usr/bin/convert", "+append", "/tmp/tsv.screenshot.png", "/tmp/qr.png", "-resize", "x400", "/tmp/member.png" ]
         res = DBTools.runExternal(cmd2)
         print(res)
-
-    # beware_ connection could be broken
-    def savePicture(self, member):
-        self.db.ensureConnection() 
-        saved = Registration.SAVEPIC       
-        targetPath = SetUpTSVDB.PICPATH
-        pic = member.lastName + "-" + member.primKeyString() + ".png"
-        
-        host = SetUpTSVDB.HOST
-        response = None
-        try:
-            reqUrl = "http://%s:5001/%s/%s" % (host, targetPath, pic)     
-            Log.info("Saving picture :%s" % (reqUrl)) 
-            # reqUrl="http://localhost:5001/TSVPIC/"+pic #works!
-            response = requests.post(reqUrl, files={'file':open(saved, 'rb')})
-        except:
-            Log.error("Pic server not available:")
-            return False;
-        saveOK = response != None and response.status_code == 200
-        if saveOK:
-            member.picpath = pic
-        return saveOK 
-     
-    '''scp example - for other use..    
-    def savePicture2(self, member):
-        saved = Registration.SAVEPIC
-        data = member.lastName + "-" + member.primKeyString() + ".png"
-        targetPath = SetUpTSVDB.PICPATH
-        member.picpath = data
-        try:
-            with SCPClient(self.sshClient.get_transport()) as scp:
-                place = targetPath + data
-                Log.info("Saving picture :%s" % (data))
-                scp.put(saved, place)
-        except Exception:
-            Log.exception("SCP failure")
-            return False
-        return True           
-    '''
-      
-    def loadPicture(self, member):
-        self.db.ensureConnection()
-        targetPath = SetUpTSVDB.PICPATH
-        pic = member.picpath
-        host = SetUpTSVDB.HOST
-        reqUrl = "http://%s:5001/%s/%s" % (host, targetPath, pic)
-        Log.debug("Load url:%s", reqUrl)
-        try:
-            pic = requests.get(reqUrl).content
-        except:
-            Log.error("Picture Server not present")
-            return None
-        return pic
- 
-    def verifyRfid(self, rfidString, testId):
-        # check if rfid  alreay exists ->False
-        stmt = "SELECT id from " + self.dbSystem.MAINTABLE + " where uuid=" + rfidString
-        res = self.db.select(stmt)
-        if len(res) > 0:
-            if res[0][0] == testId:
-                return True  # it belongs to him..
-            Log.warning("User %d already has RFID key:%s", res[0][0], rfidString)
-            return False
-        return True
-    
-    
-class Mitglied():
-    FIELD_DEF = ('id', 'first_name', 'last_name', 'access', 'birth_date', 'picpath', 'uuid', 'flag')
-    FIELD_SAVE_DEF = ('id', 'first_name', 'last_name', 'access', 'picpath', 'uuid', 'flag')
-
-    #                  id(int) (str) (str) (str) date!      int
-    def __init__(self, mid_int, fn, ln, access, birthdate, rfid_int):  # id, firstname, lastname, DOB, access1, access2
-        # special handling
-        self.picpath = None
-        self.flag = 0
-        self.abo = (None, 0)  # TsvDBCrator SECTION, count (str,int)
-        self.currentAbo = (None, 0)  # TsvDBCrator SECTION, count (str,int)  
-        self.initalAccess = access
-        self.initialRFID = rfid_int           
-        self.update(mid_int, fn, ln, access, birthdate, rfid_int)
-        
-    def searchName(self):
-        return self.lastName + " " + self.firstName
-
-    def setFlag(self, aFlag):
-        if aFlag is None:
-            self.flag = 0
-        else:
-            self.flag = aFlag
-
-    def update(self, mid_int, fn, ln, access, birthdate, rfid_int):
-        self.id = mid_int  # This is int
-        self.firstName = fn
-        self.lastName = ln
-        self.access = access
-        self.birthdate = birthdate  # This is a date
-        self.rfid = rfid_int  # Must be int for faster search
-    
-    # TODO error; Wrong datatype if no saved and retireved.
-    # Todo: no check if rfid is unique 
-    def birthdayString(self):
-        if self.birthdate is None:
-            return ""
-        return datetime.strftime(self.birthdate, '%d.%m.%Y')
-    
-    def asDBDate(self, stringDate):
-        if len(stringDate) < 6:
-            return None
-        return datetime.strptime(stringDate, '%d.%m.%Y')
-    
-    def primKeyString(self):
-        return str(self.id)
-
-    def rfidString(self):
-        if self.rfid:
-            return str(self.rfid)
-        return None
-    
-    # data to save, no birthday        
-    def dataSaveArray(self):
-        row = []
-        inner = (self.id, self.firstName, self.lastName, self.access, self.picpath, self.rfid, self.flag)  # birthdate is read only
-        row.append(inner)
-        return row
 
 
 def getAppIcon():
@@ -1501,6 +1218,7 @@ def main(args):
     try:
 
         global Log
+        global WIN
         wd = OSTools.getLocalPath(__file__)
         OSTools.setMainWorkDir(wd)
         OSTools.setupRotatingLogger("TSVAccess", True)
@@ -1512,8 +1230,8 @@ def main(args):
         argv = sys.argv
         app = QApplication(argv)
         app.setWindowIcon(getAppIcon())
-        rfidMode=True if args.rfidMode else False
-        WIN = MainFrame(app, args.setCamera,rfidMode)  # keep python reference!
+        rfidMode = True if args.rfidMode else False
+        WIN = MainFrame(app, args.setCamera, rfidMode)  # keep python reference!
         # ONLY windoze, if ever: app.setStyleSheet(winStyle())
         # app.setStyle(QtWidgets.QStyleFactory.create("Fusion"));
         app.exec_()

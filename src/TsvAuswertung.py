@@ -110,16 +110,6 @@ def manage_picture(picture_name):
         return "200"
 #subcall:
 def statisticsTemplate(location):
-    '''
-    fig2 = go.Figure()
-    fig2.add_trace(go.Bar(x = df2['date'],y = df2['Volume']))
-    fig2.update_layout(barmode='group',bargap = 0.3, autosize=True, xaxis_range=[start_date, end_date])
-    fig2.update_xaxes(
-        ticktext=["May 10", "May 17", "May 26", "June 1"],
-        tickvals=["2022-05-10", "2022-05-17", "2022-05-26", "2022-06-1"],
-    )
-    fig2.show()
-    '''
     dates, counts = barModel.countPeoplePerDay(location)  # count members over time
     data = [go.Bar(
        x=dates,

@@ -35,12 +35,16 @@ LOC_SAUNA="Sauna"
 LOC_NORD="HalleNord"
 LOC_DOJO="Dojo"
 
+ALL_LOCATIONS=[LOC_KRAFTRAUM,LOC_SPIEGELSAAL,LOC_MZR,LOC_NORD,LOC_SAUNA,LOC_DOJO]
+
 #Use for Zugangstable & Auswertung  
 ACTIVITY_KR="Kraftraum"
-ACTIVITY_GYM = "Gym"
+ACTIVITY_GYM = "GroupFitnesse"
 ACTIVITY_SPINNING="Spinning"
-ACTIVITY_TRAMPO="Trompoline"
+#ACTIVITY_TRAMPO="Trompoline"
 ACTIVITY_SAUNA="Sauna"
+
+ALL_ACTIVITIES=[ACTIVITY_KR,ACTIVITY_GYM,ACTIVITY_SAUNA,ACTIVITY_SPINNING]
 
 #these are currently possible sections: 
 #Counter({'Hauptverein': 4420, 'Turnen': 1438, 'Fit & Fun': 1392, 'Handball': 528, 'Basketball': 431, 'Aufnahmegebühr': 428, 'Leichtathletik': 401, 'Fußball': 356, 'Schwimmen': 300, 'Volleyball': 293, 'Kindersport': 263, 'Tanzsport': 243, 'Skisport': 217, 'Ju-Jutsu': 164, 'Aikido': 151, 'Tischtennis': 145, 'Judo': 132, 'Ringen': 98, 'Taekwondo': 89, 'Badminton': 86, 'Rugby': 79, 'Fechten': 63, 'Rock`n`Roll': 62, 'Kegeln': 39, 'Kyudo': 22, 'Kurs': 7, 'Behind,Versehrte': 4})
@@ -77,7 +81,7 @@ The Konfig table
 | config_id | room        | activity  | paySection     | groups             | grace_time |
 +-----------+-------------+-----------+----------------+--------------------+------------+
 |         0 | Kraftraum   | Kraftraum | Fit & Fun      | ['KR','ÜL','UKR']  |        120 |
-|         1 | Spiegelsaal | Gym       | Fit & Fun      | [GROUP]            |       3600 |
+|         1 | Spiegelsaal | GroupFitness| Fit & Fun    | [GROUP]            |       3600 |
 |         2 | Spiegelsaal | Spinning  | Leichtathletik | []                 |       3600 | < no control
 |         3 | Sauna       | Sauna     | Sauna          | []                 |       3600 | <Taged as prepaid
 +-----------+-------------+-----------+----------------+--------------------+------------+
@@ -269,7 +273,10 @@ class SetUpTSVDB():
     def _fillLocationTable(self):
         #list the correlations:
         #select host_name,room,activity,paySection,groups from Location loc JOIN Konfig conf where loc.config_id=conf.config_id;
-        # singel use: ... and loc.host_name="msi" (room is only for GUI!)
+        #TODO update: one room can have 2 activities at the same time. Table needs -weekday -start-end... 
+        #No start-end at location = always
+        #At a location we may have many activities 
+        #modeshared=TsvAccess starts daemon. Replace with time schedule! So Locationtable may have more than one config! 
         self.db.createTable(self.TABLE4)
         self.db.createTable(self.TABLE5)
                 

@@ -1,0 +1,13 @@
+[Desktop Entry]
+Encoding=UTF-8
+Version=1.0
+Type=Application
+Name=TSV Member Control
+#a indicates initial activity index (Krafraum,Gym, Sauna)
+Exec=python3 /home/think/git/src/TSVAccess/TsvMemberControl.py -a 0
+#Exec=python3 /opt/TSVAccess/TsvMemberControl.py -a 0
+Comment=Manuelles Checkin
+Icon=/opt/TSVAccess/web/static/TSV-control.png
+Categories=GTK;
+Terminal=false
+StartupNotify=true
