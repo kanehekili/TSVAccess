@@ -7,7 +7,7 @@ Show graphs per Month or year.
 # https://github.com/alanjones2/Flask-Plotly/tree/main/plotly
 # using  plotly and flask. 
 # pip install flask,plotly,pandas
-from flask import Flask, render_template,request#, has_request_context, session, url_for
+from flask import Flask, render_template, request  # , has_request_context, session, url_for
 import pandas as pd
 import json
 import plotly
@@ -18,7 +18,7 @@ import random
 from DBTools import OSTools
 from TsvDBCreator import SetUpTSVDB
 import DBTools
-import sys,os
+import sys, os
 import TsvDBCreator
 
 OSTools.setupRotatingLogger("TSVAuswertung", True)
@@ -29,18 +29,20 @@ app = Flask(__name__,
             static_folder='web/static',
             template_folder='web/templates')
 
-
 '''
 ** Kraftraum Section = TsvDBCreator.ACTIVITY_KR
 '''
+
+
 @app.route('/' + TsvDBCreator.ACTIVITY_KR)
 def statisticsKraftraum():
     return statisticsTemplate(TsvDBCreator.ACTIVITY_KR)
 
+
 @app.route('/accessKR')  # Access kraftraum
 def visitorsKraftraum():
-    #https://stackoverflow.com/questions/58996870/update-flask-web-page-with-python-script
-    people = barModel.currentVisitorPictures(TsvDBCreator.ACTIVITY_KR,150) #checkout after 150 mins
+    # https://stackoverflow.com/questions/58996870/update-flask-web-page-with-python-script
+    people = barModel.currentVisitorPictures(TsvDBCreator.ACTIVITY_KR, 150)  # checkout after 150 mins
     logo_path = "tsv_logo_100.png"
     dynamic_location = TsvDBCreator.ACTIVITY_KR    
     return render_template('access.html', people=people, logo_path=logo_path, dynamic_location=dynamic_location, location_count=len(people))
@@ -48,7 +50,7 @@ def visitorsKraftraum():
     
 @app.route('/' + TsvDBCreator.ACTIVITY_KR + "Usage")
 def verweilzeitKraftraum():
-    #TODO -under construction
+    # TODO -under construction
     dates, counts = barModel.dailyHoursUsage(TsvDBCreator.ACTIVITY_KR)  # reside time per hour     
     data = [go.Bar(
        x=dates,
@@ -64,51 +66,55 @@ def verweilzeitKraftraum():
     dynamic_location = TsvDBCreator.ACTIVITY_KR
     return render_template('index.html', graphJSON=graphJSON, logo_path=logo_path, dynamic_location=dynamic_location)        
 
-
 '''
 SAUNA SECTION -> TsvDBCreator.ACTIVITY_SAUNA == Sauna
 '''
+
+
 @app.route('/' + TsvDBCreator.ACTIVITY_SAUNA)
 def statisticsSauna():
     return statisticsTemplate(TsvDBCreator.ACTIVITY_SAUNA)
+
 
 @app.route('/accessSA')  # Access kraftraum
 def visitorsSauna():
     people = barModel.currentVisitorPictures(TsvDBCreator.ACTIVITY_SAUNA)
     logo_path = "tsv_logo_100.png"
-    return render_template('access.html', people=people, logo_path=logo_path, dynamic_location=TsvDBCreator.ACTIVITY_SAUNA,location_count=len(people))
-
+    return render_template('access.html', people=people, logo_path=logo_path, dynamic_location=TsvDBCreator.ACTIVITY_SAUNA, location_count=len(people))
 
 # hook to more sites
-
-
 
 '''
 Root and tools
 '''
+
+
 @app.route('/')
 def dashboard():
     logo_path = "tsv_logo_100.png"
-    return render_template('dashboard.html',logo_path=logo_path)
+    return render_template('dashboard.html', logo_path=logo_path)
 
-#save or retrieve pictures for Registration 
-@app.route("/TSVPIC/<picture_name>",methods=['GET', 'POST'])
+
+# save or retrieve pictures for Registration 
+@app.route("/TSVPIC/<picture_name>", methods=['GET', 'POST'])
 def manage_picture(picture_name):
     """Used to send the requested picture from the pictures folder."""
-    picture_path="TSVPIC/"+picture_name #TODO -get configured
-    if request.method =='GET':
-        Log.debug("Read pic:%s",picture_name)
+    picture_path = "TSVPIC/" + picture_name  # TODO -get configured
+    if request.method == 'GET':
+        Log.debug("Read pic:%s", picture_name)
         return app.send_static_file(picture_path)
-    elif request.method =='POST':
+    elif request.method == 'POST':
         file = request.files['file']
-        Log.debug("Save pic:%s",picture_path)
+        Log.debug("Save pic:%s", picture_path)
         try:
-            file.save(app.static_folder+"/"+picture_path)
+            file.save(app.static_folder + "/" + picture_path)
         except:
             Log.exception("Save picture failed")
             return None
         return "200"
-#subcall:
+
+
+# subcall:
 def statisticsTemplate(location):
     dates, counts = barModel.countPeoplePerDay(location)  # count members over time
     data = [go.Bar(
@@ -123,9 +129,10 @@ def statisticsTemplate(location):
     logo_path = "tsv_logo_100.png"
     return render_template('index.html', graphJSON=graphJSON, logo_path=logo_path, dynamic_location=location)    
 
-@app.route('/sectionS',methods=["GET", "POST"])
-def drawSectionMembers():  
-    sections, counts = barModel.countSectionMembers()  #list members per abteilung
+
+@app.route('/sectionS', methods=["GET", "POST"])
+def drawSectionMembers(): 
+    sections, counts = barModel.countSectionMembers()  # list members per abteilung
     data = [go.Bar(
        x=sections,
        y=counts,
@@ -140,62 +147,62 @@ def drawSectionMembers():
     logo_path = "tsv_logo_100.png"
     return render_template('index.html', graphJSON=graphJSON, logo_path=logo_path, dynamic_location="Hauptverein") 
 
-@app.route('/config',methods=["GET", "POST"])
-#https://www.digitalocean.com/community/tutorials/how-to-use-web-forms-in-a-flask-application
-#basic: https://plainenglish.io/blog/how-to-create-a-basic-form-in-python-flask-af966ee493fa
+
+@app.route('/config', methods=["GET", "POST"])
+# https://www.digitalocean.com/community/tutorials/how-to-use-web-forms-in-a-flask-application
+# basic: https://plainenglish.io/blog/how-to-create-a-basic-form-in-python-flask-af966ee493fa
 def manageConfiguration():
     logo_path = "tsv_logo_100.png"
-    configHeaders=['ID','Raum','Aktivität','Abteilung','Merkmale']
-    fields=['config_id','room','activity','paySection','groups']
-    configData=[]
+    configHeaders = ['ID', 'Raum', 'Aktivität', 'Abteilung', 'Merkmale']
+    fields = ['config_id', 'room', 'activity', 'paySection', 'groups']
+    configData = []
     configRows = barModel.configTable()
     for row in configRows:
-        entry={}
-        for idx in range(0,5):
-            entry[fields[idx]]=row[idx]
+        entry = {}
+        for idx in range(0, 5):
+            entry[fields[idx]] = row[idx]
         configData.append(entry)
     
-    #just open a form
-    locHeaders=['Gerät','Konfigurations-ID']
-    fields=['host_name','config_id']
-    locRows=barModel.locationTable()
-    locData=[]
+    # just open a form
+    locHeaders = ['Gerät', 'Konfigurations-ID']
+    fields = ['host_name', 'config_id']
+    locRows = barModel.locationTable()
+    locData = []
     for row in locRows:
-        entry={}
-        for idx in range(0,2):
-            entry[fields[idx]]=row[idx]
+        entry = {}
+        for idx in range(0, 2):
+            entry[fields[idx]] = row[idx]
         locData.append(entry)
-        
     
-    return render_template('config.html', logo_path=logo_path,configHeaders=configHeaders, configData=configData, locHeaders=locHeaders,locData=locData)
+    return render_template('config.html', logo_path=logo_path, configHeaders=configHeaders, configData=configData, locHeaders=locHeaders, locData=locData)
 
-@app.route('/registrationS',methods=["GET", "POST"])
+
+@app.route('/registrationS', methods=["GET", "POST"])
 def showChipRegistration():
     logo_path = "tsv_logo_100.png"
-    chipHeaders=['ID','Datum','Nachname','Burtstag','Merkmal','Chip']
-    fields=['id','date','name','bday','access','RFID'] #feldnamen
-    configData=[]
+    chipHeaders = ['LFD.Nr', 'ID', 'Datum', 'Nachname', 'Burtstag', 'Merkmal', 'Chip']
+    fields = ['id', 'date', 'name', 'bday', 'access', 'RFID']  # feldnamen
+    configData = []
     dataRows = barModel.registerTable()
+    lfd = 1
     for row in dataRows:
-        entry={}
-        for idx in range(0,6):
-            entry[fields[idx]]=row[idx]
+        entry = {}
+        entry['lfd'] = lfd
+        for idx in range(0, 6):
+            entry[fields[idx]] = row[idx]
         configData.append(entry)
+        lfd += 1
     
-    return render_template('register.html',logo_path=logo_path,chipHeaders=chipHeaders, chipData=configData)
+    return render_template('register.html', logo_path=logo_path, chipHeaders=chipHeaders, chipData=configData)
 
-@app.route('/sectionS',methods=["GET", "POST"])
-def drawMembersPerSection():
-    logo_path = "tsv_logo_100.png"  
-        
-#list for Siggi --new chips:
-#  select m.id,m.first_name,m.last_name,m.access,m.uuid,r.register_Date from Mitglieder m,RegisterList r where m.id = r.mitglied_id;
-# form: select id,register_date,first_name,last_name,birth_date,access from Mitglieder m join RegisterList r where m.id=r.mitglied_id and month(register_date)=9;      
-#TODO: why 4 times the same person?    
+
+  
 
 '''
 Test or demo routines
 '''
+
+
 @app.route('/fancy')  # just colorfull fake with pandas. Think twice using the library 
 def plot():
     fakeDAta = barModel.pandaData()
@@ -216,7 +223,7 @@ def plot():
 
 @app.route('/ratio')  # Access kraftraum
 def testRatio():
-    people= barModel.testRatio()
+    people = barModel.testRatio()
     logo_path = "tsv_logo_100.png"
     dynamic_location = TsvDBCreator.ACTIVITY_KR    
     return render_template('access.html', people=people, logo_path=logo_path, dynamic_location=dynamic_location)
@@ -241,14 +248,10 @@ def plotFigTestWorking():
 '''
 
 
-
-
-       
-
-
 # model for the access row part - checkin/checkout
 class AccessRow():
-    dwellMinutes=-1 #we dont care
+    dwellMinutes = -1  # we dont care
+
     def __init__(self, dbRow):
         self.id = dbRow[0]
         self.da = dbRow[4]  # datetime
@@ -267,15 +270,14 @@ class AccessRow():
     
     def isInPlace(self):
         if not self.checked:
-            return False #has gone
+            return False  # has gone
         if AccessRow.dwellMinutes < 0:
             return self.checked
         now = datetime.now()
-        delta= now-self.da
-        secs=delta.total_seconds()
+        delta = now - self.da
+        secs = delta.total_seconds()
         mins = secs / 60
         return mins < AccessRow.dwellMinutes
-        
         
     def __lt__(self, other):
         return self.da < other.da
@@ -369,13 +371,12 @@ class BarModel():
         self.getMapping()
     
     def getMapping(self):
-        stmt="select * from Konfig"
+        stmt = "select * from Konfig"
         rows = self.db.select(stmt)
-        self.configMapping={}
-        #Known rooms: Kraftraum,Spiegelsaal,Sauna
-        for entry in rows:#room>activity = dic value for getting access 
-            self.configMapping[entry[0]]=entry[1]
-            
+        self.configMapping = {}
+        # Known rooms: Kraftraum,Spiegelsaal,Sauna
+        for entry in rows:  # room>activity = dic value for getting access 
+            self.configMapping[entry[0]] = entry[1]
     
     def pandaData(self):  # demo
         # data=[ ["12/4/2023", 50],["13/4/2023", 25],["14/4/2023", 54],["15/4/2023", 32]]
@@ -491,15 +492,14 @@ class BarModel():
     
     def countSectionMembers(self):
         myTable = self.dbSystem.BEITRAGTABLE
-        stmt = "SELECT section , COUNT(section) AS CountOf from %s GROUP BY section;"%(myTable)
+        stmt = "SELECT section , COUNT(section) AS CountOf from %s GROUP BY section ORDER BY COUNT(section) DESC;" % (myTable)
         rows = self.db.select(stmt)
-        x_values=[]
-        y_values=[]    
+        x_values = []
+        y_values = []    
         for row in rows:
             x_values.append(row[0])
             y_values.append(row[1])
         return (x_values, y_values)
-        
         
     # show pic and names of those that are curently in the location
     def currentVisitorPictures(self, location, dwellMinutes=-1):
@@ -507,8 +507,8 @@ class BarModel():
         timetable = self.dbSystem.TIMETABLE
         daysplit = "13"  # time between morning and afternoon
         members = {}
-        AccessRow.dwellMinutes=dwellMinutes #Automatic checkout, negative means: we don't care (Sauna)
-        picFolder = self.dbSystem.PICPATH+"/"
+        AccessRow.dwellMinutes = dwellMinutes  # Automatic checkout, negative means: we don't care (Sauna)
+        picFolder = self.dbSystem.PICPATH + "/"
         stmt = "SELECT id,first_name,last_name,picpath,access_date FROM " + mbrTable + " m JOIN " + timetable + " z ON m.id = z.mitglied_id WHERE DATE(z.access_date) = CURDATE() AND ((HOUR(z.access_date) < " + daysplit + " AND HOUR(CURTIME()) < " + daysplit + ") OR (HOUR(z.access_date) > " + daysplit + " AND HOUR(CURTIME()) > " + daysplit + ")) and location='" + location + "' ORDER By z.access_date DESC"
         # print(stmt) 
         rows = self.db.select(stmt)
@@ -537,30 +537,31 @@ class BarModel():
         return self.db.select(stmt)
     
     def registerTable(self):
-        #list only NON Assa Abloy keys
+        # list only NON Assa Abloy keys
         stmt = "select id,register_date,last_name,CAST(birth_date AS DATE),access,m.uuid from Mitglieder m LEFT JOIN AssaAbloy a on a.uuid=m.uuid join RegisterList r on m.id=r.mitglied_id where a.uuid IS NULL and month(register_date)>month(CURDATE())-3 ORDER BY r.register_date ASC;"
         return self.db.select(stmt)
     
     def locationTable(self):
-        stmt ="Select * from Location"
+        stmt = "Select * from Location"
         return self.db.select(stmt)
 
     def testRatio(self):
         people = []
         picFolder = "TSVPIC/"
-        pics="/home/matze/Pictures/TSPIC"
+        pics = "/home/matze/Pictures/TSPIC"
         for filename in os.listdir(pics):
             print(filename)
-            people.append({'name':filename, 'image_path':picFolder+filename})
+            people.append({'name':filename, 'image_path':picFolder + filename})
         return people
+
         
 def main():
-    #global Log
+    # global Log
     global barModel
     wd = OSTools().getLocalPath(__file__)
     OSTools.setMainWorkDir(wd)
-    #Log = DBTools.Log
-    #OSTools.setupRotatingLogger("TSVAuswertung", True)
+    # Log = DBTools.Log
+    # OSTools.setupRotatingLogger("TSVAuswertung", True)
     barModel = BarModel()
     app.run(debug=False, host='0.0.0.0', port=5001)    
 
