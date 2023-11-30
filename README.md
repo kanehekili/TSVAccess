@@ -16,20 +16,28 @@ The module will register a photo, the name and a unique id (primary key). This a
 * python-mysql-connector (use pip - debian stuff is too old)
 * python3-opencv
 * python3-opencv-data (haarcascade)
-* python3-qt5
+* python3-qt5 (will phase out)
+* python3-qt6
 * pip install requests
 
 ### Dependencies Arch
-* python-pyqt5
+* python-pyqt5 (will phase out)
+* python-pyqt6
 * python-opencv
 * python-mysql-connector
 * python-requests
+
+*TODO we are changing to QT6 
+* install qt6gtk2
+* Set in /etc/environment:
+QT_QPA_PLATFORMTHEME=gtk2
+* install gtk-engine-murrine(depending on your theme)
 
 The app has been written in QT5. To get the original design in GTK env you need to:
 * install qt5ct
 * Set interface to gtk2 in the qt5ct app
 * Select a theme that supports gtk2
-* install gtk-engine-murrine
+* install gtk-engine-murrine (depending on your theme)
 * install qt5-styleplugins
 * Set in /etc/environment:
 QT_QPA_PLATFORMTHEME=gtk2 or QT_QPA_PLATFORMTHEME=qt5ct

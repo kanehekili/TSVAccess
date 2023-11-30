@@ -62,13 +62,15 @@ class Registration():
         self.borders = []
         self.aaTransponders = []
         self.memberList=None
-        self.activity=None #one of DBCreator.ALL_ACTIVITIES which is "location" in Zugang Table ...
+        self.configs=None #a Konfig instance containing KonfigEntry 
+        
 
     def connect(self):
         self.dbSystem = SetUpTSVDB(SetUpTSVDB.DATABASE)
         self.db = self.dbSystem.db
         if self.dbSystem.isConnected():
             self.readAATransponders()
+            self.readConfigurations()
             return True
         return False
     
@@ -86,6 +88,12 @@ class Registration():
         for uuid in rows:
             self.aaTransponders.append(uuid[0]) 
         Log.info("Loaded AA Transponders:%d", len(self.aaTransponders))
+    
+    def readConfigurations(self):
+        fields=','.join(Konfig.FIELD_DEF)
+        stmt = "SELECT " + fields + " from " + self.dbSystem.CONFIGTABLE
+        res = self.db.select(stmt)
+        self.configs = Konfig(res)
     
     def containsLegacyAA(self, rfid):
         return rfid in self.aaTransponders
@@ -241,6 +249,19 @@ class Registration():
             Log.error("Picture Server not present")
             return None
         return pic
+
+    #used by member control
+    def isValidAccess(self,mbr,cfgEntry):
+        Log.info("Validation for:%d section:%s",mbr.id,cfgEntry.paysection)
+        if cfgEntry.activity == TsvDBCreator.ACTIVITY_SAUNA:
+            if mbr.currentAbo[0] is None:
+                self.readAboData(mbr)
+                if mbr.currentAbo[0] is None:
+                    mbr.currentAbo=("Empty",0)
+            Log.info("Abo data %s count %d",mbr.currentAbo[0],mbr.currentAbo[1])
+            return mbr.currentAbo[0]==cfgEntry.paysection and mbr.currentAbo[1]>0
+        # ÜL,KR in Group?
+        return mbr.access in cfgEntry.groups
  
     def verifyRfid(self, rfidString, testId):
         # check if rfid  alreay exists ->False
@@ -312,6 +333,40 @@ class Mitglied():
         inner = (self.id, self.firstName, self.lastName, self.access, self.picpath, self.rfid, self.flag)  # birthdate is read only
         row.append(inner)
         return row
+    
+    '''
+    The Konfig table
+    +-----------+-------------+-----------+----------------+--------------------+------------+
+    | config_id | room        | activity  | paySection     | groups             | grace_time |
+    +-----------+-------------+-----------+----------------+--------------------+------------+
+    |         0 | Kraftraum   | Kraftraum | Fit & Fun      | ['KR','ÜL','UKR']  |        120 |
+    |         1 | Spiegelsaal | GroupFitness| Fit & Fun    | [GROUP]            |       3600 |
+    |         2 | Spiegelsaal | Spinning  | Leichtathletik | []                 |       3600 | < no control
+    |         3 | Sauna       | Sauna     | Sauna          | []                 |       3600 | <Taged as prepaid
+    +-----------+-------------+-----------+----------------+--------------------+------------+
+    '''    
+class Konfig():
+    FIELD_DEF=["activity","paySection","groups"]
+    def __init__(self,rows):
+        self.configs=[]
+        for row in rows:
+            self.configs.append(KonfigEntry(row))
+    
+    def entryAt(self,indx):
+        return self.configs[indx]   
+    
+    def allActivities(self):
+        return [c.activity for c in self.configs]
+    
+    def configEntryByActivity(self,cfgName):
+        return next((c for c in self.configs if c.activity==cfgName),None)
+            
+class KonfigEntry():
+    def __init__(self,row):
+        self.activity=row[0]
+        self.paysection=row[1]
+        self.groups=row[2]    
+
 
 if __name__ == '__main__':
     pass

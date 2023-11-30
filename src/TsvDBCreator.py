@@ -44,7 +44,6 @@ ACTIVITY_SPINNING="Spinning"
 #ACTIVITY_TRAMPO="Trompoline"
 ACTIVITY_SAUNA="Sauna"
 
-ALL_ACTIVITIES=[ACTIVITY_KR,ACTIVITY_GYM,ACTIVITY_SAUNA,ACTIVITY_SPINNING]
 
 #these are currently possible sections: 
 #Counter({'Hauptverein': 4420, 'Turnen': 1438, 'Fit & Fun': 1392, 'Handball': 528, 'Basketball': 431, 'Aufnahmegebühr': 428, 'Leichtathletik': 401, 'Fußball': 356, 'Schwimmen': 300, 'Volleyball': 293, 'Kindersport': 263, 'Tanzsport': 243, 'Skisport': 217, 'Ju-Jutsu': 164, 'Aikido': 151, 'Tischtennis': 145, 'Judo': 132, 'Ringen': 98, 'Taekwondo': 89, 'Badminton': 86, 'Rugby': 79, 'Fechten': 63, 'Rock`n`Roll': 62, 'Kegeln': 39, 'Kyudo': 22, 'Kurs': 7, 'Behind,Versehrte': 4})
@@ -89,7 +88,7 @@ room: GUI
 activity: This col will be written into the Zugang Table (TsvAccess and TsvAuswertung
 So configs can be dedicated to serveral (access)clients
 paysection: Where you check if payment is ok. 
-If paysection is abo: count down own "prepaid" in Beitrag   
+If paysection is Sauna: count down own "prepaid" in Beitrag   
 To add 10 "points" into ABO (== Sauna) execute:
 insert into BEITRAG (mitglied_id, payuntil_date, section, prepaid) values(18908,NULL,"Sauna",10); ->use the insertMany!
 '''

@@ -6,15 +6,13 @@ Funktions like Checkin/Checkout, RFID RESET , Member blacklist and Abo service
 '''
 import sys, traceback, time, argparse, os
 from PyQt6.QtWidgets import QApplication
-from PyQt6.QtCore import QTimer, Qt
+from PyQt6.QtCore import Qt
 from PyQt6 import QtWidgets, QtGui, QtCore
 # from PyQt6.QtCore import QRegularExpression
 # from PyQt6.QtGui import QRegularExpressionValidator
 from DBTools import OSTools
-from TsvDBCreator import SetUpTSVDB
 import DBTools
 from datetime import datetime
-import requests
 import TsvDBCreator
 
 WIN = None
@@ -26,7 +24,7 @@ Unbelievable windows crap: To get your icon into the task bar:
 '''
 if os.name == 'nt':
     import ctypes
-    myappid = 'Register.tsv.access'  # arbitrary string
+    myappid = 'Member.tsv.access'  # arbitrary string
     cwdll = ctypes.windll  # @UndefinedVariable
     cwdll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
@@ -122,6 +120,8 @@ class VideoWidget(QtWidgets.QFrame):
 
 
 class QElidedLabel(QtWidgets.QLabel):
+    def __init__(self, parent):
+        QtWidgets.QLabel.__init__(self, parent)
 
     def minimumSizeHint(self):
         return self.sizeHint()
@@ -134,10 +134,13 @@ class QElidedLabel(QtWidgets.QLabel):
         r = qMargins.right()
         b = qMargins.bottom()
         margin = self.margin() * 2
+        defaultSize=super(QElidedLabel, self).sizeHint()
         return QtCore.QSize(
             min(100, hint.width()) + l + r + margin,
-            min(self.fontMetrics().height(), hint.height()) + t + b + margin
-        )    
+            defaultSize.height()+self.fontMetrics().descent() + t + b + margin
+            #min(self.fontMetrics().height(), hint.height()) + t + b + margin
+        ) 
+
 
     def paintEvent(self, event):
         painter = QtGui.QPainter(self)
@@ -151,11 +154,11 @@ class QElidedLabel(QtWidgets.QLabel):
 # #Main App Window. 
 class MainFrame(QtWidgets.QMainWindow):
     
-    def __init__(self, qapp, startActivity):
+    def __init__(self, qapp, idx):
         self._isStarted = False
         self.__qapp = qapp
         self.model = Registration()
-        self.model.activity = startActivity
+        self._defaultActivityIdx= idx;
         self.qtQueueRunning = False
         super(MainFrame, self).__init__()
         self.setWindowIcon(getAppIcon())
@@ -234,19 +237,14 @@ class MainFrame(QtWidgets.QMainWindow):
         ckiLbl = QtWidgets.QLabel(self)
         ckiLbl.setText("Check in")
         ckiLbl.setStyleSheet("QLabel { font: bold; color:#07A002;}");  # dark theme: #0AFF02
-        # self.ui_ckiDisplay=QtWidgets.QLabel(self)
+        #self.ui_ckiDisplay=QtWidgets.QLabel(self)
         self.ui_ckiDisplay = QElidedLabel(self)
         ckiBox = QtWidgets.QVBoxLayout(self.ckiframe)
         ckiHeaderBox = QtWidgets.QHBoxLayout(self.ckiframe)
         ckiBox.setContentsMargins(-1, 0, -1, -1);
         
         self.ui_ActivityCombo = QtWidgets.QComboBox(self)
-        themes = TsvDBCreator.ALL_ACTIVITIES;
-        for item in themes:
-            self.ui_ActivityCombo.addItem(item)
-        self.ui_ActivityCombo.setCurrentText(self.model.activity)
-        self.ui_ActivityCombo.currentTextChanged.connect(self._onActivityChanged)
-        # self.ui_AccessCombo.setToolTip("Angabe der Zugangsbereiche (Mehrfachwahl möglich)")
+        self.ui_ActivityCombo.currentIndexChanged.connect(self._onActivityChanged)
         self.ui_ActivityCombo.setToolTip("Wo soll eingecheckt werden")
         
         # ckiBox.addWidget(ckiLbl)
@@ -324,6 +322,7 @@ class MainFrame(QtWidgets.QMainWindow):
         else:
             memberList = self.model.getMembers()
             self.fillSearchCombo(memberList)
+            self.fillActivityCombo()
 
         self.setInitialFocus()  # #ggf controller again
             
@@ -343,11 +342,11 @@ class MainFrame(QtWidgets.QMainWindow):
         mbr = self.ui_SearchEdit.currentData()
         if mbr:
             now = datetime.now().isoformat()
+            Log.info("Member:%s CKI/CKO",mbr.primKeyString())
             self.model.saveAccessDate(mbr, now)
             self._clearFields()
 
-    def _onActivityChanged(self, text):
-        self.model.activity = text
+    def _onActivityChanged(self, _):
         mbr = self.ui_SearchEdit.currentData()
         if mbr:
             self._updateCheckinData(mbr)
@@ -363,6 +362,13 @@ class MainFrame(QtWidgets.QMainWindow):
         for member in sortedList:
             entry = member.searchName()
             self.ui_SearchEdit.addItem(entry, member)
+            
+    def fillActivityCombo(self):
+        themes=self.model.configs.allActivities()
+        for item in themes:
+            self.ui_ActivityCombo.addItem(item)
+        self.ui_ActivityCombo.setCurrentIndex(self._defaultActivityIdx)
+        
             
     def makeGridLayout(self):
         # fromRow(y) - fromColumn(x)  rowSpan(height) columnSpan(width), ggf alignment
@@ -406,8 +412,8 @@ class MainFrame(QtWidgets.QMainWindow):
         line.setFrameShape(QtWidgets.QFrame.Shape.HLine);
         line.setFrameShadow(QtWidgets.QFrame.Shadow.Sunken);
         
-        gridLayout.addWidget(line, 16, 1, 1, -1)
-        gridLayout.addLayout(self.btnBox, 17, 1, 2, -1)
+        #gridLayout.addWidget(line, 17, 1, 1, -1)
+        gridLayout.addLayout(self.btnBox, 15, 1, 2, -1)
         '''
         gridLayout.addWidget(self.ui_NewButton, 17, 1, 1, 2, QtCore.Qt.AlignmentFlag.AlignLeft)
         gridLayout.addWidget(self.ui_ckiButton, 17, 3, 1, 2, QtCore.Qt.AlignmentFlag.AlignCenter)
@@ -465,7 +471,7 @@ class MainFrame(QtWidgets.QMainWindow):
         self.ui_RFID.setText("0")
         self.ui_Blocked.setText("Zugang")
         self.ui_VideoFrame.showFrame(None)
-        self.ui_ckiDisplay.setText("-")
+        self.ui_ckiDisplay.setText("|")
         self.setButtons(False)
         
     def setButtons(self, areEnabled):
@@ -483,7 +489,6 @@ class MainFrame(QtWidgets.QMainWindow):
             self.ui_ckiButton.setText("Checkout")
     
     def _updateBlockButton(self, mbr):
-        print("Flag:", mbr.flag)
         self.ui_blockButton.setEnabled(True)
         if mbr.flag == 0:
             self.ui_blockButton.setIcon(QtGui.QIcon("./web/static/halt.png"))
@@ -495,10 +500,18 @@ class MainFrame(QtWidgets.QMainWindow):
         # setIcon
     
     def _updateCheckinData(self, mbr):
-        res = self.model.todaysAccessDateStrings(mbr.id, self.model.activity)
+        #activity= self.model.curentConfig.activity #FAIL
+        indx=self.ui_ActivityCombo.currentIndex()
+        cfgEntry=self.model.configs.entryAt(indx) 
+        res = self.model.todaysAccessDateStrings(mbr.id,cfgEntry.activity)
         ckiText="-" if len(res)==0 else ','.join(res) 
         self.ui_ckiDisplay.setText(ckiText)
-        self._updateCKIButton(len(res))
+        if self.model.isValidAccess(mbr,cfgEntry):
+            self._updateCKIButton(len(res))
+        else:
+            Log.warning("Member access not valid")
+            self.ui_ckiDisplay.setText("Kein Zugang für Bereich %s "%(cfgEntry.activity))
+            self.ui_ckiButton.setEnabled(False)
 
     def _displayMemberFace(self, member):
         raw = self.model.loadPicture(member)
@@ -532,10 +545,10 @@ class MainFrame(QtWidgets.QMainWindow):
     def _onSearchChanged(self, idx):
         mbr = self.ui_SearchEdit.itemData(idx)
         if mbr:
-            Log.debug("Member selected:%s", mbr.searchName())
+            Log.debug("Member selected:%s", mbr.primKeyString())
             self.setMemberFields(mbr)
             if not (mbr.picpath and self._displayMemberFace(mbr)):
-                print("Unregisterd!")
+                Log.warning("Unregistered:%s!",mbr.primKeyString())
                 self.ui_VideoFrame.showFrame(None)
                 self.setButtons(False)
                 return
@@ -567,7 +580,7 @@ def handle_exception(exc_type, exc_value, exc_traceback):
 def parse():
     parser = argparse.ArgumentParser(description="MemberControl")
     parser.add_argument('-d', dest="debug", action='store_true', help="Debug logs")
-    parser.add_argument('-a', dest="activity", type=int, default=0, help="Default activity (ALL_ACTIVITIES index)")
+    parser.add_argument('-k', dest="konfig", type=int, default=0, help="Default Konfig (Table Konfig index)")
     # parser.add_argument('-r', dest="rfidMode", action='store_true', help="RFID MODE")
     return parser.parse_args()    
 
@@ -594,10 +607,8 @@ def main(args):
         argv = sys.argv
         app = QApplication(argv)
         app.setWindowIcon(getAppIcon())
-        actIndex = args.activity
-        activity = TsvDBCreator.ALL_ACTIVITIES[actIndex]
-        # rfidMode=True if args.rfidMode else False
-        WIN = MainFrame(app, activity)  # keep python reference!
+        actIndex = args.konfig
+        WIN = MainFrame(app, actIndex)  # keep python reference!
         # ONLY windoze, if ever: app.setStyleSheet(winStyle())
         # app.setStyle(QtWidgets.QStyleFactory.create("Fusion"));
         app.exec()
