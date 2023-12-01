@@ -343,7 +343,8 @@ class MainFrame(QtWidgets.QMainWindow):
         if mbr:
             now = datetime.now().isoformat()
             Log.info("Member:%s CKI/CKO",mbr.primKeyString())
-            self.model.saveAccessDate(mbr, now)
+            cfgEntry=self.currentLocationConfig() 
+            self.model.saveAccessDate(mbr, now,cfgEntry)
             self._clearFields()
 
     def _onActivityChanged(self, _):
@@ -499,10 +500,13 @@ class MainFrame(QtWidgets.QMainWindow):
             
         # setIcon
     
+    def currentLocationConfig(self):
+        indx=self.ui_ActivityCombo.currentIndex()
+        return self.model.configs.entryAt(indx)
+        
     def _updateCheckinData(self, mbr):
         #activity= self.model.curentConfig.activity #FAIL
-        indx=self.ui_ActivityCombo.currentIndex()
-        cfgEntry=self.model.configs.entryAt(indx) 
+        cfgEntry=self.currentLocationConfig() 
         res = self.model.todaysAccessDateStrings(mbr.id,cfgEntry.activity)
         ckiText="-" if len(res)==0 else ','.join(res) 
         self.ui_ckiDisplay.setText(ckiText)

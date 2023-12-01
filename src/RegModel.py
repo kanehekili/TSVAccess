@@ -125,10 +125,10 @@ class Registration():
         return timeData
     
     #kind of manual cki - MemberControl
-    def saveAccessDate(self,mbr,accessDate,):
+    def saveAccessDate(self,mbr,accessDate,locConfig):
         table = self.dbSystem.TIMETABLE
         data = []
-        data.append((mbr.id, accessDate,self.activity))
+        data.append((mbr.id, accessDate,locConfig.activity))
         self.db.insertMany(table, ('mitglied_id', 'access_date', 'location'), data)
     
     def updateMember(self, mbr):
