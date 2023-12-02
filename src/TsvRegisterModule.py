@@ -1231,6 +1231,9 @@ def main(args):
         app.exec_()
         # logging.shutdown()
     except:
+        with open('/tmp/error.log','a') as f:
+            f.write(traceback.format_exc())
+        traceback.print_exc(file=sys.stdout)
         Log.exception("Error in main:")
         # ex_type, ex_value, ex_traceback
         sys_tuple = sys.exc_info()

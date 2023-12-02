@@ -4,7 +4,7 @@ Registration Spinoff for handlich regisrated members.
 Funktions like Checkin/Checkout, RFID RESET , Member blacklist and Abo service 
 @author: matze
 '''
-import sys, traceback, time, argparse, os
+import sys, traceback, argparse, os
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtCore import Qt
 from PyQt6 import QtWidgets, QtGui, QtCore
@@ -618,6 +618,9 @@ def main(args):
         app.exec()
         # logging.shutdown()
     except:
+        with open('/tmp/error.log','a') as f:
+            f.write(traceback.format_exc())
+        traceback.print_exc(file=sys.stdout)
         Log.exception("Error in main:")
         # ex_type, ex_value, ex_traceback
         sys_tuple = sys.exc_info()

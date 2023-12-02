@@ -185,6 +185,15 @@ class Connector():
         if self.dbConnection is not None:
             self.dbConnection.close()
 
+#readwriting outside home dir
+class RwRotatingFileHandler(RotatingFileHandler):
+    def _open(self):
+        prevumask = os.umask(0o000)  # -rw-rw-rw-
+        rtv = RotatingFileHandler._open(self)
+        os.umask(prevumask)
+        return rtv
+
+
 class OSTools():
     #singleton, class methods only
 
@@ -207,6 +216,9 @@ class OSTools():
         #for a, b in tee(pathes):
             res = os.path.join(res, tail)
         return res
+    
+    def getHomeDirectory(self):
+        return os.path.expanduser("~")
     
     @classmethod
     def ensureDirectory(cls, path, tail=None):
@@ -249,7 +261,7 @@ class OSTools():
             folder= OSTools.joinPathes(OSTools().getHomeDirectory(),".config",logName)
             OSTools.ensureDirectory(folder)
         logPath = OSTools.joinPathes(folder,logName+".log") 
-        fh= RotatingFileHandler(logPath,maxBytes=logSize,backupCount=5)
+        fh= RwRotatingFileHandler(logPath,maxBytes=logSize,backupCount=5)
         fh.rotator=OSTools.compressor
         fh.namer=OSTools.namer
         logHandlers=[]
