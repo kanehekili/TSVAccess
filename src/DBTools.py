@@ -4,7 +4,7 @@ Created on Mar 30, 2023
 @author: matze
 '''
 import mysql.connector as mysql
-import os,sys
+import os,sys,pwd
 from itertools import tee
 import gzip,time
 import logging
@@ -185,15 +185,6 @@ class Connector():
         if self.dbConnection is not None:
             self.dbConnection.close()
 
-#readwriting outside home dir
-class RwRotatingFileHandler(RotatingFileHandler):
-    def _open(self):
-        prevumask = os.umask(0o000)  # -rw-rw-rw-
-        rtv = RotatingFileHandler._open(self)
-        os.umask(prevumask)
-        return rtv
-
-
 class OSTools():
     #singleton, class methods only
 
@@ -208,6 +199,10 @@ class OSTools():
     @classmethod    
     def getActiveDirectory(cls):
         return os.getcwd()
+    
+    @classmethod
+    def username(cls):
+        return pwd.getpwuid(os.getuid()).pw_name 
     
     @classmethod
     def joinPathes(cls,*pathes):
@@ -254,6 +249,9 @@ class OSTools():
 
     @classmethod
     def setupRotatingLogger(cls,logName,logConsole):
+        '''
+        Note: desktop file are opened by current user - active directory can not be used (Permissions) 
+        '''
         logSize=5*1024*1024 #5MB
         if logConsole: #aka debug/development
             folder = OSTools.getActiveDirectory()    
@@ -261,7 +259,7 @@ class OSTools():
             folder= OSTools.joinPathes(OSTools().getHomeDirectory(),".config",logName)
             OSTools.ensureDirectory(folder)
         logPath = OSTools.joinPathes(folder,logName+".log") 
-        fh= RwRotatingFileHandler(logPath,maxBytes=logSize,backupCount=5)
+        fh= RotatingFileHandler(logPath,maxBytes=logSize,backupCount=5)
         fh.rotator=OSTools.compressor
         fh.namer=OSTools.namer
         logHandlers=[]

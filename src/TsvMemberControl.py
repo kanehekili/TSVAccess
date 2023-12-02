@@ -13,7 +13,6 @@ from PyQt6 import QtWidgets, QtGui, QtCore
 from DBTools import OSTools
 import DBTools
 from datetime import datetime
-import TsvDBCreator
 
 WIN = None
 
@@ -27,18 +26,6 @@ if os.name == 'nt':
     myappid = 'Member.tsv.access'  # arbitrary string
     cwdll = ctypes.windll  # @UndefinedVariable
     cwdll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
-
-
-class CVImage(QtGui.QImage):
-
-    def __init__(self, numpyArray):
-        height, width, bytesPerComponent = numpyArray.shape
-        bytesPerLine = bytesPerComponent * width
-            
-        # TODO OpenCV3.setColor(numpyArray)
-        if bytesPerLine < 1920:
-            print(width, height, bytesPerLine)
-        super(CVImage, self).__init__(numpyArray.data, width, height, bytesPerLine, QtGui.QImage.Format_RGB888)
 
 
 class VideoWidget(QtWidgets.QFrame):
@@ -85,12 +72,6 @@ class VideoWidget(QtWidgets.QFrame):
         if aFrame is None:  # showing an error icon...
             self.showPicture('web/static/TSV-big.png')
             return
-            
-        resy = aFrame.shape[0]
-        resx = aFrame.shape[1]
-        self.imageRatio = resx / resy
-        self._image = CVImage(aFrame)
-        self.update()
         
     def showPicture(self, path):
         with open(path, 'rb') as filedata:
@@ -597,17 +578,18 @@ def main(args):
         sys.exit()
         
     try:
-
+        print(OSTools.username())
         global Log
         global WIN
         wd = OSTools.getLocalPath(__file__)
         OSTools.setMainWorkDir(wd)
-        OSTools.setupRotatingLogger("TSVMC", True)
+        OSTools.setupRotatingLogger("TSVMC", args.debug)
         Log = DBTools.Log
         if args.debug:
             OSTools.setLogLevel("Debug")
         else:
             OSTools.setLogLevel("Info")
+        Log.info("--- Start TsvMemberControl ---")
         argv = sys.argv
         app = QApplication(argv)
         app.setWindowIcon(getAppIcon())
