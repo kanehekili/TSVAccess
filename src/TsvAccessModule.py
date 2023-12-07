@@ -147,6 +147,7 @@ class RFIDAccessor():
                 res = self.validateRow(rfid, rows[0])  # highlander - we can have only one row per uuid
             else:
                 res = False
+                Log.info("Denied: No rows")
             if res:
                 self.gate.signalAccess()
                 Log.info("--- Access:%d ---", rfid)
@@ -232,15 +233,16 @@ class RFIDAccessor():
             if flag > 0:
                 Log.warning("Member has been flagged!")
                 return False
-        
-        if access:
-            if len(self.groups) == 0:
-                Log.debug("Access %s meets empty group", access)
-                return True 
+        #no access and empty group is fine
+        if len(self.groups) == 0:
+            Log.debug("Empty access group")
+            return True
+        if access: 
             ok = access in self.groups
             if not ok:
                 Log.warning("Wrong group:%s in:%s", access, self.groups)
             return ok    
+        Log.warning("None access for required group")
         return False
 
     def shutDown(self):
