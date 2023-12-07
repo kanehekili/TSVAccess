@@ -1,0 +1,11 @@
+[Desktop Entry]
+Encoding=UTF-8
+Version=1.0
+Type=Application
+Name=TSV XLSX Importer
+Exec=python3 /opt/TSVAccess/XlsImporter.py
+Comment=Importiert XLS Dateien
+Icon=/opt/TSVAccess/web/static/TSV-import.png
+Categories=GTK;
+Terminal=false
+StartupNotify=true
