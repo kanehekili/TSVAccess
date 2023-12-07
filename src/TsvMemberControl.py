@@ -143,17 +143,14 @@ class MainFrame(QtWidgets.QMainWindow):
         self.qtQueueRunning = False
         super(MainFrame, self).__init__()
         self.setWindowIcon(getAppIcon())
-        self._widgets = self.initUI()
+        self.initUI()
         self.centerWindow()
-        # self._widgets.enableUserActions(False)
         self.setWindowTitle("Mitglieder Bearbeitung")
         self.show()
         qapp.applicationStateChanged.connect(self.__queueStarted)    
 
     def centerWindow(self):
         frameGm = self.frameGeometry()
-        # screen = QApplication.desktop().screenNumber(QApplication.desktop().cursor().pos())
-        # centerPoint = QApplication.desktop().screenGeometry(screen).center()
         centerPoint = self.screen().availableGeometry().center()
         frameGm.moveCenter(centerPoint)
         self.move(frameGm.topLeft())
@@ -415,7 +412,7 @@ class MainFrame(QtWidgets.QMainWindow):
         dlg.setInformativeText(infoText)
         dlg.setDetailedText(detailedText)
         dlg.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
-        spacer = QtWidgets.QSpacerItem(300, 50, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Minimum)
+        spacer = QtWidgets.QSpacerItem(300, 1, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Minimum)
         layout = dlg.layout()
         layout.addItem(spacer, layout.rowCount(), 0, 1, layout.columnCount())
         msg = infoText + "\n DETAIL:" + detailedText
@@ -433,7 +430,7 @@ class MainFrame(QtWidgets.QMainWindow):
         dlg.setInformativeText(infoText)
         dlg.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
         # Workaround to resize a qt dialog. WTF!
-        spacer = QtWidgets.QSpacerItem(300, 5, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Minimum)
+        spacer = QtWidgets.QSpacerItem(300, 1, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Minimum)
         layout = dlg.layout()
         layout.addItem(spacer, layout.rowCount(), 0, 1, layout.columnCount())
         

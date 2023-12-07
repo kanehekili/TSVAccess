@@ -95,7 +95,7 @@ insert into BEITRAG (mitglied_id, payuntil_date, section, prepaid) values(18908,
 
 #Profile conplan   
 #﻿Adressnummer Geschlecht Nachname Vorname Multifeld 3 AustrittsDatum GebDatum BeitragBis Abteilungsname
-    
+#TODO deprecated    
 class Fields(Enum):
     ID = 0
     GENDER = 1
@@ -456,7 +456,7 @@ def importCSV(filename):
             mbr.addPay(payDate,section)                
             
     for entry in data.values():
-        entry.display()
+        #entry.display()
         xxxsec=entry.sections()
         sections.extend(xxxsec)
         if "Hauptverein" not in xxxsec:

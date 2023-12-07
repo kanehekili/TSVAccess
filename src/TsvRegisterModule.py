@@ -810,7 +810,7 @@ class MainFrame(QtWidgets.QMainWindow):
         dlg.setInformativeText(infoText)
         dlg.setDetailedText(detailedText)
         dlg.setStandardButtons(QtWidgets.QMessageBox.Ok)
-        spacer = QtWidgets.QSpacerItem(300, 50, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
+        spacer = QtWidgets.QSpacerItem(300, 1, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
         layout = dlg.layout()
         layout.addItem(spacer, layout.rowCount(), 0, 1, layout.columnCount())
         msg = infoText + "\n DETAIL:" + detailedText
@@ -828,7 +828,7 @@ class MainFrame(QtWidgets.QMainWindow):
         dlg.setInformativeText(infoText)
         dlg.setStandardButtons(QtWidgets.QMessageBox.Ok)
         # Workaround to resize a qt dialog. WTF!
-        spacer = QtWidgets.QSpacerItem(300, 5, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
+        spacer = QtWidgets.QSpacerItem(300, 1, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
         layout = dlg.layout()
         layout.addItem(spacer, layout.rowCount(), 0, 1, layout.columnCount())
         

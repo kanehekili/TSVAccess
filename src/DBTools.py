@@ -193,6 +193,10 @@ class OSTools():
         return os.path.dirname(os.path.realpath(fileInstance))
     
     @classmethod
+    def fileExists(cls, path):
+        return os.path.isfile(path)
+    
+    @classmethod
     def setMainWorkDir(cls,dirpath):
         os.chdir(dirpath)  #changes the "active directory" 
     
