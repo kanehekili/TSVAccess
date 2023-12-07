@@ -67,7 +67,7 @@ class RaspberryGPIO():
     def signalAccess(self):
         self.reset()
         GPIO.output(self.PINGREEN, self.LIGHTON)
-        self._restartTimer()        
+        self._restartTimer(2)        
         
     def signalForbidden(self):
         self.reset()
@@ -119,10 +119,10 @@ class RaspberryGPIO():
         GPIO.output(self.PINORANGE, self.LIGHTOFF)
         GPIO.output(self.PINSIGNAL, self.LIGHTOFF)        
             
-    def _restartTimer(self):
+    def _restartTimer(self,to=5):
         if self.timer:
             self.timer.cancel()
-        self.timer = Timer(5, self.reset)
+        self.timer = Timer(to, self.reset)
         self.timer.start()        
 
 '''

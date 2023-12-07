@@ -4,7 +4,7 @@ Created on Mar 30, 2023
 @author: matze
 '''
 import mysql.connector as mysql
-import os,sys
+import os,sys,pwd
 from itertools import tee
 import gzip,time
 import logging
@@ -201,12 +201,19 @@ class OSTools():
         return os.getcwd()
     
     @classmethod
+    def username(cls):
+        return pwd.getpwuid(os.getuid()).pw_name 
+    
+    @classmethod
     def joinPathes(cls,*pathes):
         res=pathes[0]
         for _,tail in cls.__pairwise(pathes):
         #for a, b in tee(pathes):
             res = os.path.join(res, tail)
         return res
+    
+    def getHomeDirectory(self):
+        return os.path.expanduser("~")
     
     @classmethod
     def ensureDirectory(cls, path, tail=None):
@@ -242,6 +249,9 @@ class OSTools():
 
     @classmethod
     def setupRotatingLogger(cls,logName,logConsole):
+        '''
+        Note: desktop file are opened by current user - active directory can not be used (Permissions) 
+        '''
         logSize=5*1024*1024 #5MB
         if logConsole: #aka debug/development
             folder = OSTools.getActiveDirectory()    

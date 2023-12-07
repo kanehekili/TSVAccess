@@ -1215,7 +1215,7 @@ def main(args):
         global WIN
         wd = OSTools.getLocalPath(__file__)
         OSTools.setMainWorkDir(wd)
-        OSTools.setupRotatingLogger("TSVAccess", True)
+        OSTools.setupRotatingLogger("TSVAccess", args.debug)
         Log = DBTools.Log
         if args.debug:
             OSTools.setLogLevel("Debug")
@@ -1225,12 +1225,16 @@ def main(args):
         app = QApplication(argv)
         app.setWindowIcon(getAppIcon())
         rfidMode = True if args.rfidMode else False
+        Log.info("--- Start %s ---","TsvBearbeitung" if rfidMode else "TsvRegister")           
         WIN = MainFrame(app, args.setCamera, rfidMode)  # keep python reference!
         # ONLY windoze, if ever: app.setStyleSheet(winStyle())
         # app.setStyle(QtWidgets.QStyleFactory.create("Fusion"));
         app.exec_()
         # logging.shutdown()
     except:
+        with open('/tmp/error.log','a') as f:
+            f.write(traceback.format_exc())
+        traceback.print_exc(file=sys.stdout)
         Log.exception("Error in main:")
         # ex_type, ex_value, ex_traceback
         sys_tuple = sys.exc_info()
