@@ -575,7 +575,6 @@ def main(args):
         sys.exit()
         
     try:
-        print(OSTools.username())
         global Log
         global WIN
         wd = OSTools.getLocalPath(__file__)

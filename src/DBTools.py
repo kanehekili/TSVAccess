@@ -4,7 +4,7 @@ Created on Mar 30, 2023
 @author: matze
 '''
 import mysql.connector as mysql
-import os,sys,pwd
+import os,sys
 from itertools import tee
 import gzip,time
 import logging
@@ -204,9 +204,9 @@ class OSTools():
     def getActiveDirectory(cls):
         return os.getcwd()
     
-    @classmethod
-    def username(cls):
-        return pwd.getpwuid(os.getuid()).pw_name 
+    #@classmethod
+    #def username(cls):
+    #    return pwd.getpwuid(os.getuid()).pw_name 
     
     @classmethod
     def joinPathes(cls,*pathes):
