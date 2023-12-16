@@ -7,15 +7,15 @@ fi
 #copy desktop to /usr/share applications
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 echo "We are here:${DIR}"
-sudo cp $DIR/resources/*.desktop /usr/share/applications;
-sudo mkdir -p /opt/TSVAccess;
-sudo mkdir -p /opt/TSVAccess/data;
-sudo mkdir -p /opt/TSVAccess/web/static;
+cp $DIR/resources/*.desktop /usr/share/applications;
+mkdir -p /opt/TSVAccess;
+mkdir -p /opt/TSVAccess/data;
+mkdir -p /opt/TSVAccess/web/static;
 path1="$(dirname "$DIR")"
 path2="$path1/src"
 cd $path2
 #echo "Dbg:${path1} and: ${path2} == $(pwd)"
-sudo cp DBTools.py TsvDBCreator.py XlsImporter.py /opt/TSVAccess/;
+cp DBTools.py TsvDBCreator.py XlsImporter.py /opt/TSVAccess/;
 cd "$path2/web/static"
 sudo cp *.png /opt/TSVAccess/web/static/
 echo "######################################################################"

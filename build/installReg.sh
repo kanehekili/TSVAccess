@@ -7,21 +7,21 @@ fi
 #copy desktop to /usr/share applications
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 echo "We are here:${DIR}"
-sudo cp $DIR/resources/*.desktop /usr/share/applications;
-sudo mkdir -p /opt/TSVAccess;
-sudo mkdir -p /opt/TSVAccess/data;
-sudo mkdir -p /opt/TSVAccess/web/static;
+cp $DIR/resources/*.desktop /usr/share/applications;
+mkdir -p /opt/TSVAccess;
+mkdir -p /opt/TSVAccess/data;
+mkdir -p /opt/TSVAccess/web/static;
 path1="$(dirname "$DIR")"
 path2="$path1/src"
 cd $path2
 #echo "Dbg:${path1} and: ${path2} == $(pwd)"
-sudo cp DBTools.py RegModel.py TsvDBCreator.py TsvMemberControl.py TsvRegisterModule.py /opt/TSVAccess/;
+cp DBTools.py RegModel.py TsvDBCreator.py TsvMemberControl.py TsvRegisterModule.py /opt/TSVAccess/;
 cd "$path2/web/static"
 sudo cp *.png /opt/TSVAccess/web/static/
 echo "######################################################################"
-echo "#                  Ensure you have installed:                        #"                     
-echo "#    debian/ubuntu/mint: python3-pyqt6                               #"
-echo "#    arch &derivates:    python-pyqt6                                #"
+echo "#                  Ensure you have installed:                           #"                     
+echo "#debian/ubuntu/mint: python3-pyqt6 ....                                 #"
+echo "#arch:python-pyqt6 python-opencv python-mysql-connector python-requests #"
 echo "######################################################################"
 echo "!config and mail json manually"
 echo "App installed."
