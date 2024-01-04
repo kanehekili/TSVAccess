@@ -120,6 +120,8 @@ def statisticsTemplate(location):
     data = [go.Bar(
        x=dates,
        y=counts,
+       text=counts,
+       textposition='auto',
        marker_color='#FFA500'
     )]
     layout = go.Layout(title="Nutzung " + location, xaxis=dict(title="Datum"), yaxis=dict(title="Besucher"))
