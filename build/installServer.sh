@@ -7,13 +7,13 @@ fi
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 echo "We are here:${DIR}"
-mkdir -p /opt/taserver;
-mkdir -p /opt/taserver/data;
+mkdir -p /opt/tsvserver;
+mkdir -p /opt/tsvserver/data;
 path1="$(dirname "$DIR")"
 path2="$path1/src"
 cd $path2
-cp DBTools.py TsvDBCreator.py TsvAuswertung.py /opt/taserver/;
-cp -r web /opt/taserver/
+cp DBTools.py TsvDBCreator.py TsvAuswertung.py /opt/tsvserver/;
+cp -r web /opt/tsvserver/
 echo "######################################################################"
 echo "#                  Ensure you have installed (arch arm):             #"                     
 echo "#   python-mysql-connector                                           #"
