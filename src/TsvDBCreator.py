@@ -175,7 +175,7 @@ class SetUpTSVDB():
         CREATE OR REPLACE TABLE Location (
         id TINYINT UNSIGNED PRIMARY KEY,
         host_name VARCHAR(50),
-        config_id TINYINT
+        config TINYINT
      )   
     """
     #mode: currently only SHARED: Shold check for alternating locations
@@ -319,10 +319,9 @@ class SetUpTSVDB():
     def _fillLocationTable(self):
         #list the correlations:
         #select host_name,room,activity,paySection,groups from Location loc JOIN Konfig conf where loc.config_id=conf.config_id;
-        #TODO update: one room can have 2 activities at the same time. Table needs -weekday -start-end... 
         #No start-end at location = always
-        #At a location we may have many activities 
-        #modeshared=TsvAccess starts daemon. Replace with time schedule! So Locationtable may have more than one config! 
+        #At a location we may have multi activities 
+        # 0=Montag,1=Dienstag,2=Mittwoch,3=Donnerstag,4=Freitag,5=Samstag,6=Sonntag
         self.db.createTable(self.TABLE4)
         self.db.createTable(self.TABLE5)
                 
@@ -330,16 +329,16 @@ class SetUpTSVDB():
         fields = ('config_id', 'room', 'activity',"paySection","groups", "grace_time","weekday","from_Time", "to_Time")
         entries=[]
         entries.append((0,LOC_KRAFTRAUM,ACTIVITY_KR,SECTION_FIT, "['KR','ÜL','FFA']",900,None,None,None))
-        entries.append((1,LOC_KRAFTRAUM,ACTIVITY_GYM,SECTION_FIT, "['KR','ÜL','FFA','GROUP']",7200,0,"09:00:00","09:30:00"))
-        entries.append((2,LOC_KRAFTRAUM,ACTIVITY_GYM,SECTION_FIT, "['KR','ÜL','FFA','GROUP']",7200,3,"09:00:00","09:30:00"))
+        entries.append((1,LOC_KRAFTRAUM,ACTIVITY_GYM,SECTION_FIT, "['KR','ÜL','FFA','GROUP']",7200,0,"08:45:00","09:30:00"))
+        entries.append((2,LOC_KRAFTRAUM,ACTIVITY_GYM,SECTION_FIT, "['KR','ÜL','FFA','GROUP']",7200,3,"08:45:00","09:30:00"))
         entries.append((3,LOC_NORD,ACTIVITY_GYM,SECTION_FIT, "['KR','ÜL','FFA','GROUP']",7200,None,None,None))
         entries.append((4,LOC_SPIEGELSAAL,ACTIVITY_GYM,SECTION_FIT, "['KR','ÜL','FFA','GROUP']",7200,None,None,None))
         entries.append((5,LOC_SAUNA,ACTIVITY_SAUNA,SECTION_SAUNA,"[]",3600*4,None,None,None)) #Login every 4 hours, no logout
-        entries.append((6,"TEST",ACTIVITY_GYM,SECTION_FIT, "['KR','ÜL','FFA','GROUP']",120,2,"20:30:00","23:59:59"))
+        entries.append((6,"TEST",ACTIVITY_GYM,SECTION_FIT, "['KR','ÜL','FFA','GROUP']",120,5,"19:00:00","23:59:59"))
         self.db.insertMany(table, fields, entries)
         
         table = self.LOCATIONTABLE
-        fields = ('id','host_name', 'config_id')
+        fields = ('id','host_name', 'config')
         entries=[]
         entries.append((1,"tsvaccess1",0)) #KR
         entries.append((2,"tsvaccess1",1)) #KR Group MO
@@ -622,7 +621,12 @@ class TsvMember():
     +-----------+-------------+-----------+----------------+--------------------+------------+
     '''    
 class Konfig():
-    FIELD_DEF=["activity","paySection","groups","grace_time", "weekday","from_Time","to_Time","room"]
+    FIELD_DEF=["activity","paySection","groups","grace_time", "weekday","from_Time","to_Time","room","config_id"]
+
+    @classmethod
+    def asDBString(cls,aSet):
+        return ','.join(map(("'{0}'").format,aSet))
+    
     def __init__(self,rows):
         self.configs=[]
         for row in rows:
@@ -646,6 +650,8 @@ class Konfig():
     def configForUserGroup(self,group):
         return next((c for c in self.configs if group in c.groups and c.isValidInTime()),None) 
     
+
+    
             
 class KonfigEntry():
     def __init__(self,row):
@@ -657,6 +663,7 @@ class KonfigEntry():
         self.startTime=self.__toTime(row[5]) #timedelta to time
         self.endTime=self.__toTime(row[6])#timedelta to time
         self.room=row[7]
+        self.id=row[8]#int
 
     def __toTime(self,td):
         if td is None:
@@ -676,8 +683,6 @@ class KonfigEntry():
         
         if not self.startTime or not self.endTime:
             return True
-
-        print("test:",currTime," start:",self.startTime," end:",self.endTime)     
         return currTime >= self.startTime and currTime <= self.endTime
 
 

@@ -70,45 +70,17 @@ class RFIDAccessor():
         table2 = self.dbSystem.CONFIGTABLE
         host = socket.gethostname()
         fields=','.join(Konfig.FIELD_DEF)
-        stmt = "select %s from %s conf join %s loc where loc.host_name='%s' and conf.config_id =loc.config_id"%(fields,table2,table1,host)
+        stmt = "select %s from %s conf join %s loc where loc.host_name='%s' and conf.config_id =loc.config order by(conf.config_id)"%(fields,table2,table1,host)
         #stmt = "select activity,paySection,groups,grace_time,mode from %s loc JOIN %s conf where loc.config_id=conf.config_id and loc.host_name='%s'"%(table1,table2,host)
         rows = self.db.select(stmt)
         if len(rows) == 0:
             raise Exception("No location data - exiting")
-        '''
-        data = rows[0]
-        self.activity = data[0]
-        self.paySection = data[1]
-        self.groups = literal_eval(data[2])
-        self.gracetime = data[3]
-        '''
+
         self.configData = Konfig(rows)
         Log.info("Station info:%s room:%s",host,self.configData.configs[0].room) 
         for entry in self.configData.configs:
-            Log.info("   activity:%s paysection:%s groups:%s grace:%s weekday:%s from:%s to:%s",entry.activity,entry.paySection,entry.groups,entry.graceTime,str(entry.weekday),str(entry.startTime),str(entry.endTime))
+            Log.info("  %d) activity:%s paysection:%s groups:%s grace:%s weekday:%s from:%s to:%s",entry.id,entry.activity,entry.paySection,entry.groups,entry.graceTime,str(entry.weekday),str(entry.startTime),str(entry.endTime))
 
-    #Deprecated... we read and check locally
-    def _controlLocation(self):
-        #No polling. create/extend table with weekday start & endtime.
-        #Beware: we may have the same location (eg Studio with KR (always) and GROUP (only mondays))
-        while self.running:
-            now = datetime.now()
-
-            if now.hour >= self.HOUR_END or now.hour < self.HOUR_START:
-                goal = now.replace(hour=self.HOUR_START,minute=0,second=0,microsecond=0)                
-                if now > goal:
-                    goal = goal + timedelta(days=1)  
-                dur = (goal-now).seconds                 
-            else:
-                dur=120
-
-            with self.condLock:
-                Log.info("Next location check in %d sec",dur)
-                self.condLock.wait(dur)
-            if self.running:
-                self.readLocation()
-        print("Ctrl thread stopped")    
-        
     def runDeamon(self):
         self.running = True
         while self.running:
@@ -142,11 +114,8 @@ class RFIDAccessor():
                     self.gate.signalAlarm()                  
                 return
             #rfid & paysection must fit ->if section in PREPAID-> decrease count
-            #TODO:
-            #SELECT id,access,flag,payuntil_date,prepaid from Mitglieder m join BEITRAG b on m.id=b.mitglied_id where id=73 and b.section in ('Leichtathletik', 'Fit & Fun', 'Other');
-            ps = ','.join(self.configData.allPaySections())
-            #stmt = "SELECT id,access,flag,payuntil_date,prepaid from " + self.dbSystem.MAINTABLE + " m JOIN " + self.dbSystem.BEITRAGTABLE + " b ON m.id=b.mitglied_id where m.uuid=" + str(rfid) + " and b.section='" + self.paySection + "'"
-            stmt ="SELECT id,access,flag,payuntil_date,prepaid from %s m join %s b ON m.id=b.mitglied_id where m.uuid='%s' and b.section in ('%s')"%(self.dbSystem.MAINTABLE,self.dbSystem.BEITRAGTABLE,str(rfid),ps) 
+            ps = Konfig.asDBString(self.configData.allPaySections())
+            stmt ="SELECT id,access,flag,payuntil_date,prepaid from %s m join %s b ON m.id=b.mitglied_id where m.uuid='%s' and b.section in (%s)"%(self.dbSystem.MAINTABLE,self.dbSystem.BEITRAGTABLE,str(rfid),ps) 
             rows = self.db.select(stmt)
             if len(rows) > 0:
                 # | id    | access | flag | payuntil_date       |
@@ -179,12 +148,16 @@ class RFIDAccessor():
         flag = row[2]
         eolDate = row[3]
         prepaidCount=row[4]
-        #TODO -here we need the correct config -based on acccess
         cEntry=self.configData.configForUserGroup(access)
         if not cEntry:
-            Log.warning("No valid config at current time found for: %d",rfid)
+            Log.warning("No valid config at current time found for: %d in group %s",rfid,access)
+            #handle as gracetime/fake checkout if already checked in today
+            if self.hasCheckedInToday(key):
+                Log.info("Checked in, faking grace exit")
+                self.gate.tickGracetime()
+                return True
             return False
-        Log.info("Config: %s - %s -%s",cEntry.activity,cEntry.paySection,cEntry.groups)
+        Log.info("Config: %d) %s - %s -%s",cEntry.id,cEntry.activity,cEntry.paySection,cEntry.groups)
         if not self.checkValidity(eolDate, flag, access,cEntry.groups):
             return False
         if not self.checkPrepaid(prepaidCount,cEntry.paySection): 
@@ -198,6 +171,8 @@ class RFIDAccessor():
     def __forkWriteAccess(self, key,prepaidCount,cEntry):
         now = datetime.now().isoformat()
         table = self.dbSystem.TIMETABLE
+        #UPDATE? to row count in order to see whether cki or cko. Use the "pause" which part of day to select...
+        #select access_date from Zugang where mitglied_id=73 and DATE(access_date) = CURDATE()-1 and HOUR(access_date) < '13:00' and location in ('GroupFitnesse', 'Kraftraum');
         stmt = "SELECT mitglied_id,access_date from %s where mitglied_id=%s AND location='%s' AND TIMESTAMPDIFF(SECOND,access_date,NOW()) <= %s"%(table,str(key),cEntry.activity,str(cEntry.graceTime))
         timerows = self.db.select(stmt) 
         if len(timerows) == 0: 
@@ -220,10 +195,17 @@ class RFIDAccessor():
             return count>0
         return True
 
-    #TODO: kann nur was aus dem PREPAID_INDICATOR sein = Sauna
+    #kann nur was aus dem PREPAID_INDICATOR sein = Sauna
     def voidPrepaid(self,mid,count,paySection):
         stmt="UPDATE %s set prepaid=%d where mitglied_id=%d and section='%s'"%(self.dbSystem.BEITRAGTABLE,count-1,mid,paySection)
         self.db.select(stmt) 
+    
+    def hasCheckedInToday(self,key):
+        dx = Konfig.asDBString(self.configData.allActivities())
+        table = self.dbSystem.TIMETABLE
+        stmt = "select count(*) from %s where mitglied_id=%s and DATE(access_date) = CURDATE() and location in (%s)"%(table,key,dx)
+        rows=self.db.select(stmt)
+        return rows[0][0]>0 
     
     def _showCounter(self,count):
         if not self.ledCounter:
@@ -267,23 +249,6 @@ class RFIDAccessor():
             self.ledCounter.text("StOP")
             del self.ledCounter
             del self.clock #rm all TM instances!
-
-        
-    '''
-    Not working wih gmail
-    def sendMail(self,msgtext):
-        sender="mat.wegmann@gmail.com"
-        msg = EmailMessage()
-        msg['Subject']="Zugangsfehler TSV"
-        msg['From']="Tsv@weilheim.de"
-        msg['To']="mat.wegmann@gmail.com"
-        msg.set_content(msgtext)
-        smtp_server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
-        smtp_server.login(sender, "wontworkanyhow")
-        smtp_server.sendmail(sender, sender, msg.as_string())
-        smtp_server.quit()
-    '''
-
 
 class RFCUSB():
 

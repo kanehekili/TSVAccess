@@ -67,6 +67,19 @@ def verweilzeitKraftraum():
     return render_template('index.html', graphJSON=graphJSON, logo_path=logo_path, dynamic_location=dynamic_location)        
 
 '''
+Group section
+'''
+@app.route('/' + TsvDBCreator.ACTIVITY_GYM)
+def statisticsGroupFitnesse():
+    return statisticsTemplate(TsvDBCreator.ACTIVITY_GYM)
+
+@app.route('/accessGYM')  # Access kraftraum
+def visitorsGroupFitnesse():
+    people = barModel.currentVisitorPictures(TsvDBCreator.ACTIVITY_GYM)
+    logo_path = "tsv_logo_100.png"
+    return render_template('access.html', people=people, logo_path=logo_path, dynamic_location=TsvDBCreator.ACTIVITY_GYM, location_count=len(people))
+
+'''
 SAUNA SECTION -> TsvDBCreator.ACTIVITY_SAUNA == Sauna
 '''
 
@@ -519,7 +532,6 @@ class BarModel():
         AccessRow.dwellMinutes = dwellMinutes  # Automatic checkout, negative means: we don't care (Sauna)
         picFolder = self.dbSystem.PICPATH + "/"
         stmt = "SELECT id,first_name,last_name,picpath,access_date FROM " + mbrTable + " m JOIN " + timetable + " z ON m.id = z.mitglied_id WHERE DATE(z.access_date) = CURDATE() AND ((HOUR(z.access_date) < " + daysplit + " AND HOUR(CURTIME()) < " + daysplit + ") OR (HOUR(z.access_date) > " + daysplit + " AND HOUR(CURTIME()) > " + daysplit + ")) and location='" + location + "' ORDER By z.access_date DESC"
-        # print(stmt) 
         rows = self.db.select(stmt)
         Log.info("Visitor rows:%d", len(rows))
         for row in rows:
@@ -551,7 +563,7 @@ class BarModel():
         return self.db.select(stmt)
     
     def locationTable(self):
-        stmt = "Select host_name,config_id from Location"
+        stmt = "Select host_name,config from Location"
         return self.db.select(stmt)
 
     def testRatio(self):
