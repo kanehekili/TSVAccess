@@ -7,8 +7,7 @@ Reads some input, checks with remote db and gives a sign (RED=forbidden, GREEN=a
 import time, socket, signal, sys,threading
 import DBTools
 from DBTools import OSTools
-from RegModel import Konfig
-from TsvDBCreator import SetUpTSVDB
+from TsvDBCreator import SetUpTSVDB,Konfig
 from datetime import datetime, date, timedelta
 from threading import Timer
 import TsvDBCreator

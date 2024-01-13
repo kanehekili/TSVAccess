@@ -13,7 +13,7 @@ path1="$(dirname "$DIR")"
 path2="$path1/src"
 cd $path2
 #echo "DGB:${path1} and: ${path2} == $(pwd)"
-cp DBTools.py TsvDBCreator.py RaspiTools.py TsvAccessModule.py RegModel.py /opt/TSVAccess/;
+cp DBTools.py TsvDBCreator.py RaspiTools.py TsvAccessModule.py /opt/TSVAccess/;
 echo "######################################################################"
 echo "#                  Ensure you have installed:                        #"                     
 echo "#    pip install RPi.GPIO spidev mfrc522 (raspberrypi-tm1637)        #"

@@ -16,13 +16,14 @@ print(os.environ.get('secretHost'))
 import DBTools
 from DBTools import Connector, OSTools
 import csv,re,socket
-from datetime import datetime
+from datetime import datetime,timedelta
 import json, getopt, sys
 from enum import Enum
 import traceback
 from collections import Counter
 import smtplib,ssl
 from email.message import EmailMessage
+from ast import literal_eval
 
 # codes found on migration
 ACCESSCODES = ["GROUP","ÜL","FFA","KR","JUGGLING","UKR"]
@@ -609,6 +610,76 @@ class TsvMember():
     def display(self):
         print(self.baseData,">",self.payData)    
     
+    '''
+    The Konfig table
+    +-----------+-------------+-----------+----------------+--------------------+------------+
+    | config_id | room        | activity  | paySection     | groups             | grace_time |
+    +-----------+-------------+-----------+----------------+--------------------+------------+
+    |         0 | Kraftraum   | Kraftraum | Fit & Fun      | ['KR','ÜL','UKR']  |        120 |
+    |         1 | Spiegelsaal | GroupFitness| Fit & Fun    | [GROUP]            |       3600 |
+    |         2 | Spiegelsaal | Spinning  | Leichtathletik | []                 |       3600 | < no control
+    |         3 | Sauna       | Sauna     | Sauna          | []                 |       3600 | <Taged as prepaid
+    +-----------+-------------+-----------+----------------+--------------------+------------+
+    '''    
+class Konfig():
+    FIELD_DEF=["activity","paySection","groups","grace_time", "weekday","from_Time","to_Time","room"]
+    def __init__(self,rows):
+        self.configs=[]
+        for row in rows:
+            self.configs.append(KonfigEntry(row))
+    
+    def entryAt(self,indx):
+        return self.configs[indx]   
+    
+    def allActivities(self):
+        return set([c.activity for c in self.configs])
+    
+    '''
+    def configEntryByActivity(self,cfgName):
+        return next((c for c in self.configs if c.activity==cfgName),None)
+    '''
+    
+    def allPaySections(self):
+        return set([c.paySection for c in self.configs])
+    
+    
+    def configForUserGroup(self,group):
+        return next((c for c in self.configs if group in c.groups and c.isValidInTime()),None) 
+    
+            
+class KonfigEntry():
+    def __init__(self,row):
+        self.activity=row[0]
+        self.paySection=row[1]
+        self.groups=literal_eval(row[2])   
+        self.graceTime=row[3] #int
+        self.weekday=row[4] #int 0=Monday, 6=Sunday
+        self.startTime=self.__toTime(row[5]) #timedelta to time
+        self.endTime=self.__toTime(row[6])#timedelta to time
+        self.room=row[7]
+
+    def __toTime(self,td):
+        if td is None:
+            return None
+        if td.days == 1: #only 24h=0:0 - just to make sure
+            td=td-timedelta(seconds=1)
+        return (datetime.min+td).time()
+    
+    def isValidInTime(self):
+        now=datetime.now()
+        currTime=now.time()
+
+        if self.weekday:
+            if now.weekday()!= self.weekday: #Mon=0, Sun=6
+                print("wrong weekday:",self.weekday)
+                return False
+        
+        if not self.startTime or not self.endTime:
+            return True
+
+        print("test:",currTime," start:",self.startTime," end:",self.endTime)     
+        return currTime >= self.startTime and currTime <= self.endTime
+
 
 #TODO if we get only members ,remove those who are  in the database but not in the list...    
 def persistCSV(fn):
