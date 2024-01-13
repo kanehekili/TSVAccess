@@ -66,13 +66,18 @@ body {
          <td>{{row['activity']}}</td>
          <td>{{row['paySection']}}</td>
          <td>{{row['groups']}}</td>
+         <td>{{row['gracetime']}}</td>
+         <td>{{row['weekday']}}</td>
+         <td>{{row['from_Time']}}</td>
+         <td>{{row['to_Time']}}</td>
       </tr>
      {% endfor %}
     </tbody>
 	 </table>
-   <br>
-   <div> Aktuelle Einstellung (Webguru needed) </div>
-   <br>
+   
+   <div> Wochentage: 0=Montag,1=Dienstag,2=Mittwoch,3=Donnerstag,4=Freitag,5=Samstag,6=Sonntag</div>
+   <div><h3> Aktuelle Einstellung </h3></div>
+   
    
    <table class="locTable">
    <thead>

@@ -418,7 +418,7 @@ class Converter():
                 stmt="UPDATE Mitglieder set flag=1 where id=%d"%(pk)
                 self.dbSystem.db.select(stmt)
             txt.append("<li>%d Mitglieder ausgetreten</li>"%(len(lostMembers)))
-            self.dbSystem.updateDatabase(memberList)
+            self.dbSystem.updateMembers(memberList)
         except Exception:
             #traceback.print_exc()
             Log.exception("Persistence failed")

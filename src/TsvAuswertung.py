@@ -6,12 +6,12 @@ Show graphs per Month or year.
 # https://www.geeksforgeeks.org/create-a-bar-chart-from-a-dataframe-with-plotly-and-flask/
 # https://github.com/alanjones2/Flask-Plotly/tree/main/plotly
 # using  plotly and flask. 
-# pip install flask,plotly,pandas
+# pip install flask,plotly,(pandas?)
 from flask import Flask, render_template, request  # , has_request_context, session, url_for
-import pandas as pd
+#import pandas as pd
 import json
 import plotly
-import plotly.express as px
+#import plotly.express as px
 import plotly.graph_objs as go
 from datetime import datetime, timedelta
 import random
@@ -155,25 +155,31 @@ def drawSectionMembers():
 # basic: https://plainenglish.io/blog/how-to-create-a-basic-form-in-python-flask-af966ee493fa
 def manageConfiguration():
     logo_path = "tsv_logo_100.png"
-    configHeaders = ['ID', 'Raum', 'Aktivität', 'Abteilung', 'Merkmale']
-    fields = ['config_id', 'room', 'activity', 'paySection', 'groups']
+    configHeaders = ['ID', 'Raum', 'Aktivität', 'Abteilung', 'Merkmale',"Gracetime","Wochentag", "Von" ,"Bis"]
+    fields = ['config_id', 'room', 'activity', 'paySection', 'groups','gracetime', 'weekday','from_Time','to_Time']
     configData = []
     configRows = barModel.configTable()
     for row in configRows:
         entry = {}
-        for idx in range(0, 5):
+        for idx in range(0, len(fields)):
             entry[fields[idx]] = row[idx]
         configData.append(entry)
     
     # just open a form
-    locHeaders = ['Gerät', 'Konfigurations-ID']
+    locHeaders = ['Gerät', 'Konfigurations-IDs']
     fields = ['host_name', 'config_id']
     locRows = barModel.locationTable()
-    locData = []
+    hostRows={}
     for row in locRows:
+        cfg=hostRows.get(row[0],[])
+        cfg.append(row[1])
+        hostRows[row[0]]=cfg
+    
+    locData = []
+    for host,cfg in hostRows.items():
         entry = {}
-        for idx in range(0, 2):
-            entry[fields[idx]] = row[idx]
+        entry[fields[0]]=host
+        entry[fields[1]]=', '.join(str(idx) for idx in cfg) #elegant from int to string ;-)
         locData.append(entry)
     
     return render_template('config.html', logo_path=logo_path, configHeaders=configHeaders, configData=configData, locHeaders=locHeaders, locData=locData)
@@ -202,8 +208,6 @@ def showChipRegistration():
 
 '''
 Test or demo routines
-'''
-
 
 @app.route('/fancy')  # just colorfull fake with pandas. Think twice using the library 
 def plot():
@@ -221,7 +225,7 @@ def plot():
     logo_path = "tsv_logo_100.png"
     dynamic_location = TsvDBCreator.ACTIVITY_KR
     return render_template('index.html', graphJSON=graphJSON, logo_path=logo_path, dynamic_location=dynamic_location)
-
+'''
 
 @app.route('/ratio')  # Access kraftraum
 def testRatio():
@@ -370,8 +374,9 @@ class BarModel():
         self.db = self.dbSystem.db
         if not self.dbSystem.isConnected():
             Log.warning("DB connecton failed")
-        self.getMapping()
+        #self.getMapping()
     
+    '''
     def getMapping(self):
         stmt = "select * from Konfig"
         rows = self.db.select(stmt)
@@ -379,7 +384,8 @@ class BarModel():
         # Known rooms: Kraftraum,Spiegelsaal,Sauna
         for entry in rows:  # room>activity = dic value for getting access 
             self.configMapping[entry[0]] = entry[1]
-    
+    '''
+    '''        
     def pandaData(self):  # demo
         # data=[ ["12/4/2023", 50],["13/4/2023", 25],["14/4/2023", 54],["15/4/2023", 32]]
         data = []
@@ -392,6 +398,7 @@ class BarModel():
             data.append([dbTime, cnt])
             start = start + delta          
         return data
+    '''
 
     def rawData(self):  # demo
         now = datetime.now()
@@ -544,7 +551,7 @@ class BarModel():
         return self.db.select(stmt)
     
     def locationTable(self):
-        stmt = "Select * from Location"
+        stmt = "Select host_name,config_id from Location"
         return self.db.select(stmt)
 
     def testRatio(self):

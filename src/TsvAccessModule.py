@@ -7,10 +7,10 @@ Reads some input, checks with remote db and gives a sign (RED=forbidden, GREEN=a
 import time, socket, signal, sys,threading
 import DBTools
 from DBTools import OSTools
+from RegModel import Konfig
 from TsvDBCreator import SetUpTSVDB
 from datetime import datetime, date, timedelta
 from threading import Timer
-from ast import literal_eval
 import TsvDBCreator
 
 '''
@@ -19,7 +19,7 @@ posix.uname_result(sysname='Linux', nodename='raspi3a', release='6.1.29-2-rpi-AR
 data[4] > armv7l
 '''
 import RaspiTools
-from RaspiTools import RaspberryGPIO, MFRC522Reader,LED7,Clock
+from RaspiTools import RaspberryGPIO, MFRC522Reader,LED7,Clock,RaspberryFAKE
 
 
 # import smtplib
@@ -59,28 +59,36 @@ class RFIDAccessor():
     
     def _waitForConnection(self):
         while not self.dbSystem.isConnected():
+            self.gate.signalBrokenConnection()
             time.sleep(10)
             Log.warning("Reconnect to database")
             self.dbSystem.connectToDatabase(SetUpTSVDB.DATABASE)    
         
         self.db = self.dbSystem.db        
         
-    #TODO in order to change that, we need to check periodically if the config has changed        
     def readLocation(self):
         table1 = self.dbSystem.LOCATIONTABLE
         table2 = self.dbSystem.CONFIGTABLE
         host = socket.gethostname()
-        stmt = "select activity,paySection,groups,grace_time,mode from %s loc JOIN %s conf where loc.config_id=conf.config_id and loc.host_name='%s'"%(table1,table2,host)
+        fields=','.join(Konfig.FIELD_DEF)
+        stmt = "select %s from %s conf join %s loc where loc.host_name='%s' and conf.config_id =loc.config_id"%(fields,table2,table1,host)
+        #stmt = "select activity,paySection,groups,grace_time,mode from %s loc JOIN %s conf where loc.config_id=conf.config_id and loc.host_name='%s'"%(table1,table2,host)
         rows = self.db.select(stmt)
         if len(rows) == 0:
             raise Exception("No location data - exiting")
+        '''
         data = rows[0]
         self.activity = data[0]
         self.paySection = data[1]
         self.groups = literal_eval(data[2])
         self.gracetime = data[3]
-        self.configShared=data[4]==self.dbSystem.CONFIG_MODE_SHARED
+        '''
+        self.configData = Konfig(rows)
+        Log.info("Station info:%s room:%s",host,self.configData.configs[0].room) 
+        for entry in self.configData.configs:
+            Log.info("   activity:%s paysection:%s groups:%s grace:%s weekday:%s from:%s to:%s",entry.activity,entry.paySection,entry.groups,entry.graceTime,str(entry.weekday),str(entry.startTime),str(entry.endTime))
 
+    #Deprecated... we read and check locally
     def _controlLocation(self):
         #No polling. create/extend table with weekday start & endtime.
         #Beware: we may have the same location (eg Studio with KR (always) and GROUP (only mondays))
@@ -104,11 +112,6 @@ class RFIDAccessor():
         
     def runDeamon(self):
         self.running = True
-        if self.configShared:
-            threading.Thread(target=self._controlLocation, name="LocationChecker").start()
-            Log.info("Deamon started")
-        else:
-            Log.info("Static config - no location poll")
         while self.running:
             try:
                 rfid = self.reader.read_id()  # int -blocking
@@ -140,7 +143,11 @@ class RFIDAccessor():
                     self.gate.signalAlarm()                  
                 return
             #rfid & paysection must fit ->if section in PREPAID-> decrease count
-            stmt = "SELECT id,access,flag,payuntil_date,prepaid from " + self.dbSystem.MAINTABLE + " m JOIN " + self.dbSystem.BEITRAGTABLE + " b ON m.id=b.mitglied_id where m.uuid=" + str(rfid) + " and b.section='" + self.paySection + "'"
+            #TODO:
+            #SELECT id,access,flag,payuntil_date,prepaid from Mitglieder m join BEITRAG b on m.id=b.mitglied_id where id=73 and b.section in ('Leichtathletik', 'Fit & Fun', 'Other');
+            ps = ','.join(self.configData.allPaySections())
+            #stmt = "SELECT id,access,flag,payuntil_date,prepaid from " + self.dbSystem.MAINTABLE + " m JOIN " + self.dbSystem.BEITRAGTABLE + " b ON m.id=b.mitglied_id where m.uuid=" + str(rfid) + " and b.section='" + self.paySection + "'"
+            stmt ="SELECT id,access,flag,payuntil_date,prepaid from %s m join %s b ON m.id=b.mitglied_id where m.uuid='%s' and b.section in ('%s')"%(self.dbSystem.MAINTABLE,self.dbSystem.BEITRAGTABLE,str(rfid),ps) 
             rows = self.db.select(stmt)
             if len(rows) > 0:
                 # | id    | access | flag | payuntil_date       |
@@ -165,7 +172,7 @@ class RFIDAccessor():
         
     def validateRow(self, rfid, row):
         if row is None or len(row) == 0:
-            Log.warning("Invalid id %d" % (rfid))
+            Log.warning("Invalid id %d",rfid)
             return False
         # get prim key from the row array
         key = row[0]
@@ -173,26 +180,31 @@ class RFIDAccessor():
         flag = row[2]
         eolDate = row[3]
         prepaidCount=row[4]
-        if not self.checkValidity(eolDate, flag, access):
+        #TODO -here we need the correct config -based on acccess
+        cEntry=self.configData.configForUserGroup(access)
+        if not cEntry:
+            Log.warning("No valid config at current time found for: %d",rfid)
             return False
-        if not self.checkPrepaid(prepaidCount): 
+        Log.info("Config: %s - %s -%s",cEntry.activity,cEntry.paySection,cEntry.groups)
+        if not self.checkValidity(eolDate, flag, access,cEntry.groups):
+            return False
+        if not self.checkPrepaid(prepaidCount,cEntry.paySection): 
             return False
         # Allowd. That person needs an entry
-        self.writeTimer=Timer(0, self.__forkWriteAccess, [key,prepaidCount])
+        self.writeTimer=Timer(0, self.__forkWriteAccess, [key,prepaidCount,cEntry])
         self.writeTimer.start()
         
         return True        
 
-    def __forkWriteAccess(self, key,prepaidCount):
+    def __forkWriteAccess(self, key,prepaidCount,cEntry):
         now = datetime.now().isoformat()
         table = self.dbSystem.TIMETABLE
-        #stmt = "SELECT mitglied_id,access_date from " + table + " where mitglied_id=" + str(key) + " AND location='"+self.activity+"' AND TIMESTAMPDIFF(SECOND,access_date,NOW()) <= " + str(self.gracetime)
-        stmt = "SELECT mitglied_id,access_date from %s where mitglied_id=%s AND location='%s' AND TIMESTAMPDIFF(SECOND,access_date,NOW()) <= %s"%(table,str(key),self.activity,str(self.gracetime))
+        stmt = "SELECT mitglied_id,access_date from %s where mitglied_id=%s AND location='%s' AND TIMESTAMPDIFF(SECOND,access_date,NOW()) <= %s"%(table,str(key),cEntry.activity,str(cEntry.graceTime))
         timerows = self.db.select(stmt) 
         if len(timerows) == 0: 
             #gracetime period is over, checkout/recheck in possible
             data = []
-            data.append((key, now,self.activity))
+            data.append((key, now,cEntry.activity))
             self.db.insertMany(table, ('mitglied_id', 'access_date', 'location'), data)
             if prepaidCount >0: #Dieters Sauna special
                 self.voidPrepaid(key, prepaidCount)
@@ -203,14 +215,15 @@ class RFIDAccessor():
             if prepaidCount >0:
                 self._showCounter(prepaidCount)
     
-    def checkPrepaid(self,count):
-        if self.paySection in TsvDBCreator.PREPAID_INDICATOR:
-            Log.info("Abo count: %d [%s]",count,self.paySection)
+    def checkPrepaid(self,count,paySection):
+        if paySection in TsvDBCreator.PREPAID_INDICATOR:
+            Log.info("Abo count: %d [%s]",count,paySection)
             return count>0
         return True
 
-    def voidPrepaid(self,mid,count):
-        stmt="UPDATE %s set prepaid=%d where mitglied_id=%d and section='%s'"%(self.dbSystem.BEITRAGTABLE,count-1,mid,self.paySection)
+    #TODO: kann nur was aus dem PREPAID_INDICATOR sein = Sauna
+    def voidPrepaid(self,mid,count,paySection):
+        stmt="UPDATE %s set prepaid=%d where mitglied_id=%d and section='%s'"%(self.dbSystem.BEITRAGTABLE,count-1,mid,paySection)
         self.db.select(stmt) 
     
     def _showCounter(self,count):
@@ -222,7 +235,7 @@ class RFIDAccessor():
         self.clock.runAsync()
         
      
-    def checkValidity(self, eolDate, flag, access):
+    def checkValidity(self, eolDate, flag, access,allowedGroups):
         if eolDate:
             now = date.today()
             if eolDate.date() < now:
@@ -234,13 +247,13 @@ class RFIDAccessor():
                 Log.warning("Member has been flagged!")
                 return False
         #no access and empty group is fine
-        if len(self.groups) == 0:
+        if len(allowedGroups) == 0:
             Log.debug("Empty access group")
             return True
         if access: 
-            ok = access in self.groups
+            ok = access in allowedGroups
             if not ok:
-                Log.warning("Wrong group:%s in:%s", access, self.groups)
+                Log.warning("Wrong group:%s in:%s", access, allowedGroups)
             return ok    
         Log.warning("None access for required group")
         return False
@@ -256,127 +269,6 @@ class RFIDAccessor():
             del self.ledCounter
             del self.clock #rm all TM instances!
 
-'''
-import cv2
-class QRAccessor():
-
-    def __init__(self):
-        OSTools.setupRotatingLogger("TSVAccess", True)
-        
-        if RASPI:
-            self.gate = RaspberryGPIO()
-        else:
-            self.gate = RaspberryFAKE()
-    
-    def connect(self):
-        self.dbSystem = SetUpTSVDB(SetUpTSVDB.DATABASE)
-        self.db = self.dbSystem.db
-        return self.dbSystem.isConnected()
-    
-    # This is a daemon that should run permantenly.
-    def runDeamon(self):
-        camera_id = 0
-        delay = 0.4    
-        qcd = cv2.QRCodeDetector()
-        cap = cv2.VideoCapture(camera_id)    
-        while True:
-            ret, frame = cap.read()
-            if ret:
-                ret_qr, decoded_info, _, _ = qcd.detectAndDecodeMulti(frame)
-                if ret_qr:
-                    for s in decoded_info:
-                    # for s, p in zip(decoded_info, points):
-                        if s:
-                            print(s)
-                            self.verifyAccess(s)
-                        else:
-                            print("read failed")
-                            playSound(True)
-
-                time.sleep(delay)
-                
-    def verifyAccess(self, data):
-        # check if the id is in the DB
-        tokens = data.split(",")
-        if len(tokens) == 0:
-            print("no valid tokens")
-            return False
-        print("Access to:", tokens)
-        # could be no number.
-        key = tokens[0]
-        if key.isnumeric():
-            stmt = "SELECT * from " + self.dbSystem.MAINTABLE + " where id=" + key
-            row = self.db.select(stmt)
-            res = self.validateRow(key, row)
-        else:
-            res = False
-            print("Invalid card")
-        if res:
-            self.accessOK()
-            return True
-        
-        self.accessForbidden()
-        return False
-
-    def validateRow(self, key, row):
-        if row is None or len(row) == 0:
-            print("Invalid id %s" % (key))
-            return False
-        
-        # TODO Check kennzeichen in the fields -> needs config based on gate.
-        print("Access OK - no fields checked")
-        # Allowd. That person needs an entry
-        table = self.dbSystem.TIMETABLE
-        location = self.dbSystem.LOCATION
-        now = datetime.now().isoformat()
-        stmt = "SELECT mitglied_id,access_date from " + table + " where mitglied_id=" + key + " AND access_date >= DATE(NOW()) + INTERVAL -" + self.dbSystem.GRACETIME + " hour"
-        Log.debug("Search time db:%s", stmt)
-        timerows = self.db.select(stmt) 
-        if len(timerows) == 0:
-            data = []
-            data.append((key, now, location))
-            self.db.insertMany(table, ('mitglied_id', 'access_date', 'location'), data)
-        
-        return True
-
-    def accessOK(self):
-        self.gate.signalAccess()  # GREEN LED
-
-    def accessForbidden(self):
-        self.gate.signalForbidden()  # RED LED
- '''       
-
-
-    
-
-class RaspberryFAKE():
-
-    def __init__(self):
-        self.timer = None    
-    
-    def signalAccess(self):
-        print("GREEN LIGHT") 
-        self._restartTimer()
-
-    def signalForbidden(self):
-        print("RED LIGHT")        
-        self._restartTimer()
-
-    def welcome1(self):
-        print("Welcome")
-
-    def signalAlarm(self):
-        print("ORANGE LIGHT")
-        self._restartTimer()
-
-    def reset(self):
-        print("RESET LIGHT")
-            
-    def _restartTimer(self):
-        if self.timer:
-            self.timer.cancel()
-        self.timer = Timer(5, self.reset) 
-        self.timer.start()
         
     '''
     Not working wih gmail

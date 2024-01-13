@@ -146,6 +146,7 @@ class SetUpTSVDB():
 
     TIMETABLE="Zugang"   
     #TODO used ALTER TABLE to add a new column     
+    #TODO location is "activity" like GroupFitness,Kraftraum,Sauna 
     TABLE2 = """
         CREATE OR REPLACE TABLE Zugang (
           mitglied_id INT,
@@ -171,14 +172,15 @@ class SetUpTSVDB():
     #host connected with exactly one configuration 
     TABLE4 = """
         CREATE OR REPLACE TABLE Location (
-        host_name VARCHAR(50) PRIMARY KEY,
-        config_id SMALLINT UNSIGNED
+        id TINYINT UNSIGNED PRIMARY KEY,
+        host_name VARCHAR(50),
+        config_id TINYINT
      )   
     """
     #mode: currently only SHARED: Shold check for alternating locations
     CONFIG_MODE_SHARED=1
     CONFIGTABLE="Konfig"
-    TABLE5 ="""
+    TABLE5OLD ="""
         CREATE OR REPLACE TABLE Konfig (
         config_id INT PRIMARY KEY,  
         room VARCHAR(50),
@@ -189,6 +191,20 @@ class SetUpTSVDB():
         mode TINYINT UNSIGNED
         )
         """  
+    
+    TABLE5="""
+        CREATE OR REPLACE TABLE Konfig (
+        config_id TINYINT PRIMARY KEY,  
+        room VARCHAR(50),
+        activity VARCHAR(50),
+        paySection VARCHAR(50),
+        groups VARCHAR(150),
+        grace_time SMALLINT UNSIGNED,
+        weekday TINYINT,
+        from_Time TIME,
+        to_Time TIME
+        )
+    """
     
     ASSAABLOY="AssaAbloy"
     TABLE6 ="""
@@ -269,7 +285,7 @@ class SetUpTSVDB():
         self.db.createTable(self.TABLE8)
         self.db.close()        
 
-    def _fillLocationTable(self):
+    def DEPRECATED_fillLocationTable(self):
         #list the correlations:
         #select host_name,room,activity,paySection,groups from Location loc JOIN Konfig conf where loc.config_id=conf.config_id;
         #TODO update: one room can have 2 activities at the same time. Table needs -weekday -start-end... 
@@ -282,9 +298,9 @@ class SetUpTSVDB():
         table=self.CONFIGTABLE
         fields = ('config_id', 'room', 'activity',"paySection","groups", "grace_time","mode")
         entries=[]
-        entries.append((0,LOC_KRAFTRAUM,ACTIVITY_KR,SECTION_FIT, "['KR','ÜL','UKR','FFA']",900,0))
-        entries.append((1,LOC_SPIEGELSAAL,ACTIVITY_GYM,SECTION_FIT, "['GROUP']",3600,self.CONFIG_MODE_SHARED))
-        entries.append((2,LOC_SPIEGELSAAL,ACTIVITY_SPINNING,SECTION_LA, "[]",3600,self.CONFIG_MODE_SHARED))
+        entries.append((0,LOC_KRAFTRAUM,ACTIVITY_KR,SECTION_FIT, "['KR','ÜL','FFA']",900,0))
+        entries.append((1,LOC_SPIEGELSAAL,ACTIVITY_GYM,SECTION_FIT, "['KR','ÜL','FFA','GROUP']",3600,0))
+        entries.append((2,LOC_NORD,ACTIVITY_GYM,SECTION_FIT, "['KR','ÜL','FFA','GROUP']",3600,0))
         entries.append((3,LOC_SAUNA,ACTIVITY_SAUNA,SECTION_SAUNA,"[]",3600*4,0)) #Login every 4 hours, no logout
         self.db.insertMany(table, fields, entries)
         
@@ -297,6 +313,43 @@ class SetUpTSVDB():
         entries.append(("tsvaccess4",2))
         entries.append(("msi",0))
         self.db.insertMany(table, fields, entries)     
+    
+    
+    def _fillLocationTable(self):
+        #list the correlations:
+        #select host_name,room,activity,paySection,groups from Location loc JOIN Konfig conf where loc.config_id=conf.config_id;
+        #TODO update: one room can have 2 activities at the same time. Table needs -weekday -start-end... 
+        #No start-end at location = always
+        #At a location we may have many activities 
+        #modeshared=TsvAccess starts daemon. Replace with time schedule! So Locationtable may have more than one config! 
+        self.db.createTable(self.TABLE4)
+        self.db.createTable(self.TABLE5)
+                
+        table=self.CONFIGTABLE
+        fields = ('config_id', 'room', 'activity',"paySection","groups", "grace_time","weekday","from_Time", "to_Time")
+        entries=[]
+        entries.append((0,LOC_KRAFTRAUM,ACTIVITY_KR,SECTION_FIT, "['KR','ÜL','FFA']",900,None,None,None))
+        entries.append((1,LOC_KRAFTRAUM,ACTIVITY_GYM,SECTION_FIT, "['KR','ÜL','FFA','GROUP']",7200,0,"09:00:00","09:30:00"))
+        entries.append((2,LOC_KRAFTRAUM,ACTIVITY_GYM,SECTION_FIT, "['KR','ÜL','FFA','GROUP']",7200,3,"09:00:00","09:30:00"))
+        entries.append((3,LOC_NORD,ACTIVITY_GYM,SECTION_FIT, "['KR','ÜL','FFA','GROUP']",7200,None,None,None))
+        entries.append((4,LOC_SPIEGELSAAL,ACTIVITY_GYM,SECTION_FIT, "['KR','ÜL','FFA','GROUP']",7200,None,None,None))
+        entries.append((5,LOC_SAUNA,ACTIVITY_SAUNA,SECTION_SAUNA,"[]",3600*4,None,None,None)) #Login every 4 hours, no logout
+        entries.append((6,"TEST",ACTIVITY_GYM,SECTION_FIT, "['KR','ÜL','FFA','GROUP']",120,2,"20:30:00","23:59:59"))
+        self.db.insertMany(table, fields, entries)
+        
+        table = self.LOCATIONTABLE
+        fields = ('id','host_name', 'config_id')
+        entries=[]
+        entries.append((1,"tsvaccess1",0)) #KR
+        entries.append((2,"tsvaccess1",1)) #KR Group MO
+        entries.append((3,"tsvaccess1",2)) #KR Group DO
+        entries.append((4,"tsvaccess2",5)) #Sauna 
+        entries.append((5,"tsvaccess3",3)) #Nord
+        entries.append((6,"tsvaccess4",4)) #Spiegelsaal
+        entries.append((7,"msi",0))
+        entries.append((8,"msi",6))
+        self.db.insertMany(table, fields, entries)  
+    
     
     def _fillMailTable(self):
         self.db.createTable(self.TABLE7)
@@ -319,6 +372,12 @@ class SetUpTSVDB():
         
         
     def updateDatabase(self,tsvMembers):
+        self.updateMembers()
+        self._fillLocationTable()
+        self._fillMailTable()
+        self.close()
+
+    def updateMembers(self,tsvMembers):
         table = self.MAINTABLE
         fields = ('id', 'first_name', 'last_name', "access", "gender", "birth_date")
         main=[]
@@ -326,14 +385,12 @@ class SetUpTSVDB():
         for mbr in tsvMembers:
             main.append(mbr.baseData)
             sections.extend(mbr.sectionData())
-        
         self.db.insertMany(table, fields, main)
+
         fields=("mitglied_id", "payuntil_date","section")
         table=self.BEITRAGTABLE
         self.db.insertMany(table, fields, sections)
-        self._fillLocationTable()
-        self._fillMailTable()
-        self.close()
+                
 
 
     def close(self):

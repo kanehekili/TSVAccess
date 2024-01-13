@@ -889,6 +889,7 @@ class MainFrame(QtWidgets.QMainWindow):
     
     def _initCapture(self):  # ##RegisterCam!
         if not self.controller.supportsCamera():
+            self.ui_VideoFrame.showFrame(None)
             return
         self.capturing = True
         self.photoTaken = False

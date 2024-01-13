@@ -6,8 +6,9 @@ Created on Nov 21, 2023
 import TsvDBCreator
 from TsvDBCreator import SetUpTSVDB
 import DBTools
-from datetime import datetime
+from datetime import datetime,timedelta
 import requests
+from ast import literal_eval
 
 Log = DBTools.Log
 
@@ -70,30 +71,23 @@ class Registration():
         self.db = self.dbSystem.db
         if self.dbSystem.isConnected():
             self.readAATransponders()
-            self.readConfigurations()
+            self.configs = self.readConfigurations()
             return True
         return False
     
     def readAATransponders(self):
-        # tODO That is TABLE now!
-        '''
-        path = OSTools.getLocalPath(__file__)
-        tr = OSTools.joinPathes(path, "data", "AATransponder")
-        with open(tr,"r") as file:
-            raw=file.read()
-            self.AATransponders=raw.split(';')
-        '''
         stmt = "Select uuid from %s" % (SetUpTSVDB.ASSAABLOY)
         rows = self.db.select(stmt)
         for uuid in rows:
             self.aaTransponders.append(uuid[0]) 
         Log.info("Loaded AA Transponders:%d", len(self.aaTransponders))
     
+    #Membercontrol
     def readConfigurations(self):
         fields=','.join(Konfig.FIELD_DEF)
         stmt = "SELECT " + fields + " from " + self.dbSystem.CONFIGTABLE
         res = self.db.select(stmt)
-        self.configs = Konfig(res)
+        return Konfig(res)
     
     def containsLegacyAA(self, rfid):
         return rfid in self.aaTransponders
@@ -252,14 +246,14 @@ class Registration():
 
     #used by member control
     def isValidAccess(self,mbr,cfgEntry):
-        Log.info("Validation for:%d section:%s",mbr.id,cfgEntry.paysection)
+        Log.info("Validation for:%d section:%s",mbr.id,cfgEntry.paySection)
         if cfgEntry.activity == TsvDBCreator.ACTIVITY_SAUNA:
             if mbr.currentAbo[0] is None:
                 self.readAboData(mbr)
                 if mbr.currentAbo[0] is None:
                     mbr.currentAbo=("Empty",0)
             Log.info("Abo data %s count %d",mbr.currentAbo[0],mbr.currentAbo[1])
-            return mbr.currentAbo[0]==cfgEntry.paysection and mbr.currentAbo[1]>0
+            return mbr.currentAbo[0]==cfgEntry.paySection and mbr.currentAbo[1]>0
         # ÜL,KR in Group?
         return mbr.access in cfgEntry.groups
  
@@ -346,7 +340,7 @@ class Mitglied():
     +-----------+-------------+-----------+----------------+--------------------+------------+
     '''    
 class Konfig():
-    FIELD_DEF=["activity","paySection","groups"]
+    FIELD_DEF=["activity","paySection","groups","grace_time", "weekday","from_Time","to_Time","room"]
     def __init__(self,rows):
         self.configs=[]
         for row in rows:
@@ -356,17 +350,53 @@ class Konfig():
         return self.configs[indx]   
     
     def allActivities(self):
-        return [c.activity for c in self.configs]
+        return set([c.activity for c in self.configs])
     
+    '''
     def configEntryByActivity(self,cfgName):
         return next((c for c in self.configs if c.activity==cfgName),None)
+    '''
+    
+    def allPaySections(self):
+        return set([c.paySection for c in self.configs])
+    
+    
+    def configForUserGroup(self,group):
+        return next((c for c in self.configs if group in c.groups and c.isValidInTime()),None) 
+    
             
 class KonfigEntry():
     def __init__(self,row):
         self.activity=row[0]
-        self.paysection=row[1]
-        self.groups=row[2]    
+        self.paySection=row[1]
+        self.groups=literal_eval(row[2])   
+        self.graceTime=row[3] #int
+        self.weekday=row[4] #int 0=Monday, 6=Sunday
+        self.startTime=self.__toTime(row[5]) #timedelta to time
+        self.endTime=self.__toTime(row[6])#timedelta to time
+        self.room=row[7]
 
+    def __toTime(self,td):
+        if td is None:
+            return None
+        if td.days == 1: #only 24h=0:0 - just to make sure
+            td=td-timedelta(seconds=1)
+        return (datetime.min+td).time()
+    
+    def isValidInTime(self):
+        now=datetime.now()
+        currTime=now.time()
+
+        if self.weekday:
+            if now.weekday()!= self.weekday: #Mon=0, Sun=6
+                print("wrong weekday:",self.weekday)
+                return False
+        
+        if not self.startTime or not self.endTime:
+            return True
+
+        print("test:",currTime," start:",self.startTime," end:",self.endTime)     
+        return currTime >= self.startTime and currTime <= self.endTime
 
 if __name__ == '__main__':
     pass

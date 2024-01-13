@@ -84,6 +84,18 @@ class RaspberryGPIO():
         GPIO.output(self.PINORANGE, self.LIGHTON)
         self._restartTimer()
     
+    def signalBrokenConnection(self):
+        GPIO.output(self.PINORANGE, self.LIGHTON)
+        self._restartTimer(9)
+    
+    def signalCheckout(self):
+        for x in range(0,5):
+            GPIO.output(self.PINORANGE, self.LIGHTON)
+            sleep(0.2)
+            GPIO.output(self.PINORANGE, self.LIGHTOFF)
+            sleep(0.2)
+        self._restartTimer()
+    
     #mark if gracetime still in place (=no action)
     def tickGracetime(self):
         GPIO.output(self.PINORANGE, self.LIGHTON)
@@ -114,7 +126,7 @@ class RaspberryGPIO():
     
     # TODO needs timer
     def reset(self):
-        GPIO.output(self.PINRED, self.LIGHTOFF)  # true=off, false=ON
+        GPIO.output(self.PINRED, self.LIGHTOFF)  # depends ...
         GPIO.output(self.PINGREEN, self.LIGHTOFF)
         GPIO.output(self.PINORANGE, self.LIGHTOFF)
         GPIO.output(self.PINSIGNAL, self.LIGHTOFF)        
@@ -124,6 +136,48 @@ class RaspberryGPIO():
             self.timer.cancel()
         self.timer = Timer(to, self.reset)
         self.timer.start()        
+
+
+class RaspberryFAKE():
+
+    def __init__(self):
+        self.timer = None    
+    
+    def signalAccess(self):
+        print("GREEN LIGHT") 
+        self._restartTimer()
+
+    def signalForbidden(self):
+        print("RED LIGHT")        
+        self._restartTimer()
+
+    def welcome1(self):
+        print("Welcome")
+
+    def signalAlarm(self):
+        print("ORANGE LIGHT")
+        self._restartTimer()
+    
+    def tickGracetime(self):
+        print("ORANGE TICK GRACE Time")
+        self._restartTimer()
+
+    def signalBrokenConnection(self):
+        print("ORANGE Broken")
+        self._restartTimer()
+        
+    def signalCheckout(self):        
+        print("ORANGE checkout")
+        self._restartTimer()
+        
+    def reset(self):
+        print("RESET LIGHT")
+            
+    def _restartTimer(self):
+        if self.timer:
+            self.timer.cancel()
+        self.timer = Timer(5, self.reset) 
+        self.timer.start()
 
 '''
         RFID READER
@@ -138,7 +192,8 @@ class RaspberryGPIO():
         o o
         x o SPio Mosi - Green   
         x x SPIO Miso - Orange / GPIO 25(RST) Blue
-        x x SPIO CLK -  brown  / SPI CSO Yellow     
+        x x SPIO CLK -  brown  / SPI CSO Yellow   
+        x o GND anstelle Pin 6.(LED)  
         |--| usb==unten
 '''    
 # changed due to 100% CPU

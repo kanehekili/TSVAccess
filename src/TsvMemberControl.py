@@ -498,7 +498,7 @@ class MainFrame(QtWidgets.QMainWindow):
     def _displayMemberFace(self, member):
         raw = self.model.loadPicture(member)
         if raw == None:
-            self.getErrorDialog("Verbindungsproblem", "Server ist nicht erreichbar", "Der Server, der die Bilder  liefern soll ist nicht erreichbar - Der Fehler wurde per eMail gemeldet").show()
+            self.getErrorDialog("Verbindungsproblem", "Bilder sind nicht erreichbar", "Der Server, der die Bilder  liefern soll ist nicht erreichbar - Der Fehler wurde per eMail gemeldet").show()
             return False
         try:
             img = QtGui.QImage()
