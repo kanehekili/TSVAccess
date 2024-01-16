@@ -648,7 +648,7 @@ class Konfig():
     
     
     def configForUserGroup(self,group):
-        return next((c for c in self.configs if group in c.groups and c.isValidInTime()),None) 
+        return next((c for c in self.configs if c.isValidForGroup(group) and c.isValidInTime()),None) 
     
 
     
@@ -671,6 +671,11 @@ class KonfigEntry():
         if td.days == 1: #only 24h=0:0 - just to make sure
             td=td-timedelta(seconds=1)
         return (datetime.min+td).time()
+    
+    def isValidForGroup(self,aGroup):
+        if len(self.groups)==0:
+            return True
+        return aGroup in self.groups
     
     def isValidInTime(self):
         now=datetime.now()

@@ -181,7 +181,7 @@ class RFIDAccessor():
             data.append((key, now,cEntry.activity))
             self.db.insertMany(table, ('mitglied_id', 'access_date', 'location'), data)
             if prepaidCount >0: #Dieters Sauna special
-                self.voidPrepaid(key, prepaidCount)
+                self.voidPrepaid(key, prepaidCount,cEntry.paySection)
                 self._showCounter(prepaidCount-1)
         else:
             self.gate.tickGracetime()
