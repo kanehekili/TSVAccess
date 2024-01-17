@@ -34,7 +34,7 @@ from PyQt5 import QtWidgets, QtGui, QtCore
 from PyQt5.QtCore import QRegExp
 from PyQt5.QtGui import QRegExpValidator
 from DBTools import OSTools
-import DBTools
+import DBTools,FindCam
 import TsvDBCreator
 from RegModel import Mitglied, RegisterController, RFIDController, Registration
 WIN = None
@@ -51,8 +51,8 @@ class OpenCV3():
         best = (-1, -1)  # indx,w*h
         for i in range(4, 0, -1):
             vc = cv2.VideoCapture(i, cv2.CAP_V4L2)
-            # vc.set(cv2.CAP_PROP_FRAME_WIDTH, 800)
-            # vc.set(cv2.CAP_PROP_FRAME_HEIGHT, 600)
+            #vc.set(cv2.CAP_PROP_FRAME_WIDTH, 800)
+            #vc.set(cv2.CAP_PROP_FRAME_HEIGHT, 600)
             if vc.isOpened():
                 rval, frame = vc.read()
                 if rval:
@@ -78,8 +78,10 @@ class OpenCV3():
         if cap.isOpened():
             rval, _frame = cap.read()
             if rval: 
-                cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-                cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)  # least common nominator
+                #cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+                #cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)  # least common nominator
+                cap.set(cv2.CAP_PROP_FRAME_WIDTH, 800)
+                cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 600)  # least common nominator                
                 return cap
         return None
 
@@ -136,8 +138,8 @@ class CVImage(QtGui.QImage):
         bytesPerLine = bytesPerComponent * width
             
         OpenCV3.setColor(numpyArray)
-        if bytesPerLine < 1920:
-            print(width, height, bytesPerLine)
+        #if bytesPerLine < 1920:
+        #    print(width, height, bytesPerLine)
         super(CVImage, self).__init__(numpyArray.data, width, height, bytesPerLine, QtGui.QImage.Format_RGB888)
 
 
@@ -389,6 +391,7 @@ class MainFrame(QtWidgets.QMainWindow):
         self.ui_FaceCheck = QtWidgets.QCheckBox("Face")
         self.ui_FaceCheck.stateChanged.connect(self._onFaceChange)
         self.ui_FaceCheck.setCheckState(QtCore.Qt.Checked)
+        self.ui_FaceCheck.setEnabled(self.controller.supportsCamera())
         
         self.ui_SearchLabel = QtWidgets.QLabel(self)
         self.ui_SearchLabel.setText("Suche:")
@@ -650,14 +653,13 @@ class MainFrame(QtWidgets.QMainWindow):
     @QtCore.pyqtSlot()
     def _onRFIDDone(self):
         str_Rfid = self.ui_RFID.text()
-        print("Enter;", str_Rfid)
         self.controller.handleRFIDChanged(str_Rfid)
          
     # slot if rfid search is active (controller)
     def searchWithRFID(self, str_RFID):
         res = next((mbr for mbr in self.model.memberList if mbr.rfidString() == str_RFID), None)
         if res:
-            print("Found:", res.searchName())
+            #print("Found:", res.searchName())
             idx = self.ui_SearchEdit.findData(res)
             if idx > 0:
                 self.ui_SearchEdit.setCurrentIndex(idx)
@@ -771,6 +773,9 @@ class MainFrame(QtWidgets.QMainWindow):
         dlg.show()  # async - dialog has to to the work
         
     def _clearFields(self):
+        self.cam.cameraOn = False
+        self.capturing = False
+        self.photoTaken = False
         self.ui_SearchEdit.clearEditText()
         self.ui_IDEdit.clear()
         self.ui_IDEdit.setReadOnly(False);
@@ -780,12 +785,10 @@ class MainFrame(QtWidgets.QMainWindow):
         self.ui_BirthLabel.clear()
         self.ui_RFID.clear()
         self.ui_RFID.setStyleSheet("")
-        self.cam.cameraOn = False
-        self.capturing = False
-        self.photoTaken = False
         self.updatePhotoButton()
         self.updateAboButton(None)
         self.ui_VideoFrame.showFrame(None)
+
          
     # dialogs
     def __getInfoDialog(self, text):
@@ -864,7 +867,7 @@ class MainFrame(QtWidgets.QMainWindow):
         if self.mbrPhoto:
             self.ui_VideoFrame.showImage(self.mbrPhoto)
             self.updatePhotoButton()
-        else:
+        elif self.photoTaken:
             self.ui_VideoFrame.showFrame(self.cam.saveCroppedScreenShot())
         self.mbrPhoto = None    
     
@@ -1058,9 +1061,8 @@ class CamModule():
         self.faceActive = True
     
     def startCamera(self):
-        if self._camIndex == -1:
-            self._camIndex = OpenCV3.getBestCameraIndex()
-        self._cvCam = OpenCV3.getCamera(self._camIndex)
+        if self._camIndex > -1:
+            self._cvCam = OpenCV3.getCamera(self._camIndex)
         self.cameraStatus = None       
         if self._cvCam is None or not self._cvCam.isOpened():
             Log.warning("Camera not found!")
@@ -1190,10 +1192,24 @@ def handle_exception(exc_type, exc_value, exc_traceback):
         WIN.getErrorDialog("Unexpected error", infoText, detailText).show()
         Log.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
 
+def _rapidCamIndexSearch():
+    vs=FindCam.searchCams()
+    cam = vs.cameraExternal()
+    if not cam:
+        Log.info("No external camera found, looking for internal")
+        cam=vs.cameraIntrinsic()
+    if cam:
+        Log.info("Found cam %s at port %d",cam.deviceName(),cam.port)
+        return cam.port
+    
+    Log.warning("No camera found!")
+    return -1
+        
+    
 
 def parse():
     parser = argparse.ArgumentParser(description="Registration")
-    parser.add_argument('-s', dest="searchCamera", action='store_true', help="Search for a camera")
+    #parser.add_argument('-s', dest="searchCamera", action='store_true', help="Search for a camera")
     parser.add_argument('-c', dest="setCamera", type=int, default=-1, help="set a camera index")
     parser.add_argument('-d', dest="debug", action='store_true', help="Debug logs")
     parser.add_argument('-r', dest="rfidMode", action='store_true', help="RFID MODE")
@@ -1206,9 +1222,9 @@ def main(args):
     if OSTools.checkIfInstanceRunning("TsvRegisterModule"):
         print("App already running")
         sys.exit()
-    if args.searchCamera:
-        OpenCV3.getBestCameraIndex()
-        sys.exit()
+    #if args.searchCamera:
+    #    OpenCV3.getBestCameraIndex()
+    #    sys.exit()
         
     try:
 
@@ -1222,12 +1238,18 @@ def main(args):
             OSTools.setLogLevel("Debug")
         else:
             OSTools.setLogLevel("Info")
+        cIndex=-1
+        rfidMode = True if args.rfidMode else False
+        if args.setCamera >=0:
+            cIndex=args.setCamera
+        elif not rfidMode:
+            cIndex = _rapidCamIndexSearch()
         argv = sys.argv
         app = QApplication(argv)
         app.setWindowIcon(getAppIcon())
-        rfidMode = True if args.rfidMode else False
+
         Log.info("--- Start %s ---","TsvBearbeitung" if rfidMode else "TsvRegister")           
-        WIN = MainFrame(app, args.setCamera, rfidMode)  # keep python reference!
+        WIN = MainFrame(app, cIndex, rfidMode)  # keep python reference!
         # ONLY windoze, if ever: app.setStyleSheet(winStyle())
         # app.setStyle(QtWidgets.QStyleFactory.create("Fusion"));
         app.exec_()

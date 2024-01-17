@@ -15,13 +15,14 @@ path1="$(dirname "$DIR")"
 path2="$path1/src"
 cd $path2
 #echo "Dbg:${path1} and: ${path2} == $(pwd)"
-cp DBTools.py RegModel.py TsvDBCreator.py TsvMemberControl.py TsvRegisterModule.py /opt/TSVAccess/;
+cp DBTools.py RegModel.py TsvDBCreator.py TsvMemberControl.py TsvRegisterModule.py FindCam.py /opt/TSVAccess/;
 cd "$path2/web/static"
 sudo cp *.png /opt/TSVAccess/web/static/
-echo "######################################################################"
+echo "#########################################################################"
 echo "#                  Ensure you have installed:                           #"                     
 echo "#debian/ubuntu/mint: python3-pyqt6 ....                                 #"
 echo "#arch:python-pyqt6 python-opencv python-mysql-connector python-requests #"
-echo "######################################################################"
+echo "# pip install v4l2ctl --break-system-packages (python-pip)              #"
+echo "########################################################################"
 echo "!config and mail json manually"
 echo "App installed."
