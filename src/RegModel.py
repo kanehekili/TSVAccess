@@ -146,9 +146,20 @@ class Registration():
         Log.info("Update ABO prepaid count from %s , %d +%d", section, oldCount, newCount)
         if newCount > 0:  # stays 0 if old has been changed
             msg = "Mitglied Nr %d (%s %s) \nhat heute ein 10er Abo bestellt - als Erinnerung zum abbuchen \U0001f604" % (mbr.id, mbr.firstName, mbr.lastName)
+            #TODO mit Link auf aktuelle Seite
             self.dbSystem.sendEmail("Sauna Abo Daten", True, msg)
+            self._insertAboData(mbr)
+            
             
         self.db.insertMany(self.dbSystem.BEITRAGTABLE, fields, data)
+        #TODO: data saved - so mbr.abo should be reset - can't we use a flag and add the stuff in dialog? 
+
+    def _insertAboData(self,mbr):
+        now = datetime.now().isoformat()
+        fields = ('mitglied_id', 'buy_date','section')
+        section=mbr.abo[0]
+        data=[(mbr.id,now,section)]
+        self.db.insertMany(self.dbSystem.ABOTABLE, fields, data)
 
     def updateAccessData(self, mbr):
         if mbr.initalAccess == mbr.access:  # no change

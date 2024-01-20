@@ -1,0 +1,76 @@
+<!doctype html>
+<html>
+<head>
+    <title>TSV ABO Käufe</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>    
+</head> 
+<style>
+* {
+    -webkit-box-sizing: border-box;
+    box-sizing: border-box;
+}
+body {
+    background-color: #272b34;
+    font-family: 'Khula', sans-serif;
+    color: white;
+    margin: 0;
+  padding: 2em 1em;
+}
+
+  /* CSS for the header */
+  h1 {
+    align-items: flex-start;
+    display: flex;
+    font-size:3em;  
+  }
+
+	@media (any-pointer: coarse) {
+		h1 {
+			font-size:2em;  
+		}
+	}
+
+  .logo-container {
+    margin-left: auto;
+  }
+  table,th,td {
+     padding: 10px;
+     border: 1px solid yellow;
+     border-collapse: collapse;
+  }
+
+</style>
+
+<body>
+   <h1>
+     <span>Abo Käufe</span>
+     <div class="logo-container">
+       <a href="/" data-toogle="back" title="Zurück zum Dashboard">
+       <img src="{{ logo_path }}" alt="Logo">
+       </a>
+     </div>
+  </h1>
+   <table class="locTable">
+   <thead>
+    <tr>
+       {% for header in aboHeaders %}
+       <th>{{header}}</th>
+       {% endfor %}
+     </tr>
+   </thead>     
+   <tbody>
+      {% for row in aboData %}
+      <tr>
+         <td>{{row['date']}}</td>
+         <td>{{row['id']}}</td>
+         <td>{{row['name']}}</td>
+         <td>{{row['firstname']}}</td>
+         <td>{{row['section']}}</td>
+      </tr>
+     {% endfor %}
+    </tbody>
+	 </table>
+
+</body>
+</html>
+

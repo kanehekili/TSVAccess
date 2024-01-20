@@ -235,6 +235,16 @@ class SetUpTSVDB():
        mitglied_id INT
     )   
     """
+    #overview for abos
+    ABOTABLE="AboList"
+    TABLE9= """
+    CREATE OR REPLACE TABLE AboList (
+      mitglied_id INT NOT NULL,
+      buy_date DATETIME,
+      section VARCHAR(100)
+    )
+    """
+    
     #select per month: 
     #SELECT * from RegisterList where month(register_date)=9; (September)
     

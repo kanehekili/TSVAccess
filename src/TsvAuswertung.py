@@ -105,7 +105,7 @@ Root and tools
 @app.route('/')
 def dashboard():
     logo_path = "tsv_logo_100.png"
-    return render_template('dashboard.html', logo_path=logo_path)
+    return render_template('dashboard2.html', logo_path=logo_path)
 
 
 # save or retrieve pictures for Registration 
@@ -216,8 +216,21 @@ def showChipRegistration():
     
     return render_template('register.html', logo_path=logo_path, chipHeaders=chipHeaders, chipData=configData)
 
+@app.route('/aboList', methods=["GET", "POST"])
+def showAboSales():
+    logo_path = "tsv_logo_100.png"
+    headers = ['Datum','ID','Nachname', 'Vorname', 'Abo Typ']
+    fields = ['date','id','name', 'firstname', 'section']  # feldnamen
+    configData = []
+    dataRows = barModel.aboTable()
+    for row in dataRows:
+        entry = {}
+        for idx in range(0, len(headers)):
+            entry[fields[idx]] = row[idx]
+        configData.append(entry)
 
-  
+    
+    return render_template('abolist.html', logo_path=logo_path, aboHeaders=headers, aboData=configData)
 
 '''
 Test or demo routines
@@ -560,6 +573,10 @@ class BarModel():
     def registerTable(self):
         # list only NON Assa Abloy keys
         stmt = "select id,register_date,last_name,CAST(birth_date AS DATE),access,m.uuid from Mitglieder m LEFT JOIN AssaAbloy a on a.uuid=m.uuid join RegisterList r on m.id=r.mitglied_id where a.uuid IS NULL and month(register_date)>month(CURDATE())-3 ORDER BY r.register_date ASC;"
+        return self.db.select(stmt)
+    
+    def aboTable(self):
+        stmt = "select a.buy_date,m.id,m.last_name,m.first_name,a.section from AboList a join Mitglieder m on m.id=a.mitglied_id;"
         return self.db.select(stmt)
     
     def locationTable(self):

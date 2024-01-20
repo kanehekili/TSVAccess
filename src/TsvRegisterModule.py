@@ -952,28 +952,41 @@ class AboDialog(QtWidgets.QDialog):
         self.setWindowModality(QtCore.Qt.WindowModal)
         self.setWindowTitle("Abo & Sperren")
         frame1 = QtWidgets.QFrame()
+        frame2 = QtWidgets.QFrame()
         frame1.setFrameStyle(QtWidgets.QFrame.Box | QtWidgets.QFrame.Sunken)
         frame1.setLineWidth(1)
-        aboBox = QtWidgets.QVBoxLayout(frame1)
-        hBox = QtWidgets.QHBoxLayout(frame1)
+        frame2.setFrameStyle(QtWidgets.QFrame.Box | QtWidgets.QFrame.Sunken)
+        frame2.setLineWidth(1)
+
+        aboBox = QtWidgets.QVBoxLayout()
+        culpritBox = QtWidgets.QVBoxLayout(frame2)
+        #hBox = QtWidgets.QHBoxLayout(frame1)
         prepaid = self.model.currentAbo[1]
+
+        self.check_sauna = QtWidgets.QCheckBox("Sauna 10er Ticket")
+        self.check_sauna.stateChanged.connect(self._onUpdateAboCount)
+        self.aboLabel=QtWidgets.QLabel("0")
+        fixLbl=QtWidgets.QLabel("Aktuell:")
         self.saunaCount = QtWidgets.QSpinBox()
         self.saunaCount.setValue(prepaid)
-        self.saunaCount.valueChanged.connect(self._prepaidChanged)
-        self.check_sauna = QtWidgets.QCheckBox("Sauna 10er Ticket \tfrei:")
+        self.saunaCount.valueChanged.connect(self._prepaidChanged)        
         
         self.check_sauna.setToolTip("Haken = 10 Tickets kaufen")
-        # TODO check current abo count and flag 
+        self.saunaCount.setToolTip("Aktuell und Korrektur.\n Abo kann NICHT gelöscht werden!") 
         
+        gridLayout = QtWidgets.QGridLayout(frame1)
+        gridLayout.addWidget(self.check_sauna,0,0,1,4)
+        gridLayout.addWidget(self.aboLabel,0,5,1,1)
+        gridLayout.addWidget(fixLbl,1,0,1,4)
+        gridLayout.addWidget(self.saunaCount,1,5,1,1)
+
         self.check_culprit = QtWidgets.QCheckBox("Mitglied sperren")
         self.check_culprit.setToolTip("Bei Haken wird kein Zugang erlaubt")
         self.check_culprit.setChecked(self.model.flag > 0)
-        
-        hBox.addWidget(self.check_sauna)
-        hBox.addWidget(self.saunaCount)
-        aboBox.addLayout(hBox)
-        aboBox.addWidget(self.check_culprit)
-        
+        culpritBox.addWidget(self.check_culprit)
+        aboBox.addLayout(gridLayout)
+        aboBox.addLayout(culpritBox)
+
         QBtn = QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel
         buttonBox = QtWidgets.QDialogButtonBox(QBtn)
         buttonBox.accepted.connect(self.accept)
@@ -981,6 +994,8 @@ class AboDialog(QtWidgets.QDialog):
         
         outBox = QtWidgets.QVBoxLayout()
         outBox.addWidget(frame1)
+        outBox.addWidget(frame2)
+        #outBox.addWidget(self.check_culprit)
         outBox.addWidget(buttonBox)
         self.setLayout(outBox)
         self.setMinimumSize(400, 0)
@@ -989,6 +1004,13 @@ class AboDialog(QtWidgets.QDialog):
     def _prepaidChanged(self, val):
         self.model.abo = (TsvDBCreator.ACTIVITY_SAUNA, 0)
         self.model.currentAbo = (TsvDBCreator.ACTIVITY_SAUNA, self.saunaCount.value())
+
+    @QtCore.pyqtSlot(int)
+    def _onUpdateAboCount(self, state):
+        if state == QtCore.Qt.Checked:
+            self.aboLabel.setText("10")
+        else:
+            self.aboLabel.setText("0")
         
     def accept(self):
         # Must be possible to change the prepaid data without having checked
