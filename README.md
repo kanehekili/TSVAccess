@@ -4,7 +4,7 @@ Area access for the TSV Weilheim
 The TSV Weilheim is one of largest "Sportvereine" in the bavarian "Oberland". This project implements an access system to certain areas (like fitnesse == gym) using embedded devices (raspi) and linux servers. 
 Currently the means of identification is RFID. Basically two devices are used: a Keyboard emitting USB RFID reader and the RC522 RFID reader for arduino and raspbery pi.
 
-The "access" devices are configurable. Therfore it is possible to have one or more devices in the system, that control different "courses or activities".
+The "access" devices are configurable. Therefore it is possible to have one or more devices in the system, that control different "courses or activities".
 
 This is a Linux project. No windoze support.
 
@@ -19,6 +19,7 @@ The module will register a photo, the name and a unique id (primary key). This a
 * python3-qt5 (will phase out)
 * python3-qt6
 * pip install requests
+* pip install v4l2ctl
 
 ### Dependencies Arch
 * python-pyqt5 (will phase out)
@@ -26,6 +27,7 @@ The module will register a photo, the name and a unique id (primary key). This a
 * python-opencv
 * python-mysql-connector
 * python-requests
+* pip install v4l2ctl (might use --break-system-packages since it does not exist)
 
 *TODO we are changing to QT6 
 * install qt6gtk2
@@ -33,7 +35,7 @@ The module will register a photo, the name and a unique id (primary key). This a
 QT_QPA_PLATFORMTHEME=gtk2
 * install gtk-engine-murrine(depending on your theme)
 
-The app has been written in QT5. To get the original design in GTK env you need to:
+The Registration app has been written in QT5. To get the original design in GTK env you need to:
 * install qt5ct
 * Set interface to gtk2 in the qt5ct app
 * Select a theme that supports gtk2
@@ -45,10 +47,18 @@ QT_QPA_PLATFORMTHEME=gtk2 or QT_QPA_PLATFORMTHEME=qt5ct
 
 There is a basic support for windows, but not currently tested or in any way supported.
 
-Only a member checked in with this module will be able to access the system!
+Only a member once checked in with this module will be able to access the system!
 ![Screenshot](https://github.com/kanehekili/TSVAccess/blob/main/Register.png)
 
-This software uses head (not face) recognition (see green rectangle) to get uniform portraits. The UI language is german, no current plan to use NLS. It needs a private ssh key to connect to a ssh server for saving the photos.
+This software uses head (not face) recognition (see green rectangle) to get uniform portraits. The UI language is german, no current plan to use NLS.
+
+### The Abo dialog
+For some events we sell Abos - here a 10x ticket for using the sauna. The Abo dialog provides two lines:
+* Check if an Abo is requested - a mail will go out for the accountant responsible charging.
+* Alter the current visits or set up how many visits have already been paid bevor using this system.
+![Screenshot](https://github.com/kanehekili/TSVAccess/blob/main/Abodialog.png)
+
+Last not least: The bottom line enables you to block any member to access anything. 
 
 ## TsvAccessModule
 This app runs on a Raspberry pi (3a), currently controlling a 2 channel relais for lights (Access,non access). Connected ot it is a RC522 RFID reader, which delivers the token uid that has been registered in the TSVREgisterModule.
@@ -114,6 +124,7 @@ The data/ directory contains the config.json file. This file configures access t
  * "PICPATH": "PATH in static/"
 
 ## Location and access
-The "Location" table contains all of the locations and activities, as well as the allowd access codes and Gracetime.
-Registered hosts can be reconfigured by setting another location entry.
-(eg. Access in room A with course B ist changed to room B and course C) 
+The "Location" table contains all of the locations and activities, as well as the allowed access codes and Gracetime.
+Each entry defines a room, the activity and the paysection with their access ids. Additional time data can be used to reduce access times to certain days and time in a week.
+
+An access device therefore can have one or more locations defined.

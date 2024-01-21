@@ -42,7 +42,8 @@ def statisticsKraftraum():
 @app.route('/accessKR')  # Access kraftraum
 def visitorsKraftraum():
     # https://stackoverflow.com/questions/58996870/update-flask-web-page-with-python-script
-    people = barModel.currentVisitorPictures(TsvDBCreator.ACTIVITY_KR, 150)  # checkout after 150 mins
+    #people = barModel.currentVisitorPictures(TsvDBCreator.ACTIVITY_KR, 150)  # checkout after 150 mins
+    people = barModel.currentVisitorPictures(TsvDBCreator.ACTIVITY_KR)  
     logo_path = "tsv_logo_100.png"
     dynamic_location = TsvDBCreator.ACTIVITY_KR    
     return render_template('access.html', people=people, logo_path=logo_path, dynamic_location=dynamic_location, location_count=len(people))
