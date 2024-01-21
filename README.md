@@ -71,6 +71,8 @@ There is a variant, that uses a LED 7-Segment display to show time and the count
 ### The sauna solution
 ![Screenshot](https://github.com/kanehekili/TSVAccess/blob/main/Sauna.jpg)
 
+### The simple LED solution
+![Screenshot](https://github.com/kanehekili/TSVAccess/blob/main/SimpleAccess.png)
 
 ### Dependencies (Arch Armhf)
 * python-mysql-connector
