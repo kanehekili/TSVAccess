@@ -118,7 +118,10 @@ Technical database abstraction for the mysql.connector. This is the place to cha
 
 ## Ximporter
 Living in Germany the OWM (old white man) have no understanding for interconnectibility. So in order to import data from a retro software that is not able to provide any REST bindings, Ximporter has been created. It reads a propriaty XLS file and imports it into our system. Select a xls file (this feature needs to be adapted to the provider) to import it into the database. 
-Due to some restraints on the given infrastructure - this code works to windows.. (but looks a lot uglier)
+Due to some restraints on the given infrastructure - this code works on windows.. (but looks a lot uglier)
+
+Ximporter has been written for "Conplan" and will have to be adapted.
+
 ![Screenshot](https://github.com/kanehekili/TSVAccess/blob/main/Ximporter.png)
 
 
