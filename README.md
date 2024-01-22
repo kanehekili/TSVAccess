@@ -117,10 +117,10 @@ In addition the creator provides email-tools and scripts for merging "Conplan" d
 Technical database abstraction for the mysql.connector. This is the place to change the database backend 
 
 ## Ximporter
-Living in Germany the OWM (old white man) have no understanding for interconnectibility. So in order to import data from a retro software that is not able to provide any REST bindings, Ximporter has been created. It reads a propriaty XLS file and imports it into our system. Select a xls file (this feature needs to be adapted to the provider) to import it into the database. 
+In order to import data from a retro software that is not able to provide any REST bindings, Ximporter has been created. It reads a propriaty XLS file and imports it into our system. Select a xls file (this feature needs to be adapted to the provider) to import it into the database. 
 Due to some restraints on the given infrastructure - this code works on windows.. (but looks a lot uglier)
 
-Ximporter has been written for "Conplan" and will have to be adapted.
+Ximporter has been written for "Conplan" and will have to be adapted for other backends.
 
 ![Screenshot](https://github.com/kanehekili/TSVAccess/blob/main/Ximporter.png)
 
