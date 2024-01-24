@@ -343,8 +343,9 @@ class SetUpTSVDB():
         entries.append((2,LOC_KRAFTRAUM,ACTIVITY_GYM,SECTION_FIT, "['KR','ÜL','FFA','GROUP']",7200,3,"08:45:00","09:30:00"))
         entries.append((3,LOC_NORD,ACTIVITY_GYM,SECTION_FIT, "['KR','ÜL','FFA','GROUP']",7200,None,None,None))
         entries.append((4,LOC_SPIEGELSAAL,ACTIVITY_GYM,SECTION_FIT, "['KR','ÜL','FFA','GROUP']",7200,None,None,None))
-        entries.append((5,LOC_SAUNA,ACTIVITY_SAUNA,SECTION_SAUNA,"[]",3600*4,None,None,None)) #Login every 4 hours, no logout
-        entries.append((6,"TEST",ACTIVITY_GYM,SECTION_FIT, "['KR','ÜL','FFA','GROUP']",120,5,"19:00:00","23:59:59"))
+        entries.append((5,LOC_DOJO,ACTIVITY_GYM,SECTION_FIT, "['KR','ÜL','FFA','GROUP']",7200,None,None,None))
+        entries.append((6,LOC_SAUNA,ACTIVITY_SAUNA,SECTION_SAUNA,"[]",3600*4,None,None,None)) #Login every 4 hours, no logout
+        entries.append((7,"TEST",ACTIVITY_GYM,SECTION_FIT, "['KR','ÜL','FFA','GROUP']",120,5,"19:00:00","23:59:59"))
         self.db.insertMany(table, fields, entries)
         
         table = self.LOCATIONTABLE
@@ -353,12 +354,15 @@ class SetUpTSVDB():
         entries.append((1,"tsvaccess1",0)) #KR
         entries.append((2,"tsvaccess1",1)) #KR Group MO
         entries.append((3,"tsvaccess1",2)) #KR Group DO
-        entries.append((4,"tsvaccess2",5)) #Sauna 
+        entries.append((4,"tsvaccess2",6)) #Sauna 
         entries.append((5,"tsvaccess3",3)) #Nord
         entries.append((6,"tsvaccess4",4)) #Spiegelsaal
-        entries.append((7,"msi",0))
-        entries.append((8,"msi",6))
+        entries.append((7,"tsvaccess5",5)) #Dojo
+        entries.append((8,"tsvaccess6",7)) #Pending
+        #entries.append((9,"msi",0))
+        #entries.append((10,"msi",7))
         self.db.insertMany(table, fields, entries)  
+        print(" Accesspoints need to be restarted after update !")
     
     
     def _fillMailTable(self):
