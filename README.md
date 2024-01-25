@@ -9,7 +9,7 @@ The "access" devices are configurable. Therefore it is possible to have one or m
 This is a Linux project. No windoze support.
 
 ## TsvRegisterModule
-This module ist used for the registration of members. It can be used in conjunction of an existing member database, but users can be created without it.
+This module ist used for the registration of members. It can be used in conjunction of an existing member database, but users can be created without it. <br />
 The module will register a photo, the name and a unique id (primary key). This app may run on an office device - it may run on windows but not much effort has been put into it. 
 
 ### Dependencies Debian
@@ -51,7 +51,7 @@ For some events we sell Abos - here a 10x ticket for using the sauna. The Abo di
 Last but not least: The bottom line enables you to block any member to access anything. 
 
 ## TsvAccessModule
-This app runs on a Raspberry pi (3a), currently controlling a 3 channel relais for lights (Access,non access and special states). Connected ot it is a RC522 RFID reader, which delivers the token uid that has been registered in the TSVeEgisterModule.
+This app runs on a Raspberry pi (3a), currently controlling a 3 channel relais for lights (Access,non access and special states). <br /> Connected ot it is a RC522 RFID reader, which delivers the token uid that has been registered in the TSVeEgisterModule.
 ![Screenshot](https://github.com/kanehekili/TSVAccess/blob/main/Hardware1.jpg)
 There is a variant, that uses a LED 7-Segment display to show time and the count of an abo. 
 
@@ -97,19 +97,19 @@ This module runs, together with mariadb on an plain Raspi 2:
 
 #### Only needed for backup (in progress - switch to rsync)
 Pure rysnc implementation.
-A timer based service will copy the database and the recorded pictures to another server - to ensure redudanency. 
-pacamn -S rsync must be installed.
+A timer based service will copy the database and the recorded pictures to another server - to ensure redundancy.  <br />
+pacman -S rsync must be installed. <br />
 backup.sh will call sync.sh triggered by the backup systemd service which is triggered by a backup timer service... 
 
 ## TsvDBCreator
-The database module. Uses mysqlconnection and has been tested with mariadb. Offers dabasebase setup and control via the DBTools.py, which is the interface to the underlying database system.
+The database module. Uses mysqlconnection and has been tested with mariadb. Offers dabasebase setup and control via the DBTools.py, which is the interface to the underlying database system. <br />
 In addition the creator provides email-tools and scripts for merging "Conplan" data into the intrinsic database.
 
 ## DBTools
 Technical database abstraction for the mysql.connector. This is the place to change the database backend 
 
 ## Ximporter
-In order to import data from a retro software that is not able to provide any REST bindings, Ximporter has been created. It reads a propriaty XLS file and imports it into our system. Select a xls file (this feature needs to be adapted to the provider) to import it into the database. 
+In order to import data from a retro software that is not able to provide any REST bindings, Ximporter has been created. It reads a propriaty XLS file and imports it into our system. Select a xls file (this feature needs to be adapted to the provider) to import it into the database.  <br />
 Due to some restraints on the given infrastructure - this code works on windows.. (but looks a lot uglier)
 
 Ximporter has been written for "Conplan" and will have to be adapted for other backends.
@@ -127,7 +127,7 @@ The data/ directory contains the config.json file. This file configures access t
  * "PICPATH": "PATH in static/"
 
 ## Location and access
-The "Location" table contains all of the locations and activities, as well as the allowed access codes and Gracetime.
+The "Location" table contains all of the locations and activities, as well as the allowed access codes and Gracetime. <br /> redundancy
 Each entry defines a room, the activity and the paysection with their access ids. Additional time data can be used to reduce access times to certain days and time in a week.
 
 An access device therefore can have one or more locations defined.
