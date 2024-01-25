@@ -28,11 +28,11 @@ or img = Image.open(BytesIO(response.content))
 # Importing OpenCV package
 # TODO use PyQt6
 import cv2, sys, traceback, time, argparse, os
-from PyQt5.QtWidgets import QApplication
-from PyQt5.QtCore import pyqtSignal, QTimer
-from PyQt5 import QtWidgets, QtGui, QtCore
-from PyQt5.QtCore import QRegExp
-from PyQt5.QtGui import QRegExpValidator
+from PyQt6.QtWidgets import QApplication
+from PyQt6.QtCore import pyqtSignal, QTimer
+from PyQt6 import QtWidgets, QtGui, QtCore
+from PyQt6.QtCore import QRegularExpression
+from PyQt6.QtGui import QRegularExpressionValidator
 from DBTools import OSTools
 import DBTools,FindCam
 import TsvDBCreator
@@ -140,7 +140,7 @@ class CVImage(QtGui.QImage):
         OpenCV3.setColor(numpyArray)
         #if bytesPerLine < 1920:
         #    print(width, height, bytesPerLine)
-        super(CVImage, self).__init__(numpyArray.data, width, height, bytesPerLine, QtGui.QImage.Format_RGB888)
+        super(CVImage, self).__init__(numpyArray.data, width, height, bytesPerLine, QtGui.QImage.Format.Format_RGB888)
 
 
 class VideoWidget(QtWidgets.QFrame):
@@ -151,10 +151,10 @@ class VideoWidget(QtWidgets.QFrame):
         QtWidgets.QFrame.__init__(self, parent)
         self._defaultHeight = 576
         self._defaultWidth = 720
-        self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        self.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Expanding)
         self._image = None
         self.imageRatio = 16.0 / 9.0
-        self.setFrameStyle(QtWidgets.QFrame.Panel | QtWidgets.QFrame.Sunken)
+        self.setFrameStyle(QtWidgets.QFrame.Shape.Panel | QtWidgets.QFrame.Shadow.Sunken)
         self.setLineWidth(1)
 
     def paintEvent(self, event):
@@ -240,7 +240,7 @@ class CheckableComboBox(QtWidgets.QComboBox):
         self.lineEdit().setReadOnly(True)
         # Make the lineedit the same color as QPushButton
         # palette = qApp.palette()
-        # palette.setBrush(QPalette.Base, palette.button())
+        # palette.setBrush(QPalette.ColorRole.Base, palette.button())
         # self.lineEdit().setPalette(palette)
 
         # Use custom delegate
@@ -264,7 +264,7 @@ class CheckableComboBox(QtWidgets.QComboBox):
     def eventFilter(self, _object, event):
 
         if object == self.lineEdit():
-            if event.type() == QtCore.QEvent.MouseButtonRelease:
+            if event.type() == QtCore.QEvent.Type.MouseButtonRelease:
                 if self.closeOnLineEditClick:
                     self.hidePopup()
                 else:
@@ -273,14 +273,14 @@ class CheckableComboBox(QtWidgets.QComboBox):
             return False
 
         if object == self.view().viewport():
-            if event.type() == QtCore.QEvent.MouseButtonRelease:
+            if event.type() == QtCore.QEvent.Type.MouseButtonRelease:
                 index = self.view().indexAt(event.pos())
                 item = self.model().item(index.row())
 
-                if item.checkState() == QtCore.Qt.Checked:
-                    item.setCheckState(QtCore.Qt.Unchecked)
+                if item.checkState() == QtCore.Qt.CheckState.Checked:
+                    item.setCheckState(QtCore.Qt.CheckState.Unchecked)
                 else:
-                    item.setCheckState(QtCore.Qt.Checked)
+                    item.setCheckState(QtCore.Qt.CheckState.Checked)
                 return True
         return False
 
@@ -304,13 +304,13 @@ class CheckableComboBox(QtWidgets.QComboBox):
     def updateText(self):
         texts = []
         for i in range(self.model().rowCount()):
-            if self.model().item(i).checkState() == QtCore.Qt.Checked:
+            if self.model().item(i).checkState() == QtCore.Qt.CheckState.Checked:
                 texts.append(self.model().item(i).text())
         text = ", ".join(texts)
 
         # Compute elided text (with "...")
         metrics = QtGui.QFontMetrics(self.lineEdit().font())
-        elidedText = metrics.elidedText(text, QtCore.Qt.ElideRight, self.lineEdit().width())
+        elidedText = metrics.elidedText(text, QtCore.Qt.TextElideMode.ElideRight, self.lineEdit().width())
         self.lineEdit().setText(elidedText)
 
     def addItem(self, text, data=None):
@@ -320,8 +320,8 @@ class CheckableComboBox(QtWidgets.QComboBox):
             item.setData(text)
         else:
             item.setData(data)
-        item.setFlags(QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsUserCheckable)
-        item.setData(QtCore.Qt.Unchecked, QtCore.Qt.CheckStateRole)
+        item.setFlags(QtCore.Qt.ItemFlag.ItemIsEnabled | QtCore.Qt.ItemFlag.ItemIsUserCheckable)
+        item.setData(QtCore.Qt.CheckState.Unchecked, QtCore.Qt.ItemDataRole.CheckStateRole)
         self.model().appendRow(item)
 
     def addItems(self, texts, datalist=None):
@@ -336,7 +336,7 @@ class CheckableComboBox(QtWidgets.QComboBox):
         # Return the list of selected items data
         res = []
         for i in range(self.model().rowCount()):
-            if self.model().item(i).checkState() == QtCore.Qt.Checked:
+            if self.model().item(i).checkState() == QtCore.Qt.CheckState.Checked:
                 res.append(self.model().item(i).data())
         return res
 
@@ -372,8 +372,9 @@ class MainFrame(QtWidgets.QMainWindow):
 
     def centerWindow(self):
         frameGm = self.frameGeometry()
-        screen = QApplication.desktop().screenNumber(QApplication.desktop().cursor().pos())
-        centerPoint = QApplication.desktop().screenGeometry(screen).center()
+        #screen = QApplication.desktop().screenNumber(QApplication.desktop().cursor().pos())
+        #centerPoint = QApplication.desktop().screenGeometry(screen).center()
+        centerPoint = self.screen().availableGeometry().center()
         frameGm.moveCenter(centerPoint)
         self.move(frameGm.topLeft())
         
@@ -390,7 +391,7 @@ class MainFrame(QtWidgets.QMainWindow):
         
         self.ui_FaceCheck = QtWidgets.QCheckBox("Face")
         self.ui_FaceCheck.stateChanged.connect(self._onFaceChange)
-        self.ui_FaceCheck.setCheckState(QtCore.Qt.Checked)
+        self.ui_FaceCheck.setCheckState(QtCore.Qt.CheckState.Checked)
         self.ui_FaceCheck.setEnabled(self.controller.supportsCamera())
         
         self.ui_SearchLabel = QtWidgets.QLabel(self)
@@ -400,19 +401,19 @@ class MainFrame(QtWidgets.QMainWindow):
         self.ui_SearchEdit.setEditable(True)  # Is that right??
         # self.ui_SearchEdit.currentIndexChanged.connect(self._onSearchChanged)
 
-        self.ui_SearchEdit.setInsertPolicy(QtWidgets.QComboBox.NoInsert);
-        self.ui_SearchEdit.completer().setCompletionMode(QtWidgets.QCompleter.PopupCompletion);
+        self.ui_SearchEdit.setInsertPolicy(QtWidgets.QComboBox.InsertPolicy.NoInsert);
+        self.ui_SearchEdit.completer().setCompletionMode(QtWidgets.QCompleter.CompletionMode.PopupCompletion);
         self.ui_SearchEdit.activated.connect(self._onSearchChanged)
         self.ui_SearchEdit.setToolTip("Nachnamen eingeben, um eine Person zu suchen")
         # self.ui_SearchEdit.installEventFilter(self)
         
-        # self.ui_SearchEdit.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.Preferred)
+        # self.ui_SearchEdit.setSizePolicy(QtWidgets.QSizePolicy.QSizePolicy.Policy.MinimumExpanding, QtWidgets.QSizePolicy.QSizePolicy.Policy.Preferred)
         
         self.ui_IDLabel = QtWidgets.QLabel(self)
         self.ui_IDLabel.setText("Nummer:")
         self.ui_IDEdit = QtWidgets.QLineEdit(self)
         self.ui_IDEdit.setValidator(QtGui.QIntValidator(1, 100000, self))
-        self.ui_IDEdit.setValidator(QRegExpValidator(QRegExp('^([1-9][0-9]*\.?|0\.)[0-9]+$'), self))
+        self.ui_IDEdit.setValidator(QRegularExpressionValidator(QRegularExpression('^([1-9][0-9]*\.?|0\.)[0-9]+$'), self))
         self.ui_IDEdit.setToolTip("Die Conplan <Adressnummer> ist hier einzutragen")
 
         self.ui_FirstNameLabel = QtWidgets.QLabel(self)
@@ -464,7 +465,7 @@ class MainFrame(QtWidgets.QMainWindow):
         # geht immer
         self.ui_NewButton = QtWidgets.QPushButton()
         # self.ui_NewButton = QtWidgets.QToolButton()
-        # self.ui_NewButton.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
+        # self.ui_NewButton.setToolButtonStyle(QtCore.Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         self.ui_NewButton.setText("            Neu")
         self.ui_NewButton.setIcon(QtGui.QIcon("./web/static/new.png"))
         self.ui_NewButton.clicked.connect(self._onNewClicked)
@@ -488,7 +489,7 @@ class MainFrame(QtWidgets.QMainWindow):
         
     def eventFilter(self, widget, event):
         if widget != self.ui_SearchEdit:
-            if event.type() == QtCore.QEvent.FocusIn:
+            if event.type() == QtCore.QEvent.Type.FocusIn:
                 self.ui_SearchEdit.clearFocus()
                 # return False
             # return False
@@ -496,19 +497,19 @@ class MainFrame(QtWidgets.QMainWindow):
 
     def init_toolbar(self):
         # QtGui.QAction Py6
-        self.newAction = QtWidgets.QAction(QtGui.QIcon('./web/static/new.png'), 'Neu anlegen', self)
+        self.newAction = QtGui.QAction(QtGui.QIcon('./web/static/new.png'), 'Neu anlegen', self)
         self.newAction.setShortcut('Ctrl+N')
         self.newAction.triggered.connect(self.xxx)
 
-        self.photoAction = QtWidgets.QAction(QtGui.QIcon('./web/static/video.png'), 'Kamera/Photo', self)
+        self.photoAction = QtGui.QAction(QtGui.QIcon('./web/static/video.png'), 'Kamera/Photo', self)
         self.photoAction.setShortcut('Ctrl+P')
         self.photoAction.triggered.connect(self.xxx)
 
-        self.aboAction = QtWidgets.QAction(QtGui.QIcon('./web/static/ticket.png'), 'Ticket Verkauf', self)
+        self.aboAction = QtGui.QAction(QtGui.QIcon('./web/static/ticket.png'), 'Ticket Verkauf', self)
         self.aboAction.setShortcut('Ctrl+T')
         self.aboAction.triggered.connect(self.xxx)
 
-        self.saveAction = QtWidgets.QAction(QtGui.QIcon('./web/static/video.png'), 'Speichern', self)
+        self.saveAction = QtGui.QAction(QtGui.QIcon('./web/static/video.png'), 'Speichern', self)
         self.saveAction.setShortcut('Ctrl+S')
         self.saveAction.triggered.connect(self.xxx)
                 
@@ -555,8 +556,8 @@ class MainFrame(QtWidgets.QMainWindow):
         gridLayout.addWidget(self.ui_PhotoButton, 4, 7, 1, 1)
         
         line = QtWidgets.QFrame();
-        line.setFrameShape(QtWidgets.QFrame.HLine);
-        line.setFrameShadow(QtWidgets.QFrame.Sunken);
+        line.setFrameShape(QtWidgets.QFrame.Shape.HLine);
+        line.setFrameShadow(QtWidgets.QFrame.Shadow.Sunken);
     
         gridLayout.addWidget(line, 5, 1, 1, -1)
         
@@ -577,14 +578,14 @@ class MainFrame(QtWidgets.QMainWindow):
         gridLayout.addWidget(self.ui_BirthLabel, 11, 4, 1, 3)
         
         line = QtWidgets.QFrame();
-        line.setFrameShape(QtWidgets.QFrame.HLine);
-        line.setFrameShadow(QtWidgets.QFrame.Sunken);
+        line.setFrameShape(QtWidgets.QFrame.Shape.HLine);
+        line.setFrameShadow(QtWidgets.QFrame.Shadow.Sunken);
         
         gridLayout.addWidget(line, 12, 1, 1, -1)
         
         gridLayout.addWidget(self.ui_NewButton, 13, 1, 1, 1)
-        gridLayout.addWidget(self.ui_AboButton, 13, 4, 1, 1, QtCore.Qt.AlignCenter)
-        gridLayout.addWidget(self.ui_SaveButton, 13, 7, 1, 1, QtCore.Qt.AlignRight)
+        gridLayout.addWidget(self.ui_AboButton, 13, 4, 1, 1, QtCore.Qt.AlignmentFlag.AlignCenter)
+        gridLayout.addWidget(self.ui_SaveButton, 13, 7, 1, 1, QtCore.Qt.AlignmentFlag.AlignRight)
         
         gridLayout.setRowStretch(1, 1)
 
@@ -624,7 +625,7 @@ class MainFrame(QtWidgets.QMainWindow):
 
     @QtCore.pyqtSlot(int)
     def _onFaceChange(self, state):
-        if state == QtCore.Qt.Checked:
+        if state == QtCore.Qt.CheckState.Checked:
             self.cam.faceActive = True
         else:
             self.cam.faceActive = False
@@ -734,7 +735,7 @@ class MainFrame(QtWidgets.QMainWindow):
             Log.warning("Data error:%s", msg)
             return
 
-        QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
+        QApplication.setOverrideCursor(QtCore.Qt.CursorShape.WaitCursor)
         mid = int(idstr)
         rfid_int = int(rfid)
         # we should update in the correct form
@@ -793,27 +794,27 @@ class MainFrame(QtWidgets.QMainWindow):
     # dialogs
     def __getInfoDialog(self, text):
         dlg = QtWidgets.QDialog(self)
-        dlg.setWindowModality(QtCore.Qt.WindowModal)
+        dlg.setWindowModality(QtCore.Qt.WindowModality.WindowModal)
         dlg.setWindowTitle("Information")
         layout = QtWidgets.QVBoxLayout(dlg)
         label = QtWidgets.QLabel(text)
-        label.sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        label.sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Expanding)
         label.setSizePolicy(label.sizePolicy)
         label.setMinimumSize(QtCore.QSize(300, 40))
-        layout.setSizeConstraint(QtWidgets.QLayout.SetFixedSize)
+        layout.setSizeConstraint(QtWidgets.QLayout.SizeConstraint.SetFixedSize)
         layout.addWidget(label)
         return dlg
 
     def getErrorDialog(self, text, infoText, detailedText, mail=True):
         dlg = QtWidgets.QMessageBox(self)
-        dlg.setIcon(QtWidgets.QMessageBox.Warning)
-        dlg.setWindowModality(QtCore.Qt.WindowModal)
+        dlg.setIcon(QtWidgets.QMessageBox.Icon.Warning)
+        dlg.setWindowModality(QtCore.Qt.WindowModality.WindowModal)
         dlg.setWindowTitle("Fehler")
         dlg.setText(text)
         dlg.setInformativeText(infoText)
         dlg.setDetailedText(detailedText)
-        dlg.setStandardButtons(QtWidgets.QMessageBox.Ok)
-        spacer = QtWidgets.QSpacerItem(300, 1, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
+        dlg.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
+        spacer = QtWidgets.QSpacerItem(300, 1, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Minimum)
         layout = dlg.layout()
         layout.addItem(spacer, layout.rowCount(), 0, 1, layout.columnCount())
         msg = infoText + "\n DETAIL:" + detailedText
@@ -824,14 +825,14 @@ class MainFrame(QtWidgets.QMainWindow):
     def getMessageDialog(self, text, infoText):
         # dlg = DialogBox(self)
         dlg = QtWidgets.QMessageBox(self)
-        dlg.setIcon(QtWidgets.QMessageBox.Information)
-        dlg.setWindowModality(QtCore.Qt.WindowModal)
+        dlg.setIcon(QtWidgets.QMessageBox.Icon.Information)
+        dlg.setWindowModality(QtCore.Qt.WindowModality.WindowModal)
         dlg.setWindowTitle("Hinweis")
         dlg.setText(text)
         dlg.setInformativeText(infoText)
-        dlg.setStandardButtons(QtWidgets.QMessageBox.Ok)
+        dlg.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
         # Workaround to resize a qt dialog. WTF!
-        spacer = QtWidgets.QSpacerItem(300, 1, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
+        spacer = QtWidgets.QSpacerItem(300, 1, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Minimum)
         layout = dlg.layout()
         layout.addItem(spacer, layout.rowCount(), 0, 1, layout.columnCount())
         
@@ -840,7 +841,7 @@ class MainFrame(QtWidgets.QMainWindow):
     
     def getQuestionDialog(self, title, text):
         buttonReply = QtWidgets.QMessageBox().question(self, title, text,);
-        return buttonReply == QtWidgets.QMessageBox.Yes
+        return buttonReply == QtWidgets.QMessageBox.StandardButton.Yes
     
     @QtCore.pyqtSlot()
     def _displayFrame(self):
@@ -896,7 +897,7 @@ class MainFrame(QtWidgets.QMainWindow):
             return
         self.capturing = True
         self.photoTaken = False
-        QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
+        QApplication.setOverrideCursor(QtCore.Qt.CursorShape.WaitCursor)
         self.updatePhotoButton()
         self.cameraThread.start()
         while not self.cam.cameraOn:
@@ -908,7 +909,7 @@ class MainFrame(QtWidgets.QMainWindow):
         QApplication.restoreOverrideCursor()
 
     def _initModel(self):
-        QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
+        QApplication.setOverrideCursor(QtCore.Qt.CursorShape.WaitCursor)
         # ##RegisterCam
         if self.controller.supportsCamera():
             if not self.cam.startCamera():
@@ -949,13 +950,13 @@ class AboDialog(QtWidgets.QDialog):
         self.init_ui()
 
     def init_ui(self):
-        self.setWindowModality(QtCore.Qt.WindowModal)
+        self.setWindowModality(QtCore.Qt.WindowModality.WindowModal)
         self.setWindowTitle("Abo & Sperren")
         frame1 = QtWidgets.QFrame()
         frame2 = QtWidgets.QFrame()
-        frame1.setFrameStyle(QtWidgets.QFrame.Box | QtWidgets.QFrame.Sunken)
+        frame1.setFrameStyle(QtWidgets.QFrame.Shape.Box | QtWidgets.QFrame.Shadow.Sunken)
         frame1.setLineWidth(1)
-        frame2.setFrameStyle(QtWidgets.QFrame.Box | QtWidgets.QFrame.Sunken)
+        frame2.setFrameStyle(QtWidgets.QFrame.Shape.Box | QtWidgets.QFrame.Shadow.Sunken)
         frame2.setLineWidth(1)
 
         aboBox = QtWidgets.QVBoxLayout()
@@ -987,7 +988,7 @@ class AboDialog(QtWidgets.QDialog):
         aboBox.addLayout(gridLayout)
         aboBox.addLayout(culpritBox)
 
-        QBtn = QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel
+        QBtn = QtWidgets.QDialogButtonBox.StandardButton.Ok | QtWidgets.QDialogButtonBox.StandardButton.Cancel
         buttonBox = QtWidgets.QDialogButtonBox(QBtn)
         buttonBox.accepted.connect(self.accept)
         buttonBox.rejected.connect(self.reject)
@@ -1007,7 +1008,7 @@ class AboDialog(QtWidgets.QDialog):
 
     @QtCore.pyqtSlot(int)
     def _onUpdateAboCount(self, state):
-        if state == QtCore.Qt.Checked:
+        if state == QtCore.Qt.CheckState.Checked:
             self.aboLabel.setText("10")
         else:
             self.aboLabel.setText("0")
@@ -1274,7 +1275,7 @@ def main(args):
         WIN = MainFrame(app, cIndex, rfidMode)  # keep python reference!
         # ONLY windoze, if ever: app.setStyleSheet(winStyle())
         # app.setStyle(QtWidgets.QStyleFactory.create("Fusion"));
-        app.exec_()
+        app.exec()
         # logging.shutdown()
     except:
         with open('/tmp/error.log','a') as f:

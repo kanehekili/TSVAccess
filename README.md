@@ -16,36 +16,26 @@ The module will register a photo, the name and a unique id (primary key). This a
 * python-mysql-connector (use pip - debian stuff is too old)
 * python3-opencv
 * python3-opencv-data (haarcascade)
-* python3-qt5 (will phase out)
 * python3-qt6
 * pip install requests
 * pip install v4l2ctl
 
 ### Dependencies Arch
-* python-pyqt5 (will phase out)
 * python-pyqt6
 * python-opencv
 * python-mysql-connector
 * python-requests
 * pip install v4l2ctl (might use --break-system-packages since it does not exist)
 
-*TODO we are changing to QT6 
+The Registration app has been written in QT6. To get the original design in GTK env you need to:
 * install qt6gtk2
-* Set in /etc/environment:
-QT_QPA_PLATFORMTHEME=gtk2
-* install gtk-engine-murrine(depending on your theme)
-
-The Registration app has been written in QT5. To get the original design in GTK env you need to:
-* install qt5ct
-* Set interface to gtk2 in the qt5ct app
 * Select a theme that supports gtk2
 * install gtk-engine-murrine (depending on your theme)
-* install qt5-styleplugins
 * Set in /etc/environment:
-QT_QPA_PLATFORMTHEME=gtk2 or QT_QPA_PLATFORMTHEME=qt5ct
+  QT_QPA_PLATFORMTHEME=gtk2
 (depends on your distro)
 
-There is a basic support for windows, but not currently tested or in any way supported.
+There is a basic support for windows, but not currently tested nor in any way supported.
 
 Only a member once checked in with this module will be able to access the system!
 ![Screenshot](https://github.com/kanehekili/TSVAccess/blob/main/Register.png)
@@ -58,10 +48,10 @@ For some events we sell Abos - here a 10x ticket for using the sauna. The Abo di
 * Alter the current visits or set up how many visits have already been paid bevor using this system.
 ![Screenshot](https://github.com/kanehekili/TSVAccess/blob/main/Abodialog.png)
 
-Last not least: The bottom line enables you to block any member to access anything. 
+Last but not least: The bottom line enables you to block any member to access anything. 
 
 ## TsvAccessModule
-This app runs on a Raspberry pi (3a), currently controlling a 2 channel relais for lights (Access,non access). Connected ot it is a RC522 RFID reader, which delivers the token uid that has been registered in the TSVREgisterModule.
+This app runs on a Raspberry pi (3a), currently controlling a 3 channel relais for lights (Access,non access and special states). Connected ot it is a RC522 RFID reader, which delivers the token uid that has been registered in the TSVeEgisterModule.
 ![Screenshot](https://github.com/kanehekili/TSVAccess/blob/main/Hardware1.jpg)
 There is a variant, that uses a LED 7-Segment display to show time and the count of an abo. 
 
@@ -102,12 +92,14 @@ This module runs, together with mariadb on an plain Raspi 2:
 
 ### Dependencies
 * python-mysql-connector
-* pip install flask,pandas,plotly
+* pip install flask,(pandas?),plotly
+* pandas will be perished in favour of dash (under contruction)
 
 #### Only needed for backup (in progress - switch to rsync)
-* pip install scp  
-* pip install paramiko
-
+Pure rysnc implementation.
+A timer based service will copy the database and the recorded pictures to another server - to ensure redudanency. 
+pacamn -S rsync must be installed.
+backup.sh will call sync.sh triggered by the backup systemd service which is triggered by a backup timer service... 
 
 ## TsvDBCreator
 The database module. Uses mysqlconnection and has been tested with mariadb. Offers dabasebase setup and control via the DBTools.py, which is the interface to the underlying database system.
