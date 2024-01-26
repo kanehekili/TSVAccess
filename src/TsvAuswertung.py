@@ -75,33 +75,37 @@ Group section
 def statisticsGroupFitnesse():
     return statisticsTemplate(TsvDBCreator.ACTIVITY_GYM)
 
-@app.route('/accessGYM_KR')  # Access kraftraum TODO: mit Raum!
+@app.route('/accessGYM_KR')  
 def visitorsGroupFitnesse():
-    people = barModel.currentVisitorPictures(TsvDBCreator.ACTIVITY_GYM)
+    people = barModel.currentVisitorPictures(TsvDBCreator.ACTIVITY_GYM,TsvDBCreator.LOC_KRAFTRAUM)
     logo_path = "tsv_logo_100.png"
+    act = TsvDBCreator.ACTIVITY_GYM +" Kraftraum"
     pv='/groupRooms'
-    return render_template('access.html', parentView=pv, people=people, logo_path=logo_path, dynamic_activity=TsvDBCreator.ACTIVITY_GYM, activity_count=len(people))
+    return render_template('access.html', parentView=pv, people=people, logo_path=logo_path, dynamic_activity=act, activity_count=len(people))
 
-@app.route('/accessGYM_Spiegelsaal')  # Access kraftraum TODO: mit Raum!
+@app.route('/accessGYM_Spiegelsaal') 
 def visitorsGFS():
-    people = barModel.currentVisitorPictures(TsvDBCreator.ACTIVITY_GYM)
+    people = barModel.currentVisitorPictures(TsvDBCreator.ACTIVITY_GYM,TsvDBCreator.LOC_SPIEGELSAAL)
     logo_path = "tsv_logo_100.png"
+    act = TsvDBCreator.ACTIVITY_GYM+" Spiegelsaal"
     pv='/groupRooms'
-    return render_template('access.html', parentView=pv, people=people, logo_path=logo_path, dynamic_activity=TsvDBCreator.ACTIVITY_GYM, activity_count=len(people))
+    return render_template('access.html', parentView=pv, people=people, logo_path=logo_path, dynamic_activity=act, activity_count=len(people))
 
 @app.route('/accessGYM_Dojo')  # Access kraftraum TODO: mit Raum!
 def visitorsGFD():
-    people = barModel.currentVisitorPictures(TsvDBCreator.ACTIVITY_GYM)
+    people = barModel.currentVisitorPictures(TsvDBCreator.ACTIVITY_GYM,TsvDBCreator.LOC_DOJO)
     logo_path = "tsv_logo_100.png"
+    act = TsvDBCreator.ACTIVITY_GYM+" Dojo"
     pv='/groupRooms'
-    return render_template('access.html', parentView=pv, people=people, logo_path=logo_path, dynamic_activity=TsvDBCreator.ACTIVITY_GYM, activity_count=len(people))
+    return render_template('access.html', parentView=pv, people=people, logo_path=logo_path, dynamic_activity=act, activity_count=len(people))
 
 @app.route('/accessGYM_Nord')  # Access kraftraum TODO: mit Raum!
 def visitorsGFN():
-    people = barModel.currentVisitorPictures(TsvDBCreator.ACTIVITY_GYM)
+    people = barModel.currentVisitorPictures(TsvDBCreator.ACTIVITY_GYM,TsvDBCreator.LOC_NORD)
     logo_path = "tsv_logo_100.png"
+    act = TsvDBCreator.ACTIVITY_GYM +" Nord" 
     pv='/groupRooms'
-    return render_template('access.html', parentView=pv, people=people, logo_path=logo_path, dynamic_activity=TsvDBCreator.ACTIVITY_GYM, activity_count=len(people))
+    return render_template('access.html', parentView=pv, people=people, logo_path=logo_path, dynamic_activity=act, activity_count=len(people))
 
 
 '''
@@ -568,14 +572,18 @@ class BarModel():
         return (x_values, y_values)
         
     # show pic and names of those that are curently in the activity +#TOSO AND ROOM
-    def currentVisitorPictures(self, activity, dwellMinutes=-1):
+    def currentVisitorPictures(self, activity,room = None, dwellMinutes=-1):
         mbrTable = self.dbSystem.MAINTABLE
         timetable = self.dbSystem.TIMETABLE
         daysplit = "13"  # time between morning and afternoon
         members = {}
         AccessRow.dwellMinutes = dwellMinutes  # Automatic checkout, negative means: we don't care (Sauna)
         picFolder = self.dbSystem.PICPATH + "/"
-        stmt = "SELECT id,first_name,last_name,picpath,access_date FROM " + mbrTable + " m JOIN " + timetable + " z ON m.id = z.mitglied_id WHERE DATE(z.access_date) = CURDATE() AND ((HOUR(z.access_date) < " + daysplit + " AND HOUR(CURTIME()) < " + daysplit + ") OR (HOUR(z.access_date) > " + daysplit + " AND HOUR(CURTIME()) > " + daysplit + ")) and activity='" + activity + "' ORDER By z.access_date DESC"
+        if not room:
+            stmt = "SELECT id,first_name,last_name,picpath,access_date FROM " + mbrTable + " m JOIN " + timetable + " z ON m.id = z.mitglied_id WHERE DATE(z.access_date) = CURDATE() AND ((HOUR(z.access_date) < " + daysplit + " AND HOUR(CURTIME()) < " + daysplit + ") OR (HOUR(z.access_date) > " + daysplit + " AND HOUR(CURTIME()) > " + daysplit + ")) and activity='" + activity + "' ORDER By z.access_date DESC"
+        else:
+            stmt = "SELECT id,first_name,last_name,picpath,access_date FROM " + mbrTable + " m JOIN " + timetable + " z ON m.id = z.mitglied_id WHERE DATE(z.access_date) = CURDATE() AND ((HOUR(z.access_date) < " + daysplit + " AND HOUR(CURTIME()) < " + daysplit + ") OR (HOUR(z.access_date) > " + daysplit + " AND HOUR(CURTIME()) > " + daysplit + ")) and activity='" + activity + "' AND room='" + room+ "' ORDER By z.access_date DESC"
+            
         rows = self.db.select(stmt)
         Log.info("Visitor rows:%d", len(rows))
         for row in rows:
