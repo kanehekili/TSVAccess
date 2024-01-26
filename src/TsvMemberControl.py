@@ -13,6 +13,7 @@ from PyQt6 import QtWidgets, QtGui, QtCore
 from DBTools import OSTools
 import DBTools
 from datetime import datetime
+import TsvDBCreator
 
 WIN = None
 
@@ -343,9 +344,18 @@ class MainFrame(QtWidgets.QMainWindow):
             self.ui_SearchEdit.addItem(entry, member)
             
     def fillActivityCombo(self):
-        themes=self.model.configs.allActivities()
-        for item in themes:
-            self.ui_ActivityCombo.addItem(item)
+        #themes=self.model.configs.allActivities()
+        allConfig=self.model.configs.configs
+        cfgDic={}
+        for cfg in allConfig:
+            #No prepaid support yet:
+            if cfg.activity in TsvDBCreator.PREPAID_INDICATOR:
+                continue
+            res=cfgDic.get(cfg.activity,cfg)
+            cfgDic[cfg.activity]=res
+            
+        for key,value in cfgDic.items():
+            self.ui_ActivityCombo.addItem(key,value)
         self.ui_ActivityCombo.setCurrentIndex(self._defaultActivityIdx)
         
             
@@ -479,8 +489,8 @@ class MainFrame(QtWidgets.QMainWindow):
         # setIcon
     
     def currentLocationConfig(self):
-        indx=self.ui_ActivityCombo.currentIndex()
-        return self.model.configs.entryAt(indx)
+        cfg = self.ui_ActivityCombo.currentData()
+        return cfg
         
     def _updateCheckinData(self, mbr):
         #activity= self.model.curentConfig.activity #FAIL

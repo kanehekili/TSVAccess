@@ -172,14 +172,13 @@ class RFIDAccessor():
         now = datetime.now().isoformat()
         table = self.dbSystem.TIMETABLE
         #UPDATE? to row count in order to see whether cki or cko. Use the "pause" which part of day to select...
-        #select access_date from Zugang where mitglied_id=73 and DATE(access_date) = CURDATE()-1 and HOUR(access_date) < '13:00' and location in ('GroupFitnesse', 'Kraftraum');
-        stmt = "SELECT mitglied_id,access_date from %s where mitglied_id=%s AND location='%s' AND TIMESTAMPDIFF(SECOND,access_date,NOW()) <= %s"%(table,str(key),cEntry.activity,str(cEntry.graceTime))
+        stmt = "SELECT mitglied_id,access_date from %s where mitglied_id=%s AND activity='%s' AND TIMESTAMPDIFF(SECOND,access_date,NOW()) <= %s"%(table,str(key),cEntry.activity,str(cEntry.graceTime))
         timerows = self.db.select(stmt) 
         if len(timerows) == 0: 
             #gracetime period is over, checkout/recheck in possible
             data = []
-            data.append((key, now,cEntry.activity))
-            self.db.insertMany(table, ('mitglied_id', 'access_date', 'location'), data)
+            data.append((key, now,cEntry.activity,cEntry.room))
+            self.db.insertMany(table, ('mitglied_id', 'access_date', 'activity', 'room'), data)
             if prepaidCount >0: #Dieters Sauna special
                 self.voidPrepaid(key, prepaidCount,cEntry.paySection)
                 self._showCounter(prepaidCount-1)
@@ -203,7 +202,7 @@ class RFIDAccessor():
     def hasCheckedInToday(self,key):
         dx = Konfig.asDBString(self.configData.allActivities())
         table = self.dbSystem.TIMETABLE
-        stmt = "select count(*) from %s where mitglied_id=%s and DATE(access_date) = CURDATE() and location in (%s)"%(table,key,dx)
+        stmt = "select count(*) from %s where mitglied_id=%s and DATE(access_date) = CURDATE() and activity in (%s)"%(table,key,dx)
         rows=self.db.select(stmt)
         return rows[0][0]>0 
     

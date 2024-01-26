@@ -45,8 +45,9 @@ def visitorsKraftraum():
     #people = barModel.currentVisitorPictures(TsvDBCreator.ACTIVITY_KR, 150)  # checkout after 150 mins
     people = barModel.currentVisitorPictures(TsvDBCreator.ACTIVITY_KR)  
     logo_path = "tsv_logo_100.png"
-    dynamic_location = TsvDBCreator.ACTIVITY_KR    
-    return render_template('access.html', people=people, logo_path=logo_path, dynamic_location=dynamic_location, location_count=len(people))
+    dynamic_activity = TsvDBCreator.ACTIVITY_KR   
+    pv='/' 
+    return render_template('access.html', parentView=pv, people=people, logo_path=logo_path, dynamic_activity=dynamic_activity, location_count=len(people))
 
     
 @app.route('/' + TsvDBCreator.ACTIVITY_KR + "Usage")
@@ -64,8 +65,8 @@ def verweilzeitKraftraum():
     
     graphJSON = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
     logo_path = "tsv_logo_100.png"
-    dynamic_location = TsvDBCreator.ACTIVITY_KR
-    return render_template('index.html', graphJSON=graphJSON, logo_path=logo_path, dynamic_location=dynamic_location)        
+    dynamic_activity = TsvDBCreator.ACTIVITY_KR
+    return render_template('index.html', graphJSON=graphJSON, logo_path=logo_path, dynamic_activity=dynamic_activity)        
 
 '''
 Group section
@@ -74,11 +75,34 @@ Group section
 def statisticsGroupFitnesse():
     return statisticsTemplate(TsvDBCreator.ACTIVITY_GYM)
 
-@app.route('/accessGYM')  # Access kraftraum
+@app.route('/accessGYM_KR')  # Access kraftraum TODO: mit Raum!
 def visitorsGroupFitnesse():
     people = barModel.currentVisitorPictures(TsvDBCreator.ACTIVITY_GYM)
     logo_path = "tsv_logo_100.png"
-    return render_template('access.html', people=people, logo_path=logo_path, dynamic_location=TsvDBCreator.ACTIVITY_GYM, location_count=len(people))
+    pv='/groupRooms'
+    return render_template('access.html', parentView=pv, people=people, logo_path=logo_path, dynamic_activity=TsvDBCreator.ACTIVITY_GYM, activity_count=len(people))
+
+@app.route('/accessGYM_Spiegelsaal')  # Access kraftraum TODO: mit Raum!
+def visitorsGFS():
+    people = barModel.currentVisitorPictures(TsvDBCreator.ACTIVITY_GYM)
+    logo_path = "tsv_logo_100.png"
+    pv='/groupRooms'
+    return render_template('access.html', parentView=pv, people=people, logo_path=logo_path, dynamic_activity=TsvDBCreator.ACTIVITY_GYM, activity_count=len(people))
+
+@app.route('/accessGYM_Dojo')  # Access kraftraum TODO: mit Raum!
+def visitorsGFD():
+    people = barModel.currentVisitorPictures(TsvDBCreator.ACTIVITY_GYM)
+    logo_path = "tsv_logo_100.png"
+    pv='/groupRooms'
+    return render_template('access.html', parentView=pv, people=people, logo_path=logo_path, dynamic_activity=TsvDBCreator.ACTIVITY_GYM, activity_count=len(people))
+
+@app.route('/accessGYM_Nord')  # Access kraftraum TODO: mit Raum!
+def visitorsGFN():
+    people = barModel.currentVisitorPictures(TsvDBCreator.ACTIVITY_GYM)
+    logo_path = "tsv_logo_100.png"
+    pv='/groupRooms'
+    return render_template('access.html', parentView=pv, people=people, logo_path=logo_path, dynamic_activity=TsvDBCreator.ACTIVITY_GYM, activity_count=len(people))
+
 
 '''
 SAUNA SECTION -> TsvDBCreator.ACTIVITY_SAUNA == Sauna
@@ -94,7 +118,8 @@ def statisticsSauna():
 def visitorsSauna():
     people = barModel.currentVisitorPictures(TsvDBCreator.ACTIVITY_SAUNA)
     logo_path = "tsv_logo_100.png"
-    return render_template('access.html', people=people, logo_path=logo_path, dynamic_location=TsvDBCreator.ACTIVITY_SAUNA, location_count=len(people))
+    pv='/'
+    return render_template('access.html', parentView=pv, people=people, logo_path=logo_path, dynamic_activity=TsvDBCreator.ACTIVITY_SAUNA, activity_count=len(people))
 
 # hook to more sites
 
@@ -108,6 +133,10 @@ def dashboard():
     logo_path = "tsv_logo_100.png"
     return render_template('dashboard2.html', logo_path=logo_path)
 
+@app.route('/groupRooms')
+def groupRooms():
+    logo_path = "tsv_logo_100.png"
+    return render_template('rooms.html', logo_path=logo_path)
 
 # save or retrieve pictures for Registration 
 @app.route("/TSVPIC/<picture_name>", methods=['GET', 'POST'])
@@ -129,8 +158,8 @@ def manage_picture(picture_name):
 
 
 # subcall:
-def statisticsTemplate(location):
-    dates, counts = barModel.countPeoplePerDay(location)  # count members over time
+def statisticsTemplate(activity):
+    dates, counts = barModel.countPeoplePerDay(activity)  # count members over time
     data = [go.Bar(
        x=dates,
        y=counts,
@@ -138,12 +167,12 @@ def statisticsTemplate(location):
        textposition='auto',
        marker_color='#FFA500'
     )]
-    layout = go.Layout(title="Nutzung " + location, xaxis=dict(title="Datum"), yaxis=dict(title="Besucher"))
+    layout = go.Layout(title="Nutzung " + activity, xaxis=dict(title="Datum"), yaxis=dict(title="Besucher"))
     fig = go.Figure(data=data, layout=layout)
     
     graphJSON = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
     logo_path = "tsv_logo_100.png"
-    return render_template('index.html', graphJSON=graphJSON, logo_path=logo_path, dynamic_location=location)    
+    return render_template('index.html', graphJSON=graphJSON, logo_path=logo_path, dynamic_activity=activity)    
 
 
 @app.route('/sectionS', methods=["GET", "POST"])
@@ -161,7 +190,7 @@ def drawSectionMembers():
     
     graphJSON = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
     logo_path = "tsv_logo_100.png"
-    return render_template('index.html', graphJSON=graphJSON, logo_path=logo_path, dynamic_location="Hauptverein") 
+    return render_template('index.html', graphJSON=graphJSON, logo_path=logo_path, dynamic_activity="Hauptverein") 
 
 
 @app.route('/config', methods=["GET", "POST"])
@@ -250,16 +279,17 @@ def plot():
     # Create graphJSON
     graphJSON = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
     logo_path = "tsv_logo_100.png"
-    dynamic_location = TsvDBCreator.ACTIVITY_KR
-    return render_template('index.html', graphJSON=graphJSON, logo_path=logo_path, dynamic_location=dynamic_location)
+    dynamic_activity = TsvDBCreator.ACTIVITY_KR
+    return render_template('index.html', graphJSON=graphJSON, logo_path=logo_path, dynamic_activity=dynamic_activity)
 '''
 
 @app.route('/ratio')  # Access kraftraum
 def testRatio():
     people = barModel.testRatio()
     logo_path = "tsv_logo_100.png"
-    dynamic_location = TsvDBCreator.ACTIVITY_KR    
-    return render_template('access.html', people=people, logo_path=logo_path, dynamic_location=dynamic_location)
+    dynamic_activity = TsvDBCreator.ACTIVITY_KR
+    pv='/'    
+    return render_template('access.html', parentView=pv, people=people, logo_path=logo_path, dynamic_activity=dynamic_activity)
 
 '''
 @app.route('/')  # TODO lead to avalaibale pages ==Dashboard
@@ -276,8 +306,8 @@ def plotFigTestWorking():
     fig = go.Figure(data=data)
     graphJSON = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
     logo_path = "tsv_logo_100.png"
-    dynamic_location = TsvDBCreator.KRAFTRAUM
-    return render_template('index.html', graphJSON=graphJSON, logo_path=logo_path, dynamic_location=dynamic_location)
+    dynamic_activity = TsvDBCreator.KRAFTRAUM
+    return render_template('index.html', graphJSON=graphJSON, logo_path=logo_path, dynamic_activity=dynamic_activity)
 '''
 
 
@@ -442,7 +472,7 @@ class BarModel():
         return(fakeData, fakeValue)
     
     # TODO respect checkin/checkout there is a gracetime 0r 120 seconds between check in and checkout
-    def countPeoplePerDay(self, location):
+    def countPeoplePerDay(self, activity):
         '''
         timetable= self.dbSystem.TIMETABLE
         breakTime=13
@@ -463,7 +493,7 @@ class BarModel():
             else:
                 members[date_str][mid].updateAccess(row)    
         '''
-        members = self.__collectCountRows(location)
+        members = self.__collectCountRows(activity)#TODO +ROOM?
         countValues = []
         for aDay in members.values():  # id->cr list
             cnt = 0
@@ -477,8 +507,8 @@ class BarModel():
         return (x_values, y_values)
     
     # What? Average usage per person? average usage per day? This cumulates... and is wrong!
-    def dailyHoursUsage(self, location):
-        members = self.__collectCountRows(location)
+    def dailyHoursUsage(self, activity):
+        members = self.__collectCountRows(activity)
         hourlyCount = {}
         # go from 9:00 to 12, 14 to 22:00
         # startHour=9
@@ -504,12 +534,12 @@ class BarModel():
         y_values = list(theHourDict.values())
         return (x_values, y_values)        
     
-    # returns a {date-> {id -> rowCount} ] double dict
-    def __collectCountRows(self, location):
+    # returns a {date-> {id -> rowCount} ] double dict DO WE NEED room?
+    def __collectCountRows(self, activity):
         timetable = self.dbSystem.TIMETABLE
         breakTime = 13
         members = {}
-        stmt = "SELECT mitglied_id,access_date from " + timetable + " where location='" + location + "'"
+        stmt = "SELECT mitglied_id,access_date from " + timetable + " where activity='" + activity + "'"
         rows = self.db.select(stmt)    
         for row in rows:
             # date_str = datetime.strptime(row[0], '%Y-%m-%d %H:%M:%S.%f').strftime('%Y-%m-%d')
@@ -537,15 +567,15 @@ class BarModel():
             y_values.append(row[1])
         return (x_values, y_values)
         
-    # show pic and names of those that are curently in the location
-    def currentVisitorPictures(self, location, dwellMinutes=-1):
+    # show pic and names of those that are curently in the activity +#TOSO AND ROOM
+    def currentVisitorPictures(self, activity, dwellMinutes=-1):
         mbrTable = self.dbSystem.MAINTABLE
         timetable = self.dbSystem.TIMETABLE
         daysplit = "13"  # time between morning and afternoon
         members = {}
         AccessRow.dwellMinutes = dwellMinutes  # Automatic checkout, negative means: we don't care (Sauna)
         picFolder = self.dbSystem.PICPATH + "/"
-        stmt = "SELECT id,first_name,last_name,picpath,access_date FROM " + mbrTable + " m JOIN " + timetable + " z ON m.id = z.mitglied_id WHERE DATE(z.access_date) = CURDATE() AND ((HOUR(z.access_date) < " + daysplit + " AND HOUR(CURTIME()) < " + daysplit + ") OR (HOUR(z.access_date) > " + daysplit + " AND HOUR(CURTIME()) > " + daysplit + ")) and location='" + location + "' ORDER By z.access_date DESC"
+        stmt = "SELECT id,first_name,last_name,picpath,access_date FROM " + mbrTable + " m JOIN " + timetable + " z ON m.id = z.mitglied_id WHERE DATE(z.access_date) = CURDATE() AND ((HOUR(z.access_date) < " + daysplit + " AND HOUR(CURTIME()) < " + daysplit + ") OR (HOUR(z.access_date) > " + daysplit + " AND HOUR(CURTIME()) > " + daysplit + ")) and activity='" + activity + "' ORDER By z.access_date DESC"
         rows = self.db.select(stmt)
         Log.info("Visitor rows:%d", len(rows))
         for row in rows:

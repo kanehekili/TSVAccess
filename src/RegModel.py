@@ -108,10 +108,9 @@ class Registration():
         return self.memberList
     
     #used by memberControl
-    def todaysAccessDateStrings(self, mbrID, location):
+    def todaysAccessDateStrings(self, mbrID, activity):
         table = self.dbSystem.TIMETABLE
-        stmt= "select access_date from %s where mitglied_id =%d and location='%s' and DATE(access_date) = CURDATE();"%(table,mbrID,location)  
-        #stmt= "select access_date from %s where mitglied_id =%d and location='%s' and DATE(access_date) < CURDATE();"%(table,mbrID,location)
+        stmt= "select access_date from %s where mitglied_id =%d and activity='%s' and DATE(access_date) = CURDATE();"%(table,mbrID,activity)  
         rows = self.db.select(stmt)
         timeData=[]
         for row in rows:
@@ -122,8 +121,8 @@ class Registration():
     def saveAccessDate(self,mbr,accessDate,locConfig):
         table = self.dbSystem.TIMETABLE
         data = []
-        data.append((mbr.id, accessDate,locConfig.activity))
-        self.db.insertMany(table, ('mitglied_id', 'access_date', 'location'), data)
+        data.append((mbr.id, accessDate,locConfig.activity,locConfig.room))
+        self.db.insertMany(table, ('mitglied_id', 'access_date', 'activity', 'room'), data)
     
     def updateMember(self, mbr):
         table = self.dbSystem.MAINTABLE

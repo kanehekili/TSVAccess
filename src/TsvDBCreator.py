@@ -28,7 +28,7 @@ from ast import literal_eval
 # codes found on migration
 ACCESSCODES = ["GROUP","ÜL","FFA","KR","JUGGLING","UKR"]
 
-# Allowed access locations: Display only
+# Allowed access rooms: Display only
 LOC_KRAFTRAUM = "Kraftraum"
 LOC_SPIEGELSAAL="Spiegelsaal"
 LOC_MZR="MZR"
@@ -68,7 +68,7 @@ The payment section
 |       18908 | NULL                | Sauna            |       9 |
 +-------------+---------------------+------------------+---------+
 
-will be defined per device via location and Konfig:
+will be defined per device via Location and Konfig:
 +------------+-----------+
 | host_name  | config_id |
 +------------+-----------+
@@ -146,13 +146,14 @@ class SetUpTSVDB():
     """
 
     TIMETABLE="Zugang"   
-    #TODO used ALTER TABLE to add a new column     
-    #TODO location is "activity" like GroupFitness,Kraftraum,Sauna 
+    #Extended: ALTER TABLE Zugang ADD room varchar(50) NOT NULL DEFAULT "Kraftraum";
+    #Extended: ALTER TABLE Zugang CHANGE location activity VARCHAR(100) NOT NULL;
     TABLE2 = """
         CREATE OR REPLACE TABLE Zugang (
           mitglied_id INT,
           access_date DATETIME,
-          location VARCHAR(100),
+          activity VARCHAR(100),
+          room VARCHAR(50),
           FOREIGN KEY(mitglied_id) REFERENCES Mitglieder(id) ON DELETE CASCADE
         )
         """
@@ -178,21 +179,7 @@ class SetUpTSVDB():
         config TINYINT
      )   
     """
-    #mode: currently only SHARED: Shold check for alternating locations
-    CONFIG_MODE_SHARED=1
     CONFIGTABLE="Konfig"
-    TABLE5OLD ="""
-        CREATE OR REPLACE TABLE Konfig (
-        config_id INT PRIMARY KEY,  
-        room VARCHAR(50),
-        activity VARCHAR(50),
-        paySection VARCHAR(50),
-        groups VARCHAR(150),
-        grace_time SMALLINT UNSIGNED,
-        mode TINYINT UNSIGNED
-        )
-        """  
-    
     TABLE5="""
         CREATE OR REPLACE TABLE Konfig (
         config_id TINYINT PRIMARY KEY,  
@@ -645,8 +632,10 @@ class Konfig():
         self.configs=[]
         for row in rows:
             self.configs.append(KonfigEntry(row))
+            print("KonfigList:",row)
     
     def entryAt(self,indx):
+        print("retrun konfig at:",indx)
         return self.configs[indx]   
     
     def allActivities(self):

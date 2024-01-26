@@ -75,12 +75,12 @@
 <body>
     <h1>
         <div class="location">Anwesenheit&nbsp
-        <span> {{ dynamic_location }} [{{ location_count }}] </span>
+        <span> {{ dynamic_activity }} [{{ location_count }}] </span>
         </div>        
      	<div class="logo-container">
      	    <a href="" title="Refresh"> 
      	    <img src="reload.png" width="100" height="100"></a>
-     		<a href="/" data-toogle="back" title="Zurück zum Dashboard">
+     		<a href="{{parentView}}" data-toogle="back" title="Zurück...">
             <img src="{{ logo_path }}"></a>
         </div>        
     </h1>
