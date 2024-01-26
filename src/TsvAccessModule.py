@@ -172,7 +172,7 @@ class RFIDAccessor():
         now = datetime.now().isoformat()
         table = self.dbSystem.TIMETABLE
         #UPDATE? to row count in order to see whether cki or cko. Use the "pause" which part of day to select...
-        stmt = "SELECT mitglied_id,access_date from %s where mitglied_id=%s AND activity='%s' AND TIMESTAMPDIFF(SECOND,access_date,NOW()) <= %s"%(table,str(key),cEntry.activity,str(cEntry.graceTime))
+        stmt = "SELECT mitglied_id,access_date from %s where mitglied_id=%s AND activity='%s' AND room='%s' AND TIMESTAMPDIFF(SECOND,access_date,NOW()) <= %s"%(table,str(key),cEntry.activity,cEntry.room,str(cEntry.graceTime))
         timerows = self.db.select(stmt) 
         if len(timerows) == 0: 
             #gracetime period is over, checkout/recheck in possible
