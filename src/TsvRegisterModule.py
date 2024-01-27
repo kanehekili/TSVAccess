@@ -625,7 +625,7 @@ class MainFrame(QtWidgets.QMainWindow):
 
     @QtCore.pyqtSlot(int)
     def _onFaceChange(self, state):
-        if state == QtCore.Qt.CheckState.Checked:
+        if QtCore.Qt.CheckState(state) == QtCore.Qt.CheckState.Checked:
             self.cam.faceActive = True
         else:
             self.cam.faceActive = False
@@ -1008,7 +1008,7 @@ class AboDialog(QtWidgets.QDialog):
 
     @QtCore.pyqtSlot(int)
     def _onUpdateAboCount(self, state):
-        if state == QtCore.Qt.CheckState.Checked:
+        if QtCore.Qt.CheckState(state) == QtCore.Qt.CheckState.Checked:
             self.aboLabel.setText("10")
         else:
             self.aboLabel.setText("0")
@@ -1104,11 +1104,14 @@ class CamModule():
             return
         cap = self._cvCam    
         self._currentFrame = None
-        fixFrame = [[230, 150, 180, 180]]  # based on a 640@480 resolution...
+        #fixFrame = [[230, 150, 180, 180]]  # based on a 640@480 resolution...
+        fixFrame = [[290, 180, 220, 220]]  # based on a 800@600 resolution...
+
         
         # Loading the required haar-cascade xml classifier file
         # TODO won't work on windows add it locally: https://github.com/opencv/opencv/tree/master/data/haarcascades
         # improve: https://gist.github.com/UnaNancyOwen/3f06d4a0d04f3a75cc62563aafbac332
+        #test: https://docs.opencv.org/4.x/d2/d99/tutorial_js_face_detection.html
         # chinese solution https://github.com/opencv/opencv_zoo/blob/main/models/face_detection_yunet/demo.py -CPU!
         haar_cascade = cv2.CascadeClassifier('/usr/share/opencv4/haarcascades/haarcascade_frontalface_default.xml') 
         # haar_cascade = cv2.CascadeClassifier('./data/upper_body.xml')
@@ -1125,7 +1128,7 @@ class CamModule():
                 # Applying the face detection method on the grayscale image
                 # faces_rect = haar_cascade.detectMultiScale(gray_img,scaleFactor=1.1, minNeighbors=9)
                 if self.faceActive:
-                    faces_rect = haar_cascade.detectMultiScale(gray_img, scaleFactor=1.2, minNeighbors=7, minSize=(100, 120))
+                    faces_rect = haar_cascade.detectMultiScale(gray_img, scaleFactor=1.2, minNeighbors=7, minSize=(120, 120))
                 else:
                     faces_rect = fixFrame
                 # Iterating through rectangles of detected faces
