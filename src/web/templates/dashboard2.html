@@ -21,6 +21,8 @@ body {
     align-items: flex-start;
     display: flex;
     font-size:3em;  
+    margin-bottom: unset;
+    margin-top: unset;
   }
 
    .inside {
@@ -98,20 +100,17 @@ body {
   <div class="row">
      <div class="column">
         <ul class="inside">
-           <li onclick="location.href='accessKR'"><a>Kraftraum Aktiv </a></li>
-           <li onclick="location.href='Kraftraum'"><a>Kraftraum Nutzung </a></li>
-           <li onclick="location.href='groupRooms'"><a>Fitnesse Aktiv </a></li>
-           <li onclick="location.href='GroupFitnesse'"><a>Fitnesse Nutzung </a></li>
+           {% for row in listDataLeft %}
+               <li onclick="location.href='{{row['href']}}'"><a> {{row['title']}} </a></li>
+           {% endfor %}
          </ul>
        </div>
       
       <div class="column"> 
         <ul class="inside">
-         <li onclick="location.href='accessSA'"><a>Sauna Aktiv </a></li>
-         <li onclick="location.href='Sauna'"><a>Sauna Nutzung </a></li>
-         <li onclick="location.href='config'"><a>Konfig </a></li>
-         <li onclick="location.href='registrationS'"><a>Chips </a></li>
-         <li onclick="location.href='aboList'"><a>Abos </a></li>
+            {% for row in listDataRight %}
+                <li onclick="location.href='{{row['href']}}'"><a> {{row['title']}} </a></li>
+            {% endfor %}
          </ul>
       </div>   
   

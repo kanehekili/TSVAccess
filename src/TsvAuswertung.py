@@ -135,12 +135,31 @@ Root and tools
 @app.route('/')
 def dashboard():
     logo_path = "tsv_logo_100.png"
-    return render_template('dashboard2.html', logo_path=logo_path)
+    entries=(('accessKR','Kraftraum Aktiv'),('Kraftraum','Kraftraum Nutzung'),('groupRooms','Fitnesse Aktiv'),('GroupFitnesse','Fitnesse Nutzung'))
+    listDataLeft=[]
+    for entry in entries:
+        data = {"href":entry[0],"title":entry[1]}
+        listDataLeft.append(data)
+    
+    entries=(('accessSA','Sauna Aktiv'),('Sauna','Sauna Nutzung'),('config','Konfig'),('registrationS','Chips'),('aboList','Abos'))
+    listDataRight=[]
+    for entry in entries:
+        data = {"href":entry[0],"title":entry[1]}
+        listDataRight.append(data)    
+        
+    
+    return render_template('dashboard2.html', logo_path=logo_path, listDataRight=listDataRight, listDataLeft=listDataLeft)
 
 @app.route('/groupRooms')
 def groupRooms():
     logo_path = "tsv_logo_100.png"
-    return render_template('rooms.html', logo_path=logo_path)
+    entries=(('accessGYM_KR','Kraftraum'),('accessGYM_Spiegelsaal','Spiegelsaal'),('accessGYM_Dojo','Dojo'),('accessGYM_Nord','Nord'))
+    listData=[]
+    for entry in entries:
+        data = {"href":entry[0],"title":entry[1]}
+        listData.append(data)
+     
+    return render_template('sublist.html', logo_path=logo_path, listData=listData)
 
 # save or retrieve pictures for Registration 
 @app.route("/TSVPIC/<picture_name>", methods=['GET', 'POST'])

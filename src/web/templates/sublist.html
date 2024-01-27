@@ -21,6 +21,8 @@ body {
     align-items: flex-start;
     display: flex;
     font-size:3em;  
+    margin-bottom: unset;
+    margin-top: unset;
   }
 
 	.center {
@@ -87,13 +89,10 @@ body {
   </h1>
  <nav class="center">
   <ul class="inside">
-    <li onclick="location.href='accessGYM_KR'"><a> Kraftraum </a></li>
-    <li onclick="location.href='accessGYM_Spiegelsaal'"><a> Spiegelsaal </a></li>
-    <li onclick="location.href='accessGYM_Dojo'"><a> Dojo </a></li>
-    <li onclick="location.href='accessGYM_Nord'"><a> Halle Nord </a></li>
+  {% for row in listData %}
+    <li onclick="location.href='{{row['href']}}'"><a> {{row['title']}} </a></li>
+  {% endfor %}
   </ul>
-  <br/>
-
  </nav>      
 </body>
 
