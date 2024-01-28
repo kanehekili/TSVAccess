@@ -28,6 +28,10 @@ body {
    .inside {
       list-style-position: inside;
       font-family: 'Khula', sans-serif;
+      /*padding of list item to outer left/right. Default is 40/0*/
+        padding: 1em;
+        padding-top:2em;
+      padding-bottom:0; /*remove paddong of last item*/
     }
 
 
@@ -55,7 +59,6 @@ body {
       float: left;
       width: 50%;
       padding: 10px;
-      height: 300px; /* Should be removed. Only for demonstration */
     }
 
     /* Clear floats after the columns */
@@ -64,6 +67,29 @@ body {
       display: table;
       clear: both;
     }
+
+	.center {
+	  margin: auto;
+	  width: 60%;
+	  padding: 10px;
+	}
+
+    .blockBorder {
+      text-align: center;
+      border: 1px solid darkgray;
+      border-radius:10px;
+    }
+    
+   .blockBorder .header {
+      font-size: 2em;
+	  position:absolute;
+	  margin-top: -1.6em;
+	  margin-left:10px;
+	  color:white;
+	  background:cadetblue;
+	  border-radius:10px;
+	  padding:2px 10px; /*padding around text*/
+	}
 
 	@media (any-pointer: coarse) {
 	    body{
@@ -78,6 +104,21 @@ body {
 		.center {
 			width: 95%;
 		}
+	    
+	    .blockBorder .header {
+           font-size: 3em;
+  	       margin-top:-1.5em;
+
+        }
+        
+        .blockBorder {
+           border: 4px solid black;
+        }
+        .inside {
+        padding: 1em;
+        padding-top:2em;
+        padding-bottom:0; /*remove paddong of last item*/
+        }
 	}
 
 
@@ -96,24 +137,37 @@ body {
       </a>
      </div>
   </h1>
-
-  <div class="row">
-     <div class="column">
-        <ul class="inside">
-           {% for row in listDataLeft %}
-               <li onclick="location.href='{{row['href']}}'"><a> {{row['title']}} </a></li>
-           {% endfor %}
-         </ul>
-       </div>
-      
-      <div class="column"> 
-        <ul class="inside">
-            {% for row in listDataRight %}
-                <li onclick="location.href='{{row['href']}}'"><a> {{row['title']}} </a></li>
-            {% endfor %}
-         </ul>
-      </div>   
   
+
+      <div class="row">
+         <div class="column">
+            <ul class="inside blockBorder">
+               <div class="header">{{ headerLeft }}</div>
+               {% for row in listDataLeft %}
+                   <li onclick="location.href='{{row['href']}}'"><a> {{row['title']}} </a></li>
+               {% endfor %}
+             </ul>
+           </div>
+          
+          <div class="column "> 
+            <ul class="inside blockBorder">
+              <div class="header">{{ headerRight }}</div>
+                {% for row in listDataRight %}
+                    <li onclick="location.href='{{row['href']}}'"><a> {{row['title']}} </a></li>
+                {% endfor %}
+             </ul>
+          </div>   
+       </div>
+  
+   <nav class="center">
+    <ul class="inside blockBorder">
+    <div class="header">Technik</div>
+      {% for row in listData %}
+        <li onclick="location.href='{{row['href']}}'"><a> {{row['title']}} </a></li>
+      {% endfor %}
+    </ul>
+  </nav>     
+      
 </body>
 
 </html>

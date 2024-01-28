@@ -36,7 +36,7 @@ app = Flask(__name__,
 
 @app.route('/' + TsvDBCreator.ACTIVITY_KR)
 def statisticsKraftraum():
-    return statisticsTemplate(TsvDBCreator.ACTIVITY_KR)
+    return statisticsTemplate(TsvDBCreator.ACTIVITY_KR,TsvDBCreator.LOC_KRAFTRAUM)
 
 
 @app.route('/accessKR')  # Access kraftraum
@@ -51,7 +51,7 @@ def visitorsKraftraum():
 
     
 @app.route('/' + TsvDBCreator.ACTIVITY_KR + "Usage")
-def verweilzeitKraftraum():
+def testVerweilzeitKraftraum():
     # TODO -under construction
     dates, counts = barModel.dailyHoursUsage(TsvDBCreator.ACTIVITY_KR)  # reside time per hour     
     data = [go.Bar(
@@ -71,9 +71,29 @@ def verweilzeitKraftraum():
 '''
 Group section
 '''
+'''
 @app.route('/' + TsvDBCreator.ACTIVITY_GYM)
 def statisticsGroupFitnesse():
     return statisticsTemplate(TsvDBCreator.ACTIVITY_GYM)
+'''
+
+@app.route('/' + TsvDBCreator.ACTIVITY_GYM+"SKR")
+def statisticsGFRoom1():
+    return statisticsTemplate(TsvDBCreator.ACTIVITY_GYM,TsvDBCreator.LOC_KRAFTRAUM,pv='/groupStatistics')
+
+@app.route('/' + TsvDBCreator.ACTIVITY_GYM+"SDOJO")
+def statisticsGFRoom2():
+    return statisticsTemplate(TsvDBCreator.ACTIVITY_GYM,TsvDBCreator.LOC_DOJO,pv='/groupStatistics')
+
+@app.route('/' + TsvDBCreator.ACTIVITY_GYM+"SNORD")
+def statisticsGFRoom3():
+    return statisticsTemplate(TsvDBCreator.ACTIVITY_GYM,TsvDBCreator.LOC_NORD,pv='/groupStatistics')
+
+@app.route('/' + TsvDBCreator.ACTIVITY_GYM+"SSUED")
+def statisticsGFRoom4():
+    return statisticsTemplate(TsvDBCreator.ACTIVITY_GYM,TsvDBCreator.LOC_SPIEGELSAAL,pv='/groupStatistics')
+
+
 
 @app.route('/accessGYM_KR')  
 def visitorsGroupFitnesse():
@@ -115,7 +135,7 @@ SAUNA SECTION -> TsvDBCreator.ACTIVITY_SAUNA == Sauna
 
 @app.route('/' + TsvDBCreator.ACTIVITY_SAUNA)
 def statisticsSauna():
-    return statisticsTemplate(TsvDBCreator.ACTIVITY_SAUNA)
+    return statisticsTemplate(TsvDBCreator.ACTIVITY_SAUNA,TsvDBCreator.LOC_SAUNA)
 
 
 @app.route('/accessSA')  # Access kraftraum
@@ -135,20 +155,27 @@ Root and tools
 @app.route('/')
 def dashboard():
     logo_path = "tsv_logo_100.png"
-    entries=(('accessKR','Kraftraum Aktiv'),('Kraftraum','Kraftraum Nutzung'),('groupRooms','Fitnesse Aktiv'),('GroupFitnesse','Fitnesse Nutzung'))
+    #Zugang
+    entries=(('accessKR','Kraftraum '),('accessSA','Sauna '),('groupRooms','Fitnesse '))
     listDataLeft=[]
     for entry in entries:
         data = {"href":entry[0],"title":entry[1]}
         listDataLeft.append(data)
     
-    entries=(('accessSA','Sauna Aktiv'),('Sauna','Sauna Nutzung'),('config','Konfig'),('registrationS','Chips'),('aboList','Abos'))
+    #Statistik
+    entries=(('Kraftraum','Kraftraum '),('Sauna','Sauna '),('groupStatistics','Fitnesse '))
     listDataRight=[]
     for entry in entries:
         data = {"href":entry[0],"title":entry[1]}
         listDataRight.append(data)    
-        
     
-    return render_template('dashboard2.html', logo_path=logo_path, listDataRight=listDataRight, listDataLeft=listDataLeft)
+    #Technik
+    entries=(('config','Konfig'),('registrationS','Chips'),('aboList','Abos'))   
+    listData=[] 
+    for entry in entries:
+        data = {"href":entry[0],"title":entry[1]}
+        listData.append(data) 
+    return render_template('dashboard2.html', logo_path=logo_path, headerRight="Statistik",listDataRight=listDataRight, headerLeft="Aktiv",listDataLeft=listDataLeft, headerBottom="Technik",listData=listData)
 
 @app.route('/groupRooms')
 def groupRooms():
@@ -159,7 +186,18 @@ def groupRooms():
         data = {"href":entry[0],"title":entry[1]}
         listData.append(data)
      
-    return render_template('sublist.html', logo_path=logo_path, listData=listData)
+    return render_template('sublist.html', logo_path=logo_path, listData=listData,sublistheader="TSV Group Aktiv")
+
+@app.route('/groupStatistics')
+def groupStatistics():
+    logo_path = "tsv_logo_100.png"
+    entries=((TsvDBCreator.ACTIVITY_GYM+'SKR','Kraftraum'),(TsvDBCreator.ACTIVITY_GYM+'SSUED','Spiegelsaal'),(TsvDBCreator.ACTIVITY_GYM+'SDOJO','Dojo'),(TsvDBCreator.ACTIVITY_GYM+'SNORD','Nord'))
+    listData=[]
+    for entry in entries:
+        data = {"href":entry[0],"title":entry[1]}
+        listData.append(data)
+     
+    return render_template('sublist.html', logo_path=logo_path, listData=listData,sublistheader="TSV Group Statistik")    
 
 # save or retrieve pictures for Registration 
 @app.route("/TSVPIC/<picture_name>", methods=['GET', 'POST'])
@@ -181,8 +219,8 @@ def manage_picture(picture_name):
 
 
 # subcall:
-def statisticsTemplate(activity):
-    dates, counts = barModel.countPeoplePerDay(activity)  # count members over time
+def statisticsTemplate(activity,room=TsvDBCreator.LOC_KRAFTRAUM,pv='/'):
+    dates, counts = barModel.countPeoplePerDay(activity,room)  # count members over time
     data = [go.Bar(
        x=dates,
        y=counts,
@@ -190,12 +228,13 @@ def statisticsTemplate(activity):
        textposition='auto',
        marker_color='#FFA500'
     )]
-    layout = go.Layout(title="Nutzung " + activity, xaxis=dict(title="Datum"), yaxis=dict(title="Besucher"))
+    deltaRoom = activity if activity == room else activity+"-"+room 
+    layout = go.Layout(title="Nutzung " + deltaRoom, xaxis=dict(title="Datum"), yaxis=dict(title="Besucher"))
     fig = go.Figure(data=data, layout=layout)
     
     graphJSON = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
     logo_path = "tsv_logo_100.png"
-    return render_template('index.html', graphJSON=graphJSON, logo_path=logo_path, dynamic_activity=activity)    
+    return render_template('index.html', graphJSON=graphJSON, logo_path=logo_path, dynamic_activity=activity,parentView=pv)    
 
 
 @app.route('/sectionS', methods=["GET", "POST"])
@@ -495,7 +534,7 @@ class BarModel():
         return(fakeData, fakeValue)
     
     # TODO respect checkin/checkout there is a gracetime 0r 120 seconds between check in and checkout
-    def countPeoplePerDay(self, activity):
+    def countPeoplePerDay(self, activity,room):
         '''
         timetable= self.dbSystem.TIMETABLE
         breakTime=13
@@ -516,7 +555,7 @@ class BarModel():
             else:
                 members[date_str][mid].updateAccess(row)    
         '''
-        members = self.__collectCountRows(activity)#TODO +ROOM?
+        members = self.__collectCountRows(activity,room)
         countValues = []
         for aDay in members.values():  # id->cr list
             cnt = 0
@@ -557,12 +596,13 @@ class BarModel():
         y_values = list(theHourDict.values())
         return (x_values, y_values)        
     
-    # returns a {date-> {id -> rowCount} ] double dict DO WE NEED room?
-    def __collectCountRows(self, activity):
+    # returns a {date-> {id -> rowCount} ] double dict 
+    def __collectCountRows(self, activity,room):
         timetable = self.dbSystem.TIMETABLE
         breakTime = 13
         members = {}
-        stmt = "SELECT mitglied_id,access_date from " + timetable + " where activity='" + activity + "'"
+        #stmt = "SELECT mitglied_id,access_date from " + timetable + " where activity='" + activity + "'"
+        stmt = "SELECT mitglied_id,access_date from %s where activity='%s' and room='%s'"%(timetable,activity,room)
         rows = self.db.select(stmt)    
         for row in rows:
             # date_str = datetime.strptime(row[0], '%Y-%m-%d %H:%M:%S.%f').strftime('%Y-%m-%d')
