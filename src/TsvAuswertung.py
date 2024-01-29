@@ -101,7 +101,7 @@ def visitorsGroupFitnesse():
     logo_path = "tsv_logo_100.png"
     act = TsvDBCreator.ACTIVITY_GYM +" Kraftraum"
     pv='/groupRooms'
-    return render_template('access.html', parentView=pv, people=people, logo_path=logo_path, dynamic_activity=act, activity_count=len(people))
+    return render_template('access.html', parentView=pv, people=people, logo_path=logo_path, dynamic_activity=act, location_count=len(people))
 
 @app.route('/accessGYM_Spiegelsaal') 
 def visitorsGFS():
@@ -109,7 +109,7 @@ def visitorsGFS():
     logo_path = "tsv_logo_100.png"
     act = TsvDBCreator.ACTIVITY_GYM+" Spiegelsaal"
     pv='/groupRooms'
-    return render_template('access.html', parentView=pv, people=people, logo_path=logo_path, dynamic_activity=act, activity_count=len(people))
+    return render_template('access.html', parentView=pv, people=people, logo_path=logo_path, dynamic_activity=act, location_count=len(people))
 
 @app.route('/accessGYM_Dojo')  # Access kraftraum TODO: mit Raum!
 def visitorsGFD():
@@ -117,7 +117,7 @@ def visitorsGFD():
     logo_path = "tsv_logo_100.png"
     act = TsvDBCreator.ACTIVITY_GYM+" Dojo"
     pv='/groupRooms'
-    return render_template('access.html', parentView=pv, people=people, logo_path=logo_path, dynamic_activity=act, activity_count=len(people))
+    return render_template('access.html', parentView=pv, people=people, logo_path=logo_path, dynamic_activity=act, location_count=len(people))
 
 @app.route('/accessGYM_Nord')  # Access kraftraum TODO: mit Raum!
 def visitorsGFN():
@@ -125,7 +125,7 @@ def visitorsGFN():
     logo_path = "tsv_logo_100.png"
     act = TsvDBCreator.ACTIVITY_GYM +" Nord" 
     pv='/groupRooms'
-    return render_template('access.html', parentView=pv, people=people, logo_path=logo_path, dynamic_activity=act, activity_count=len(people))
+    return render_template('access.html', parentView=pv, people=people, logo_path=logo_path, dynamic_activity=act, location_count=len(people))
 
 
 '''
@@ -143,7 +143,7 @@ def visitorsSauna():
     people = barModel.currentVisitorPictures(TsvDBCreator.ACTIVITY_SAUNA)
     logo_path = "tsv_logo_100.png"
     pv='/'
-    return render_template('access.html', parentView=pv, people=people, logo_path=logo_path, dynamic_activity=TsvDBCreator.ACTIVITY_SAUNA, activity_count=len(people))
+    return render_template('access.html', parentView=pv, people=people, logo_path=logo_path, dynamic_activity=TsvDBCreator.ACTIVITY_SAUNA, location_count=len(people))
 
 # hook to more sites
 
