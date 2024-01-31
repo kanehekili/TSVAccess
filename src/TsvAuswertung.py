@@ -170,12 +170,12 @@ def dashboard():
         listDataRight.append(data)    
     
     #Technik
-    entries=(('config','Konfig'),('registrationS','Chips'),('aboList','Abos'))   
+    entries=(('config','Konfig'),('registrationS','Chips'),('aboList','Abos'),('sectionS','Abteilungen'))   
     listData=[] 
     for entry in entries:
         data = {"href":entry[0],"title":entry[1]}
         listData.append(data) 
-    return render_template('dashboard2.html', logo_path=logo_path, headerRight="Statistik",listDataRight=listDataRight, headerLeft="Aktiv",listDataLeft=listDataLeft, headerBottom="Technik",listData=listData)
+    return render_template('dashboard2.html', logo_path=logo_path, headerRight="Statistik",listDataRight=listDataRight, headerLeft="Aktiv",listDataLeft=listDataLeft, headerBottom="Sonstiges",listData=listData)
 
 @app.route('/groupRooms')
 def groupRooms():
@@ -252,7 +252,7 @@ def drawSectionMembers():
     
     graphJSON = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
     logo_path = "tsv_logo_100.png"
-    return render_template('index.html', graphJSON=graphJSON, logo_path=logo_path, dynamic_activity="Hauptverein") 
+    return render_template('index.html', graphJSON=graphJSON, logo_path=logo_path, dynamic_activity="Gesamt",parentView="/") 
 
 
 @app.route('/config', methods=["GET", "POST"])

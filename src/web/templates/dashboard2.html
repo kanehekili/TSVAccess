@@ -161,7 +161,7 @@ body {
   
    <nav class="center">
     <ul class="inside blockBorder">
-    <div class="header">Technik</div>
+    <div class="header">{{ headerBottom }}</div>
       {% for row in listData %}
         <li onclick="location.href='{{row['href']}}'"><a> {{row['title']}} </a></li>
       {% endfor %}
