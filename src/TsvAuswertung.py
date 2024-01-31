@@ -621,7 +621,7 @@ class BarModel():
     
     def countSectionMembers(self):
         myTable = self.dbSystem.BEITRAGTABLE
-        stmt = "SELECT section , COUNT(section) AS CountOf from %s GROUP BY section ORDER BY COUNT(section) DESC;" % (myTable)
+        stmt = "SELECT section , COUNT(section) AS CountOf from %s where payuntil_date > CURDATE() or payuntil_date is Null GROUP BY section  ORDER BY COUNT(section) DESC" % (myTable)
         rows = self.db.select(stmt)
         x_values = []
         y_values = []    
