@@ -156,14 +156,14 @@ Root and tools
 def dashboard():
     logo_path = "tsv_logo_100.png"
     #Zugang
-    entries=(('accessKR','Kraftraum '),('accessSA','Sauna '),('groupRooms','Fitnesse '))
+    entries=(('accessKR','Kraftraum '),('accessSA','Sauna '),('groupRooms','Fitness '))
     listDataLeft=[]
     for entry in entries:
         data = {"href":entry[0],"title":entry[1]}
         listDataLeft.append(data)
     
     #Statistik
-    entries=(('Kraftraum','Kraftraum '),('Sauna','Sauna '),('groupStatistics','Fitnesse '))
+    entries=(('Kraftraum','Kraftraum '),('Sauna','Sauna '),('groupStatistics','Fitness '))
     listDataRight=[]
     for entry in entries:
         data = {"href":entry[0],"title":entry[1]}

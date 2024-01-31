@@ -296,7 +296,7 @@ class SetUpTSVDB():
         table=self.CONFIGTABLE
         fields = ('config_id', 'room', 'activity',"paySection","groups", "grace_time","mode")
         entries=[]
-        entries.append((0,LOC_KRAFTRAUM,ACTIVITY_KR,SECTION_FIT, "['KR','ÜL','FFA']",900,0))
+        entries.append((0,LOC_KRAFTRAUM,ACTIVITY_KR,SECTION_FIT, "['KR','ÜL']",900,0))
         entries.append((1,LOC_SPIEGELSAAL,ACTIVITY_GYM,SECTION_FIT, "['KR','ÜL','FFA','GROUP']",3600,0))
         entries.append((2,LOC_NORD,ACTIVITY_GYM,SECTION_FIT, "['KR','ÜL','FFA','GROUP']",3600,0))
         entries.append((3,LOC_SAUNA,ACTIVITY_SAUNA,SECTION_SAUNA,"[]",3600*4,0)) #Login every 4 hours, no logout
