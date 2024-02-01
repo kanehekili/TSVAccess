@@ -329,7 +329,8 @@ class Converter():
         txt.append('<li>Im Dialog "Herunterladen" + beenden</li>')
         txt.append("<li><i>Warten bis der Brauser die heruntergeladene Datei anzeigt</i></li>")
         txt.append("</ul>")
-        txt.append("Viel Erfolg")
+        txt.append("<br>Danke an Siggi Hepp für Ihre vielen Tipps!")
+        txt.append("<br>Viel Erfolg")
         return ''.join(txt)
         
 
@@ -447,7 +448,7 @@ class Converter():
             if not cid in ids:
                 newCount+=1
                 Log.info("%d) New Member:%d",newCount,cid)
-        txtBuffer.append("<li>%d neue Mitgleider übernommen</li>"%(newCount))
+        txtBuffer.append("<li>%d neue Mitglieder übernommen</li>"%(newCount))
         return diff    
     
     def makeImportFindings(self, sections,multiSet, mbrCount,rogue):
