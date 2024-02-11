@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 '''
 Created on Apr 2, 2023
 Reads some input, checks with remote db and gives a sign (RED=forbidden, GREEN=acess allowed

@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 '''
 Created on Apr 3, 2023
 Show graphs per Month or year.
@@ -640,9 +642,9 @@ class BarModel():
         AccessRow.dwellMinutes = dwellMinutes  # Automatic checkout, negative means: we don't care (Sauna)
         picFolder = self.dbSystem.PICPATH + "/"
         if not room:
-            stmt = "SELECT id,first_name,last_name,picpath,access_date FROM " + mbrTable + " m JOIN " + timetable + " z ON m.id = z.mitglied_id WHERE DATE(z.access_date) = CURDATE() AND ((HOUR(z.access_date) < " + daysplit + " AND HOUR(CURTIME()) < " + daysplit + ") OR (HOUR(z.access_date) > " + daysplit + " AND HOUR(CURTIME()) > " + daysplit + ")) and activity='" + activity + "' ORDER By z.access_date DESC"
+            stmt = "SELECT id,first_name,last_name,picpath,access_date FROM " + mbrTable + " m JOIN " + timetable + " z ON m.id = z.mitglied_id WHERE DATE(z.access_date) = CURDATE() AND ((HOUR(z.access_date) < " + daysplit + " AND HOUR(CURTIME()) < " + daysplit + ") OR (HOUR(z.access_date) >= " + daysplit + " AND HOUR(CURTIME()) >= " + daysplit + ")) and activity='" + activity + "' ORDER By z.access_date DESC"
         else:
-            stmt = "SELECT id,first_name,last_name,picpath,access_date FROM " + mbrTable + " m JOIN " + timetable + " z ON m.id = z.mitglied_id WHERE DATE(z.access_date) = CURDATE() AND ((HOUR(z.access_date) < " + daysplit + " AND HOUR(CURTIME()) < " + daysplit + ") OR (HOUR(z.access_date) > " + daysplit + " AND HOUR(CURTIME()) > " + daysplit + ")) and activity='" + activity + "' AND room='" + room+ "' ORDER By z.access_date DESC"
+            stmt = "SELECT id,first_name,last_name,picpath,access_date FROM " + mbrTable + " m JOIN " + timetable + " z ON m.id = z.mitglied_id WHERE DATE(z.access_date) = CURDATE() AND ((HOUR(z.access_date) < " + daysplit + " AND HOUR(CURTIME()) < " + daysplit + ") OR (HOUR(z.access_date) >= " + daysplit + " AND HOUR(CURTIME()) >= " + daysplit + ")) and activity='" + activity + "' AND room='" + room+ "' ORDER By z.access_date DESC"
             
         rows = self.db.select(stmt)
         Log.info("Visitor rows:%d", len(rows))
