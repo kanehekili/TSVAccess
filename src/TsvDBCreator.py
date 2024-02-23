@@ -371,29 +371,6 @@ class SetUpTSVDB():
         table=self.MAILTABLE
         self.db.insertMany(table, fields, data)
         
-        
-    def updateDatabase(self,tsvMembers):
-        self.updateMembers()
-        self._fillLocationTable()
-        self._fillMailTable()
-        self.close()
-
-    def updateMembers(self,tsvMembers):
-        table = self.MAINTABLE
-        fields = ('id', 'first_name', 'last_name', "access", "gender", "birth_date")
-        main=[]
-        sections=[]
-        for mbr in tsvMembers:
-            main.append(mbr.baseData)
-            sections.extend(mbr.sectionData())
-        self.db.insertMany(table, fields, main)
-
-        fields=("mitglied_id", "payuntil_date","section")
-        table=self.BEITRAGTABLE
-        self.db.insertMany(table, fields, sections)
-                
-
-
     def close(self):
         if self.db:
             self.db.close()
@@ -446,84 +423,6 @@ def updateScheme():
     s = SetUpTSVDB(SetUpTSVDB.DATABASE)
     s.defineDatabases()
 
-def displayImportFindings(sections, multiSet, mbrCount,rogue):
-    print("Imported %d members" % (mbrCount))
-    print ("Multi Field:")
-    for key, cnt in multiSet.items():
-        print(key + ":", cnt)
-    print("Sections:",Counter(sections))
-    print("Those do not have Hauptverein entries:\n %s"%(rogue))
-        
-
-def importCSV(filename):
-    # Profile TSVAccess -> NAch adressdaten suchen Dialog!
-    # Adressdaten,Geschlecht,Nachname,Vorname,Mutli3,Austrittsdatum,GebDatum,BeitragBis,Abteilungg  
-    # validate
-    # filename="/home/matze/git/TSVAccess/ExportTSV.csv"
-    data = {} #dic of id-> TsvMember
-    multiSet = {}
-    sections=[]
-    rogue=[]
-    mbrCount=0    
-    with open(filename, encoding='utf-8-sig') as csvfile:
-        reader = csv.reader(csvfile, delimiter='$', quotechar='|')
-        for line in reader:
-            # print(line)
-            isHeader = "Vorname" in line
-            if isHeader:
-                continue
-            conplanID=line[Fields.ID.value]
-            mbr = data.get(conplanID,None)
-            if not mbr:
-                fn = line[Fields.VORNAME.value]
-                nn = line[Fields.NAME.value]
-                access = ''
-                zugang = line[Fields.ACCESS.value].split(' ')
-                if len(zugang) >= 1:
-                    access = zugang[0].upper()
-            
-                tmpGender = line[Fields.GENDER.value]
-                if tmpGender.startswith("w"):
-                    gender = "F"
-                else:
-                    gender = "M"
-                
-                tmpDate = line[Fields.BDATE.value]
-                if len(tmpDate) > 0:
-                    birthdate = datetime.strptime(tmpDate, '%d.%m.%Y').date().isoformat()
-                else:
-                    birthdate = None
-
-                if multiSet.get(access, None) is None:
-                    multiSet[access] = 1
-                else:
-                    multiSet[access] += 1
-                #cpid,fn,ln,access,gender,birthdate
-                mbr=TsvMember(conplanID,fn,nn,access,gender,birthdate)
-                data[conplanID]=mbr
-                mbrCount += 1
-                
-            #--done -now the section data
-            tmpDate=line[Fields.SECDATE.value]
-            if len(tmpDate) > 0:
-                payDate = datetime.strptime(tmpDate, '%d.%m.%Y').date().isoformat()
-            else:
-                payDate= TsvMember.PAYOK
-                
-            section= line[Fields.SECTION.value] #not empty
-            mbr.addPay(payDate,section)                
-            
-    for entry in data.values():
-        #entry.display()
-        xxxsec=entry.sections()
-        sections.extend(xxxsec)
-        if "Hauptverein" not in xxxsec:
-            rogue.append((entry.getID(),entry.getName()))
-        
-    displayImportFindings(sections,multiSet, mbrCount,rogue) 
-    return list(data.values()) #array of TsvMembers        
-    
-
 def updateAssaAbloy(filename):
     #filename="/home/matze/Documents/TSV/AssaAbloy/Tranponder1.txt"
     '''
@@ -567,50 +466,8 @@ def _convertMSB(hexStr):
     tmp.reverse()
     return int.from_bytes(tmp)
 
-class TsvMember():
-    PAYOK="-"
-    def __init__(self,cpid,fn,ln,access,gender,birthdate):
-        self.baseData=(cpid,fn,ln,access,gender,birthdate)
-        self.payData={} # section-> paydate. output must be array of tuple(secion,paydate)
     
-    def getID(self):
-        return self.baseData[0]
-    
-    def getName(self):        
-        return self.baseData[2]
-    
-    def getAccess(self):
-        return self.baseData[3]
-
-    #if that section is already there and with empty pay - it it invalid - latest pay counts, empty rules
-    def addPay(self,payDate,section):
-        pd = self.payData.get(section,None)
-        if not pd:
-            self.payData[section]=payDate
-            return
-        #tricky
-        if pd == TsvMember.PAYOK:
-            return #payok rules
-        
-        if pd < payDate:
-            self.payData[section]=payDate            
-    
-    def sectionData(self):
-        data=[]
-        for key,pd in self.payData.items():
-            if pd == TsvMember.PAYOK:
-                pd=None 
-            data.append((self.getID(),pd,key))
-        return data
-     
-     
-    def sections(self):
-        return self.payData.keys()    
-    
-    def display(self):
-        print(self.baseData,">",self.payData)    
-    
-    '''
+'''
     The Konfig table
     +-----------+-------------+-----------+----------------+--------------------+------------+
     | config_id | room        | activity  | paySection     | groups             | grace_time |
@@ -620,7 +477,7 @@ class TsvMember():
     |         2 | Spiegelsaal | Spinning  | Leichtathletik | []                 |       3600 | < no control
     |         3 | Sauna       | Sauna     | Sauna          | []                 |       3600 | <Taged as prepaid
     +-----------+-------------+-----------+----------------+--------------------+------------+
-    '''    
+'''    
 class Konfig():
     FIELD_DEF=["activity","paySection","groups","grace_time", "weekday","from_Time","to_Time","room","config_id"]
 
@@ -696,22 +553,7 @@ class KonfigEntry():
 
 #TODO if we get only members ,remove those who are  in the database but not in the list...    
 def persistCSV(fn):
-    OSTools.setLogLevel("Debug")
-    s = SetUpTSVDB("TsvDB")
-    try:
-        data = importCSV(fn)
-        #todo a.symmetric_difference(b) - two sets of ids! (not arrays)
-        lostMembers=symDiff(data, s)
-        for pk in lostMembers:
-            #we should flag it. Otherwise the accessdata is gone
-            #s.db.deleteEntry(SetUpTSVDB.MAINTABLE, "id", pk)
-            stmt="UPDATE Mitglieder set flag=1 where id=%d"%(pk)
-            s.db.select(stmt)
-        s.updateDatabase(data)
-    except Exception:
-        traceback.print_exc()
-    finally:
-        s.close()
+    pass
 
 def symDiff(importData,connection):
     stmt="select id from %s"%(SetUpTSVDB.MAINTABLE)
@@ -752,7 +594,7 @@ def updateMailTable():
 def parseOptions(args):
     
     try:
-        opts, args = getopt.getopt(args[1:], "p:v:rlmst:", ["persist=", "verify=", "reset", "updateLocation", "updateMail" "updateScheme","transponder"])
+        opts, args = getopt.getopt(args[1:], "rlmst:", ["reset", "updateLocation", "updateMail" "updateScheme","transponder"])
         if len(opts) == 0:
             printUsage()
     except getopt.GetoptError as err:
@@ -762,10 +604,6 @@ def parseOptions(args):
     for o, a in opts:
         if o in ("-r", "--reset"):
             basicSetup()
-        elif o in ("-p", "--persist"):
-            persistCSV(a)
-        elif o in ("-v", "--verify"):
-            importCSV(a)
         elif o in ("-l", "--updateLocation"):
             updateLocationTable()
         elif o in ("-m", "--updateMail"):
@@ -779,8 +617,6 @@ def parseOptions(args):
 
 def printUsage():
     print("Creator commands: \n"\
-          "\t-p filename > verify & persist a csv file (--persist)\n"\
-          "\t-v filename > verify csv file and check for inconsistencies (--verify)\n"\
           "\t-r > !reset the database! (--reset) \n"\
           "\t-l > update location (--updateLocation) \n"\
           "\t-s > !update the database! (--updateScheme) \n"

@@ -262,7 +262,7 @@ class Fields(Enum):
 class TsvMember():
     PAYOK="-"
     def __init__(self,cpid,fn,ln,access,gender,birthdate):
-        self.baseData=(cpid,fn,ln,access,gender,birthdate)
+        self.baseData=(cpid,fn,ln,access,gender,birthdate,0)
         self.payData={} # section-> paydate. output must be array of tuple(secion,paydate)
     
     def getID(self):
@@ -419,7 +419,7 @@ class Converter():
                 stmt="UPDATE Mitglieder set flag=1 where id=%d"%(pk)
                 self.dbSystem.db.select(stmt)
             txt.append("<li>%d Mitglieder ausgetreten</li>"%(len(lostMembers)))
-            self.dbSystem.updateMembers(memberList)
+            self.updateMembers(memberList)
         except Exception:
             #traceback.print_exc()
             Log.exception("Persistence failed")
@@ -451,6 +451,21 @@ class Converter():
         txtBuffer.append("<li>%d neue Mitglieder übernommen</li>"%(newCount))
         return diff    
     
+    def updateMembers(self,tsvMembers):
+        table = SetUpTSVDB.MAINTABLE
+        fields = ('id', 'first_name', 'last_name', "access", "gender", "birth_date", "flag")
+        main=[]
+        sections=[]
+        for mbr in tsvMembers:
+            main.append(mbr.baseData)
+            sections.extend(mbr.sectionData())
+        self.dbSystem.db.insertMany(table, fields, main)
+
+        fields=("mitglied_id", "payuntil_date","section")
+        table=SetUpTSVDB.BEITRAGTABLE
+        self.dbSystem.db.insertMany(table, fields, sections)
+    
+    
     def makeImportFindings(self, sections,multiSet, mbrCount,rogue):
         txt=[]
         txt.append("<h2>Import Statistik</h2>")
@@ -472,6 +487,7 @@ def headlessImport(path):
     print("Importing path headless:",path)
     fullsheet= XImporter.importXel(path)
     c=Converter(fullsheet)
+    c.connectDB()
     res=c.verifySheet()
     if res:
         mbrList=c.buildModel()
