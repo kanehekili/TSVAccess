@@ -103,7 +103,10 @@ backup.sh will call sync.sh triggered by the backup systemd service which is tri
 
 ## TsvDBCreator
 The database module. Uses mysqlconnection and has been tested with mariadb. Offers dabasebase setup and control via the DBTools.py, which is the interface to the underlying database system. <br />
-In addition the creator provides email-tools and scripts for merging "Conplan" data into the intrinsic database.
+In addition the creator provides email-integration and configuration of the access point.
+It needs to be executed via terminal and provides a simple interface to configure the mail credentials as well as defining the individual access points:
+* python TsvDBCreator -l - will save the code you changed in method "_fillLocationTable" into the db.
+* python TsvDBCreator -t - will read rfid ids from an external file and saves them into the db. 
 
 ## DBTools
 Technical database abstraction for the mysql.connector. This is the place to change the database backend 
@@ -112,7 +115,7 @@ Technical database abstraction for the mysql.connector. This is the place to cha
 In order to import data from a retro software that is not able to provide any REST bindings, Ximporter has been created. It reads a propriaty XLS file and imports it into our system. Select a xls file (this feature needs to be adapted to the provider) to import it into the database.  <br />
 Due to some restraints on the given infrastructure - this code works on windows.. (but looks a lot uglier)
 
-Ximporter has been written for "Conplan" and will have to be adapted for other backends.
+Ximporter has been written for "Conplan" and will have to be adapted for other backends.Surprisingly it runs on windows and it is used to sync the member software with the TSVAccess database
 
 ![Screenshot](https://github.com/kanehekili/TSVAccess/blob/main/Ximporter.png)
 

@@ -110,7 +110,10 @@ class Registration():
     #used by memberControl
     def todaysAccessDateStrings(self, mbrID, activity):
         table = self.dbSystem.TIMETABLE
-        stmt= "select access_date from %s where mitglied_id =%d and activity='%s' and DATE(access_date) = CURDATE();"%(table,mbrID,activity)  
+        daysplit="13" #see TsvAuswertung
+        partDay = "((HOUR(access_date) < " + daysplit + " AND HOUR(CURTIME()) < " + daysplit + ") OR (HOUR(access_date) >= " + daysplit + " AND HOUR(CURTIME()) >= " + daysplit + "))"
+        #stmt= "select access_date from %s where mitglied_id =%d and activity='%s' and DATE(access_date) = CURDATE();"%(table,mbrID,activity)
+        stmt= "select access_date from %s where mitglied_id =%d and activity='%s' and DATE(access_date) = CURDATE() AND %s"%(table,mbrID,activity,partDay)
         rows = self.db.select(stmt)
         timeData=[]
         for row in rows:

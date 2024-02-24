@@ -172,7 +172,7 @@ class Connector():
 
     def select(self,stmt):
         try:
-            Log.debug(stmt)  
+            Log.info(stmt)  
             with self._getCursor() as cursor:
                 cursor.execute(stmt)
                 return cursor.fetchall()

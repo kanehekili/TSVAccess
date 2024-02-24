@@ -283,36 +283,6 @@ class SetUpTSVDB():
         self.db.createTable(self.TABLE8)
         self.db.close()        
 
-    def DEPRECATED_fillLocationTable(self):
-        #list the correlations:
-        #select host_name,room,activity,paySection,groups from Location loc JOIN Konfig conf where loc.config_id=conf.config_id;
-        #TODO update: one room can have 2 activities at the same time. Table needs -weekday -start-end... 
-        #No start-end at location = always
-        #At a location we may have many activities 
-        #modeshared=TsvAccess starts daemon. Replace with time schedule! So Locationtable may have more than one config! 
-        self.db.createTable(self.TABLE4)
-        self.db.createTable(self.TABLE5)
-                
-        table=self.CONFIGTABLE
-        fields = ('config_id', 'room', 'activity',"paySection","groups", "grace_time","mode")
-        entries=[]
-        entries.append((0,LOC_KRAFTRAUM,ACTIVITY_KR,SECTION_FIT, "['KR','ÜL']",900,0))
-        entries.append((1,LOC_SPIEGELSAAL,ACTIVITY_GYM,SECTION_FIT, "['KR','ÜL','FFA','GROUP']",3600,0))
-        entries.append((2,LOC_NORD,ACTIVITY_GYM,SECTION_FIT, "['KR','ÜL','FFA','GROUP']",3600,0))
-        entries.append((3,LOC_SAUNA,ACTIVITY_SAUNA,SECTION_SAUNA,"[]",3600*4,0)) #Login every 4 hours, no logout
-        self.db.insertMany(table, fields, entries)
-        
-        table = self.LOCATIONTABLE
-        fields = ('host_name', 'config_id')
-        entries=[]
-        entries.append(("tsvaccess1",0))
-        entries.append(("tsvaccess2",3))
-        entries.append(("tsvaccess3",1))
-        entries.append(("tsvaccess4",2))
-        entries.append(("msi",0))
-        self.db.insertMany(table, fields, entries)     
-    
-    
     def _fillLocationTable(self):
         #list the correlations:
         #select host_name,room,activity,paySection,groups from Location loc JOIN Konfig conf where loc.config_id=conf.config_id;
@@ -338,14 +308,14 @@ class SetUpTSVDB():
         table = self.LOCATIONTABLE
         fields = ('id','host_name', 'config')
         entries=[]
-        entries.append((1,"tsvaccess1",0)) #KR
-        entries.append((2,"tsvaccess1",1)) #KR Group MO
-        entries.append((3,"tsvaccess1",2)) #KR Group DO
-        entries.append((4,"tsvaccess2",6)) #Sauna 
+        entries.append((1,"tsvaccess1",0)) #KR with ampel
+        entries.append((2,"tsvaccess1",1)) #FIT Group MO
+        entries.append((3,"tsvaccess1",2)) #FIT Group DO
+        entries.append((4,"tsvaccess2",6)) #Sauna with 7-LED 
         entries.append((5,"tsvaccess3",3)) #Nord
-        entries.append((6,"tsvaccess4",4)) #Spiegelsaal
-        entries.append((7,"tsvaccess5",5)) #Dojo
-        entries.append((8,"tsvaccess6",7)) #Pending
+        entries.append((6,"tsvaccess4",7)) #spare
+        entries.append((7,"tsvaccess5",5)) #Dojo with ampel
+        entries.append((8,"tsvaccess6",4)) #spiegel with ampel
         #entries.append((9,"msi",0))
         #entries.append((10,"msi",7))
         self.db.insertMany(table, fields, entries)  
