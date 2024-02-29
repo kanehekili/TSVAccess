@@ -546,6 +546,12 @@ class MainFrame(QtWidgets.QMainWindow):
     def updateAboButton(self, mbr):
         self.ui_AboButton.setEnabled(mbr is not None)
 
+
+    def updateEditFields(self,isEnabled):
+        self.ui_IDEdit.setEnabled(isEnabled)
+        self.ui_FirstNameEdit.setEnabled(isEnabled)
+        self.ui_LastNameEdit.setEnabled(isEnabled)        
+
     def makeGridLayout(self):
         # fromRow(y) - fromColumn(x)  rowSpan(height) columnSpan(width), ggf alignment
         gridLayout = QtWidgets.QGridLayout()
@@ -646,12 +652,11 @@ class MainFrame(QtWidgets.QMainWindow):
             else:
                 self.photoTaken = False
             self.updateAboButton(mbr)
+            self.updateEditFields(False)
 
     @QtCore.pyqtSlot()
     def _onNewClicked(self):
-        self.ui_SearchEdit.setCurrentIndex(-1)
-        self._clearFields()  
-        self.controller.setInitialFocus()      
+        self._resetInput()   
     
     @QtCore.pyqtSlot()
     def _onRFIDDone(self):
@@ -736,35 +741,37 @@ class MainFrame(QtWidgets.QMainWindow):
             self.getErrorDialog("Eingabefehler", "Bitte alle Felder ausfüllen", msg, mail=False).show()
             Log.warning("Data error:%s", msg)
             return
-
-        QApplication.setOverrideCursor(QtCore.Qt.CursorShape.WaitCursor)
-        mid = int(idstr)
-        rfid_int = int(rfid)
-        # we should update in the correct form
-        if mbr is not None:
-            bd = mbr.asDBDate(birthdate)
-            mbr.update(mid, firstName, lastName, access, bd, rfid_int)
-            self.ui_SearchEdit.setEditText(mbr.searchName())
-        else:
-            # create new member, update search box
-            mbr = Mitglied(mid, firstName, lastName, access, None, rfid_int)
-            entry = mbr.searchName()
-            self.ui_SearchEdit.addItem(entry, mbr)
-        # need a try catch.
-        if self.photoTaken:
-            res = self.model.savePicture(mbr)  # scps the pic to remote and adds uri to db...
-            if not res:
-                self.getErrorDialog("Verbindungsfehler", "Bild konnte nicht gespeichert werden", "Der Fehler wurde per eMail gemeldet!").show()
-                self.photoTaken = False
-                QApplication.restoreOverrideCursor()
-                return  # only all or nothing
-        QTimer.singleShot(0, lambda: self.model.updateMember(mbr))
-        # self.model.updateMember(mbr)
-        # self.model.printMemberCard(mbr)
-        QApplication.restoreOverrideCursor()
-        self._clearFields()
-        self.controller.setInitialFocus()
-
+        try:
+            self.ui_SaveButton.setEnabled(False)
+            QApplication.setOverrideCursor(QtCore.Qt.CursorShape.WaitCursor)
+            mid = int(idstr)
+            rfid_int = int(rfid)
+            # we should update in the correct form
+            if mbr is not None:
+                bd = mbr.asDBDate(birthdate)
+                mbr.update(mid, firstName, lastName, access, bd, rfid_int)
+                self.ui_SearchEdit.setEditText(mbr.searchName())
+            else:
+                # create new member, update search box
+                mbr = Mitglied(mid, firstName, lastName, access, None, rfid_int)
+                entry = mbr.searchName()
+                self.ui_SearchEdit.addItem(entry, mbr)
+            # need a try catch.
+            if self.photoTaken:
+                res = self.model.savePicture(mbr)  # scps the pic to remote and adds uri to db...
+                if not res:
+                    self.getErrorDialog("Verbindungsfehler", "Bild konnte nicht gespeichert werden", "Der Fehler wurde per eMail gemeldet!").show()
+                    self.photoTaken = False
+                    return  # only all or nothing
+            QTimer.singleShot(0, lambda: self.model.updateMember(mbr))
+            # self.model.updateMember(mbr)
+            # self.model.printMemberCard(mbr)
+            self._resetInput()
+        finally:
+            QApplication.restoreOverrideCursor()
+            QtCore.QCoreApplication.processEvents()
+            self.ui_SaveButton.setEnabled(True)
+            
     @QtCore.pyqtSlot()
     def _onOpenAboDialog(self):
         mbr = self.ui_SearchEdit.currentData()
@@ -792,6 +799,11 @@ class MainFrame(QtWidgets.QMainWindow):
         self.updateAboButton(None)
         self.ui_VideoFrame.showFrame(None)
 
+    def _resetInput(self):
+        self.ui_SearchEdit.setCurrentIndex(-1)
+        self._clearFields()  
+        self.controller.setInitialFocus()
+        self.updateEditFields(True) 
          
     # dialogs
     def __getInfoDialog(self, text):
