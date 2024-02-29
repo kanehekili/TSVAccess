@@ -426,19 +426,19 @@ def nextDay():
 
 def sendEmail():
     port = 587  # For starttls
-    smtp_server = "w00d4ed3.kasserver.com"
-    password = "TSV1847#MS"
+    smtp_server = "myServer"
+    password = "mypwd"
 
     msg = EmailMessage()
     msg['Subject'] = "Sauna Abo"
-    msg['From'] = "it@tsv-weilheim.com"
-    msg['To'] = "mathias.wegmann@tsv-weilheim.com"
+    msg['From'] = "sender"
+    msg['To'] = "receip"
     msg.set_content("Mitglied %s hat 10 Sauna Punkte gekauft"%("Hugo"))
 
     context = ssl.create_default_context()  
     with smtplib.SMTP(smtp_server, port) as server:
         server.starttls(context=context)
-        server.login("it@tsv-weilheim.com", password)
+        server.login("sender", password)
         server.send_message(msg)
          
 

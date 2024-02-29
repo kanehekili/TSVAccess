@@ -107,13 +107,18 @@ class RFIDAccessor():
         if rfid:
             if rfid in self.eastereggs:
                 Log.info("Master check %s",rfid)
-                if self.ledCounter:
-                    self.ledCounter.text("CHEF") 
+                if self.ledCounter: 
+                    self.ledCounter.text("CHEF")
+                    Log.info("Displayed CHEF")
+                Log.info("Test connection")
                 self.db.ensureConnection()
                 if self.db.isConnected():
+                    Log.info("Test connection OK")
                     self.gate.welcome1()
                 else:
-                    self.gate.signalAlarm()                  
+                    self.gate.signalAlarm()
+                    Log.warning("Test connection FAILS")
+                Log.info("Master check done")
                 return
             #rfid & paysection must fit ->if section in PREPAID-> decrease count
             ps = Konfig.asDBString(self.configData.allPaySections())
