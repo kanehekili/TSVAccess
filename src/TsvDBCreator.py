@@ -215,11 +215,14 @@ class SetUpTSVDB():
     )
     """    
     #will be set whenever a "new" token has been issued - just for Abrechnung
+    #Alter table RegisterList add uuid INT UNSIGNED NOT NULL DEFAULT 0;
+    #fix zeros: update RegisterList r inner join Mitglieder m on r.mitglied_id = m.id set r.uuid=m.uuid where r.uuid=0;
     REGISTERTABLE="RegisterList"
     TABLE8="""
     CREATE OR REPLACE TABLE RegisterList (
        register_date DATETIME,
-       mitglied_id INT
+       mitglied_id INT,
+       uuid INT UNSIGNED NOT NULL
     )   
     """
     #overview for abos

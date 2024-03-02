@@ -186,8 +186,8 @@ class Registration():
             return
         now = datetime.now().isoformat()
         data = []
-        data.append((now, mbr.id))
-        self.db.insertMany(self.dbSystem.REGISTERTABLE, ('register_date', 'mitglied_id'), data)
+        data.append((now, mbr.id,mbr.rfid))
+        self.db.insertMany(self.dbSystem.REGISTERTABLE, ('register_date', 'mitglied_id','uuid'), data)
         Log.info("Dispensing NEW Chip %d to member %d",mbr.rfid,mbr.id)
         mbr.initialRFID = mbr.rfid
 
