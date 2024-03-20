@@ -112,6 +112,8 @@ It needs to be executed via terminal and provides a simple interface to configur
 Technical database abstraction for the mysql.connector. This is the place to change the database backend 
 
 ## Ximporter
+![Download V1.0.0X](https://github.com/kanehekili/TSVAccess/releases/tag/V.1.0.0X)
+
 In order to import data from a retro software that is not able to provide any REST bindings, Ximporter has been created. It reads a propriaty XLS file and imports it into our system. Select a xls file (this feature needs to be adapted to the provider) to import it into the database.  <br />
 Due to some restraints on the given infrastructure - this code works on windows.. (but looks a lot uglier)
 
