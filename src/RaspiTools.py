@@ -6,22 +6,27 @@ Created on Aug 24, 2023
 
 from time import sleep, localtime
 from threading import Timer
+import DBTools
+
+Log = DBTools.Log
+
 
 try:
     from tm1637 import TM1637 # @UnresolvedImport
     LEDS=True
 except Exception:
     LEDS=False
-    print("no TM1637 LED installed")
+    Log.warning("no TM1637 LED installed")
 
 try:    
     import RPi.GPIO as GPIO  # @UnresolvedImport
     from mfrc522 import SimpleMFRC522  # @UnresolvedImport
     RASPI = True
 except Exception:
-    print("no GPIOS installed")
+    Log.warning("no GPIOS installed")
     RASPI = False
 
+Log = DBTools.Log
 
 class RaspberryGPIO():
     PINGREEN = 2

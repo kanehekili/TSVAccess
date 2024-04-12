@@ -19,14 +19,13 @@ os.uname():
 posix.uname_result(sysname='Linux', nodename='raspi3a', release='6.1.29-2-rpi-ARCH', version='#1 SMP Thu May 25 05:35:29 MDT 2023', machine='armv7l')
 data[4] > armv7l
 '''
-import RaspiTools
-from RaspiTools import RaspberryGPIO, MFRC522Reader,LED7,Clock,RaspberryFAKE
-
-
 # import smtplib
 # from email.message import EmailMessage
 OSTools.setupRotatingLogger("TSVAccess", True)
 Log = DBTools.Log
+
+import RaspiTools
+from RaspiTools import RaspberryGPIO, MFRC522Reader,LED7,Clock,RaspberryFAKE
 
 
 class RFIDAccessor():
@@ -256,6 +255,7 @@ class RFIDAccessor():
             del self.ledCounter
             del self.clock #rm all TM instances!
 
+#Testing only - not productive:
 class RFCUSB():
 
     def __init__(self):

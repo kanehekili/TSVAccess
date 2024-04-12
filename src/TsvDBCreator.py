@@ -15,12 +15,11 @@ print(os.environ.get('secretHost'))
 
 import DBTools
 from DBTools import Connector, OSTools
-import csv,re,socket
+import re,socket
 from datetime import datetime,timedelta
 import json, getopt, sys
 from enum import Enum
 import traceback
-from collections import Counter
 import smtplib,ssl
 from email.message import EmailMessage
 from ast import literal_eval
@@ -522,27 +521,6 @@ class KonfigEntry():
         if not self.startTime or not self.endTime:
             return True
         return currTime >= self.startTime and currTime <= self.endTime
-
-
-#TODO if we get only members ,remove those who are  in the database but not in the list...    
-def persistCSV(fn):
-    pass
-
-def symDiff(importData,connection):
-    stmt="select id from %s"%(SetUpTSVDB.MAINTABLE)
-    rows=connection.db.select(stmt)
-    ids = [data[0] for data in rows] #int
-    currIds=[int(mbr.getID()) for mbr in importData]
-    diff=[]
-    for indb in ids:
-        if not indb in currIds:
-            print("!Member lost:%d -will be flagged!"%(indb))
-            diff.append(indb)     
-    #the other way:
-    for cid in currIds:
-        if not cid in ids:
-            print("New Member:%d"%(cid))
-    return diff
 
 
 def updateLocationTable():

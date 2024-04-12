@@ -48,6 +48,7 @@ class OpenCV3():
     def setColor(cls, numpyArray):
         cv2.cvtColor(numpyArray, cv2.COLOR_BGR2RGB, numpyArray)  # @UndefinedVariable
 
+    '''
     @classmethod
     def getBestCameraIndex(cls):
         best = (-1, -1)  # indx,w*h
@@ -73,6 +74,7 @@ class OpenCV3():
             camIndex = 0
         print("selected camera is:", camIndex)
         return camIndex
+    '''
 
     @classmethod
     def getCamera(cls, index):
@@ -407,9 +409,6 @@ class MainFrame(QtWidgets.QMainWindow):
         self.ui_SearchEdit.completer().setCompletionMode(QtWidgets.QCompleter.CompletionMode.PopupCompletion);
         self.ui_SearchEdit.activated.connect(self._onSearchChanged)
         self.ui_SearchEdit.setToolTip("Nachnamen eingeben, um eine Person zu suchen")
-        # self.ui_SearchEdit.installEventFilter(self)
-        
-        # self.ui_SearchEdit.setSizePolicy(QtWidgets.QSizePolicy.QSizePolicy.Policy.MinimumExpanding, QtWidgets.QSizePolicy.QSizePolicy.Policy.Preferred)
         
         self.ui_IDLabel = QtWidgets.QLabel(self)
         self.ui_IDLabel.setText("Nummer:")
@@ -1297,7 +1296,7 @@ def main(args):
     except:
         with open('/tmp/error.log','a') as f:
             f.write(traceback.format_exc())
-        traceback.print_exc(file=sys.stdout)
+        #traceback.print_exc(file=sys.stdout)
         Log.exception("Error in main:")
         # ex_type, ex_value, ex_traceback
         sys_tuple = sys.exc_info()
