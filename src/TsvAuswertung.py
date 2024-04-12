@@ -99,7 +99,7 @@ def statisticsGFRoom4():
 
 @app.route('/accessGYM_KR')  
 def visitorsGroupFitnesse():
-    people = barModel.currentVisitorPictures(TsvDBCreator.ACTIVITY_GYM,TsvDBCreator.LOC_KRAFTRAUM)
+    people = barModel.currentVisitorPictures(TsvDBCreator.ACTIVITY_GYM,TsvDBCreator.LOC_KRAFTRAUM,60)
     logo_path = "tsv_logo_100.png"
     act = TsvDBCreator.ACTIVITY_GYM +" Kraftraum"
     pv='/groupRooms'
@@ -107,7 +107,7 @@ def visitorsGroupFitnesse():
 
 @app.route('/accessGYM_Spiegelsaal') 
 def visitorsGFS():
-    people = barModel.currentVisitorPictures(TsvDBCreator.ACTIVITY_GYM,TsvDBCreator.LOC_SPIEGELSAAL)
+    people = barModel.currentVisitorPictures(TsvDBCreator.ACTIVITY_GYM,TsvDBCreator.LOC_SPIEGELSAAL,60)
     logo_path = "tsv_logo_100.png"
     act = TsvDBCreator.ACTIVITY_GYM+" Spiegelsaal"
     pv='/groupRooms'
@@ -115,7 +115,7 @@ def visitorsGFS():
 
 @app.route('/accessGYM_Dojo')  # Access kraftraum TODO: mit Raum!
 def visitorsGFD():
-    people = barModel.currentVisitorPictures(TsvDBCreator.ACTIVITY_GYM,TsvDBCreator.LOC_DOJO)
+    people = barModel.currentVisitorPictures(TsvDBCreator.ACTIVITY_GYM,TsvDBCreator.LOC_DOJO,60)
     logo_path = "tsv_logo_100.png"
     act = TsvDBCreator.ACTIVITY_GYM+" Dojo"
     pv='/groupRooms'
@@ -123,7 +123,7 @@ def visitorsGFD():
 
 @app.route('/accessGYM_Nord')  # Access kraftraum TODO: mit Raum!
 def visitorsGFN():
-    people = barModel.currentVisitorPictures(TsvDBCreator.ACTIVITY_GYM,TsvDBCreator.LOC_NORD)
+    people = barModel.currentVisitorPictures(TsvDBCreator.ACTIVITY_GYM,TsvDBCreator.LOC_NORD,60)
     logo_path = "tsv_logo_100.png"
     act = TsvDBCreator.ACTIVITY_GYM +" Nord" 
     pv='/groupRooms'

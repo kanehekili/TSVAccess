@@ -58,13 +58,13 @@ class RaspberryGPIO():
         |--| usb==unten
     
         Relais
-        o x 5V Red
-        x o GPIO2 Blue   ->Green light (OK)
-        x o GPIO3 yello   -> yello (WARN)
-        o o                
-        X o -GND Green  
-        x o GPIO 17 orange  -> red (NO ACCESS)
-        x o GPIO27  brown   ->signal (NO ACCESS)       
+        o x 5V VCC Relais
+        x o GPIO2  ->Green light (OK)
+        x x GPIO3  -> yello (WARN) : GPIO 6-> GND Relais
+        0 0
+        0 0  
+        x o GPIO 17  -> red (NO ACCESS)
+        x o GPIO27   ->signal (NO ACCESS)       
         |--| usb==unten
         
         '''
