@@ -383,7 +383,7 @@ class SetUpTSVDB():
                 server.login(sender, password)
                 server.send_message(msg) 
         except:
-            DBTools.Log.error("Mail could not be sent!")
+            DBTools.Log.error("Mail could not be sent! Server:%s port:%s from:%s pwd: %s ",smtp_server, port,sender,password)
 
 def basicSetup():
     s = SetUpTSVDB(SetUpTSVDB.DATABASE)

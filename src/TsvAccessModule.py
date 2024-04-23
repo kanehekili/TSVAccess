@@ -10,7 +10,7 @@ import time, socket, signal, sys,threading
 import DBTools
 from DBTools import OSTools
 from TsvDBCreator import SetUpTSVDB,Konfig
-from datetime import datetime, date, timedelta
+from datetime import datetime, date
 from threading import Timer
 import TsvDBCreator
 
