@@ -414,7 +414,7 @@ class MainFrame(QtWidgets.QMainWindow):
         self.ui_IDLabel.setText("Nummer:")
         self.ui_IDEdit = QtWidgets.QLineEdit(self)
         self.ui_IDEdit.setValidator(QtGui.QIntValidator(1, 100000, self))
-        self.ui_IDEdit.setValidator(QRegularExpressionValidator(QRegularExpression('^([1-9][0-9]*\.?|0\.)[0-9]+$'), self))
+        self.ui_IDEdit.setValidator(QRegularExpressionValidator(QRegularExpression(r'^([1-9][0-9]*\.?|0\.)[0-9]+$'), self))
         self.ui_IDEdit.setToolTip("Die Conplan <Adressnummer> ist hier einzutragen")
 
         self.ui_FirstNameLabel = QtWidgets.QLabel(self)
@@ -757,14 +757,12 @@ class MainFrame(QtWidgets.QMainWindow):
                 self.ui_SearchEdit.addItem(entry, mbr)
             # need a try catch.
             if self.photoTaken:
-                res = self.model.savePicture(mbr)  # scps the pic to remote and adds uri to db...
+                res = self.model.savePicture(mbr)  # posts the pic to remote and adds uri to db...
                 if not res:
                     self.getErrorDialog("Verbindungsfehler", "Bild konnte nicht gespeichert werden", "Der Fehler wurde per eMail gemeldet!").show()
                     self.photoTaken = False
                     return  # only all or nothing
             QTimer.singleShot(0, lambda: self.model.updateMember(mbr))
-            # self.model.updateMember(mbr)
-            # self.model.printMemberCard(mbr)
             self._resetInput()
         finally:
             QApplication.restoreOverrideCursor()

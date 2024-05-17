@@ -20,7 +20,7 @@ from datetime import datetime,timedelta
 import json, getopt, sys
 from enum import Enum
 import traceback
-import smtplib,ssl
+import smtplib,ssl,struct
 from email.message import EmailMessage
 from ast import literal_eval
 
@@ -409,7 +409,7 @@ def updateAssaAbloy(filename):
     with open(filename,'r', encoding='utf-8') as file:
         data=file.readlines()
         for line in data:
-            token2 = "$".join(re.split("\s+", line.strip(), flags=re.UNICODE))
+            token2 = "$".join(re.split(r"\s+", line.strip(), flags=re.UNICODE))
             token=token2.split("$")
             if token[0]=='Valid':
                 val=token[1][:8].replace('ﬀ',"ff")
@@ -541,11 +541,19 @@ def updateMailTable():
         traceback.print_exc()
     finally:
         s.close()
+        
+#Convert the big endian to little endian, which assa abloy needs    
+def rfidFromTableToAssaAbloy(decimalString):
+    decimal = int(decimalString)
+    packed_num = struct.pack('>I', decimal)
+    unpacked_num = struct.unpack('<I', packed_num)
+    res = hex(unpacked_num[0])
+    print("Big Int Decimal %d to AA little engine:%s"%(decimal,res))
     
 def parseOptions(args):
     
     try:
-        opts, args = getopt.getopt(args[1:], "rlmst:", ["reset", "updateLocation", "updateMail" "updateScheme","transponder"])
+        opts, args = getopt.getopt(args[1:], "rlmst:c:", ["convert","reset", "updateLocation", "updateMail" "updateScheme","transponder"])
         if len(opts) == 0:
             printUsage()
     except getopt.GetoptError as err:
@@ -563,15 +571,18 @@ def parseOptions(args):
             updateScheme() #Removes data from Zutritt and Beitrag! 
         elif o in ("-t", "--transponder"):
             updateAssaAbloy(a)
+        elif o in ("-c", "--convert"):
+            rfidFromTableToAssaAbloy(a)
         else:
             printUsage()
 
 def printUsage():
     print("Creator commands: \n"\
-          "\t-r > !reset the database! (--reset) \n"\
-          "\t-l > update location (--updateLocation) \n"\
+          "\t-r > !reset the database! (--reset) \n"
+          "\t-l > update location (--updateLocation) \n"
           "\t-s > !update the database! (--updateScheme) \n"
           "\t-t filename > read transponder (--transponder) \n"
+          "\t-c decimal rfid > convert rfid to AA (--convert) \n"
           )
     
 
