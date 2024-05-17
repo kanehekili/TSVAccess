@@ -463,6 +463,18 @@ class MainFrame(QtWidgets.QMainWindow):
         self.ui_AboButton.setToolTip("10er Karten anlegen")
         self.ui_AboButton.setEnabled(False)
 
+        self.pixFail = QtGui.QPixmap()
+        self.pixFail.load("./web/static/dialog-close.png")
+        self.pixFail = self.pixFail.scaledToWidth(64, mode=Qt.TransformationMode.SmoothTransformation)
+        self.pixOK = QtGui.QPixmap()
+        self.pixOK.load("./web/static/Ok.png")
+        self.pixOK = self.pixOK.scaledToWidth(64, mode=Qt.TransformationMode.SmoothTransformation)
+       
+        self.ui_Info = QtWidgets.QLabel("")
+        self.ui_Info.setPixmap(self.pixOK)
+        self.ui_Info.setToolTip("Zeigt an, ob Beiträge gezahlt wurden")
+        self.ui_Info.hide()
+
         # geht immer
         self.ui_NewButton = QtWidgets.QPushButton()
         # self.ui_NewButton = QtWidgets.QToolButton()
@@ -584,6 +596,8 @@ class MainFrame(QtWidgets.QMainWindow):
         gridLayout.addWidget(self.ui_AccessCombo, 11, 2, 1, 2)
         gridLayout.addWidget(self.ui_BirthLabel, 11, 4, 1, 3)
         
+        gridLayout.addWidget(self.ui_Info,7,7,5,1,Qt.AlignmentFlag.AlignCenter)
+        
         line = QtWidgets.QFrame();
         line.setFrameShape(QtWidgets.QFrame.Shape.HLine);
         line.setFrameShadow(QtWidgets.QFrame.Shadow.Sunken);
@@ -642,16 +656,25 @@ class MainFrame(QtWidgets.QMainWindow):
         mbr = self.ui_SearchEdit.itemData(idx)
         if mbr:
             Log.debug("Member selected:%s", mbr.searchName())
-            self.setEntryFields(mbr)
-            # Still having the focus, so add it to the event loop
-            QTimer.singleShot(1, self.ui_RFID.setFocus)
-            
-            if not (mbr.picpath and self._displayMemberFace(mbr)):
-                self._initCapture()  # start capturing again
-            else:
-                self.photoTaken = False
-            self.updateAboButton(mbr)
-            self.updateEditFields(False)
+            QTimer.singleShot(1, lambda: self.__updateSearchDataSpawned(mbr))
+
+    def __updateSearchDataSpawned(self,mbr):
+        self.setEntryFields(mbr)
+        # Still having the focus, so add it to the event loop
+        #QTimer.singleShot(1, self.ui_RFID.setFocus)
+        self.ui_RFID.setFocus()
+        
+        if not (mbr.picpath and self._displayMemberFace(mbr)):
+            self._initCapture()  # start capturing again
+        else:
+            self.photoTaken = False
+        self.updateAboButton(mbr)
+        if self.model.haveFeesBeenPaid(mbr,"Hauptverein"):
+            self.ui_Info.setPixmap(self.pixOK)
+        else:
+            self.ui_Info.setPixmap(self.pixFail)
+        self.ui_Info.show()                                    
+        self.updateEditFields(False)        
 
     @QtCore.pyqtSlot()
     def _onNewClicked(self):
@@ -801,6 +824,7 @@ class MainFrame(QtWidgets.QMainWindow):
         self._clearFields()  
         self.controller.setInitialFocus()
         self.updateEditFields(True) 
+        self.ui_Info.hide()
          
     # dialogs
     def __getInfoDialog(self, text):

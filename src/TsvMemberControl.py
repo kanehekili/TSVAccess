@@ -8,7 +8,7 @@ Funktions like Checkin/Checkout, RFID RESET , Member blacklist and Abo service
 '''
 import sys, traceback, argparse, os
 from PyQt6.QtWidgets import QApplication
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt,QTimer
 from PyQt6 import QtWidgets, QtGui, QtCore
 # from PyQt6.QtCore import QRegularExpression
 # from PyQt6.QtGui import QRegularExpressionValidator
@@ -104,6 +104,7 @@ class VideoWidget(QtWidgets.QFrame):
 
 
 class QElidedLabel(QtWidgets.QLabel):
+
     def __init__(self, parent):
         QtWidgets.QLabel.__init__(self, parent)
 
@@ -118,13 +119,12 @@ class QElidedLabel(QtWidgets.QLabel):
         r = qMargins.right()
         b = qMargins.bottom()
         margin = self.margin() * 2
-        defaultSize=super(QElidedLabel, self).sizeHint()
+        defaultSize = super(QElidedLabel, self).sizeHint()
         return QtCore.QSize(
             min(100, hint.width()) + l + r + margin,
-            defaultSize.height()+self.fontMetrics().descent() + t + b + margin
-            #min(self.fontMetrics().height(), hint.height()) + t + b + margin
+            defaultSize.height() + self.fontMetrics().descent() + t + b + margin
+            # min(self.fontMetrics().height(), hint.height()) + t + b + margin
         ) 
-
 
     def paintEvent(self, event):
         painter = QtGui.QPainter(self)
@@ -142,13 +142,13 @@ class MainFrame(QtWidgets.QMainWindow):
         self._isStarted = False
         self.__qapp = qapp
         self.model = Registration()
-        self._defaultActivityIdx= idx;
+        self._defaultActivityIdx = idx;
         self.qtQueueRunning = False
         super(MainFrame, self).__init__()
         self.setWindowIcon(getAppIcon())
         self.initUI()
         self.centerWindow()
-        self.setWindowTitle("Mitglieder Bearbeitung")
+        self.setWindowTitle("Mitglieder Zugangskontrolle")
         self.show()
         qapp.applicationStateChanged.connect(self.__queueStarted)    
 
@@ -218,7 +218,7 @@ class MainFrame(QtWidgets.QMainWindow):
         ckiLbl = QtWidgets.QLabel(self)
         ckiLbl.setText("Check in")
         ckiLbl.setStyleSheet("QLabel { font: bold; color:#07A002;}");  # dark theme: #0AFF02
-        #self.ui_ckiDisplay=QtWidgets.QLabel(self)
+        # self.ui_ckiDisplay=QtWidgets.QLabel(self)
         self.ui_ckiDisplay = QElidedLabel(self)
         ckiBox = QtWidgets.QVBoxLayout(self.ckiframe)
         ckiHeaderBox = QtWidgets.QHBoxLayout(self.ckiframe)
@@ -323,15 +323,15 @@ class MainFrame(QtWidgets.QMainWindow):
         mbr = self.ui_SearchEdit.currentData()
         if mbr:
             now = datetime.now().isoformat()
-            Log.info("Member:%s CKI/CKO",mbr.primKeyString())
-            cfgEntry=self.currentLocationConfig() 
-            self.model.saveAccessDate(mbr, now,cfgEntry)
+            Log.info("Member:%s CKI/CKO", mbr.primKeyString())
+            cfgEntry = self.currentLocationConfig() 
+            self.model.saveAccessDate(mbr, now, cfgEntry)
             self._clearFields()
 
     def _onActivityChanged(self, _):
         mbr = self.ui_SearchEdit.currentData()
         if mbr:
-            self._updateCheckinData(mbr)
+            QTimer.singleShot(0, lambda: self._updateCheckinData(mbr))
 
     def setInitialFocus(self): 
         self.ui_SearchEdit.setFocus()
@@ -346,20 +346,19 @@ class MainFrame(QtWidgets.QMainWindow):
             self.ui_SearchEdit.addItem(entry, member)
             
     def fillActivityCombo(self):
-        #themes=self.model.configs.allActivities()
-        allConfig=self.model.configs.configs
-        cfgDic={}
+        # themes=self.model.configs.allActivities()
+        allConfig = self.model.configs.configs
+        cfgDic = {}
         for cfg in allConfig:
-            #No prepaid support yet:
+            # No prepaid support yet:
             if cfg.activity in TsvDBCreator.PREPAID_INDICATOR:
                 continue
-            res=cfgDic.get(cfg.activity,cfg)
-            cfgDic[cfg.activity]=res
+            res = cfgDic.get(cfg.activity, cfg)
+            cfgDic[cfg.activity] = res
             
-        for key,value in cfgDic.items():
-            self.ui_ActivityCombo.addItem(key,value)
+        for key, value in cfgDic.items():
+            self.ui_ActivityCombo.addItem(key, value)
         self.ui_ActivityCombo.setCurrentIndex(self._defaultActivityIdx)
-        
             
     def makeGridLayout(self):
         # fromRow(y) - fromColumn(x)  rowSpan(height) columnSpan(width), ggf alignment
@@ -403,7 +402,7 @@ class MainFrame(QtWidgets.QMainWindow):
         line.setFrameShape(QtWidgets.QFrame.Shape.HLine);
         line.setFrameShadow(QtWidgets.QFrame.Shadow.Sunken);
         
-        #gridLayout.addWidget(line, 17, 1, 1, -1)
+        # gridLayout.addWidget(line, 17, 1, 1, -1)
         gridLayout.addLayout(self.btnBox, 15, 1, 2, -1)
         '''
         gridLayout.addWidget(self.ui_NewButton, 17, 1, 1, 2, QtCore.Qt.AlignmentFlag.AlignLeft)
@@ -460,7 +459,7 @@ class MainFrame(QtWidgets.QMainWindow):
         self.ui_Access.setText('Merkmal')   
         self.ui_Birthday.setText("Burtstag")
         self.ui_RFID.setText("0")
-        self.ui_Blocked.setText("Zugang")
+        self.ui_Blocked.setText("Kein Zugang")
         self.ui_VideoFrame.showFrame(None)
         self.ui_ckiDisplay.setText("|")
         self.setButtons(False)
@@ -495,17 +494,24 @@ class MainFrame(QtWidgets.QMainWindow):
         return cfg
         
     def _updateCheckinData(self, mbr):
-        #activity= self.model.curentConfig.activity #FAIL
-        cfgEntry=self.currentLocationConfig() 
-        res = self.model.todaysAccessDateStrings(mbr.id,cfgEntry.activity)
-        ckiText="-" if len(res)==0 else ','.join(res) 
+        # activity= self.model.curentConfig.activity #FAIL
+        cfgEntry = self.currentLocationConfig() 
+        res = self.model.todaysAccessDateStrings(mbr.id, cfgEntry.activity)
+        ckiText = "-" if len(res) == 0 else ','.join(res) 
         self.ui_ckiDisplay.setText(ckiText)
-        if self.model.isValidAccess(mbr,cfgEntry):
+        accessOK = self.model.isValidAccess(mbr, cfgEntry)
+        paymentOK = self.model.haveFeesBeenPaid(mbr, cfgEntry.paySection)
+        notBlocked = mbr.flag == 0
+        if accessOK and paymentOK and notBlocked:
             self._updateCKIButton(len(res))
+            blockState = "Zugang gültig"
         else:
             Log.warning("Member access not valid")
-            self.ui_ckiDisplay.setText("Kein Zugang für Bereich %s "%(cfgEntry.activity))
+            self.ui_ckiDisplay.setText("Kein Zugang für Bereich %s " % (cfgEntry.activity))
             self.ui_ckiButton.setEnabled(False)
+            self.ui_blockButton.setEnabled(False)
+            blockState = "Zugang gesperrt"
+        self.ui_Blocked.setText(blockState)
 
     def _displayMemberFace(self, member):
         raw = self.model.loadPicture(member)
@@ -530,8 +536,6 @@ class MainFrame(QtWidgets.QMainWindow):
         # vorsicht! rfid kann null sein - nicht eingecheckt...
         tecCode = "-" if not mbr.rfidString() else mbr.rfidString()
         self.ui_RFID.setText(tecCode + " / " + mbr.primKeyString())
-        blockState = "Frei" if mbr.flag == 0 else "Gesperrt"
-        self.ui_Blocked.setText(blockState)
         # prepaid = mbr.currentAbo[1]
         # self.saunaCount.setValue(prepaid)
 
@@ -542,13 +546,14 @@ class MainFrame(QtWidgets.QMainWindow):
             Log.debug("Member selected:%s", mbr.primKeyString())
             self.setMemberFields(mbr)
             if not (mbr.picpath and self._displayMemberFace(mbr)):
-                Log.warning("Unregistered:%s!",mbr.primKeyString())
+                Log.warning("Unregistered:%s!", mbr.primKeyString())
                 self.ui_VideoFrame.showFrame(None)
+                self.ui_Blocked.setText("Nicht registriert")
                 self.setButtons(False)
                 return
 
             # valid
-            self._updateCheckinData(mbr)
+            QTimer.singleShot(0, lambda: self._updateCheckinData(mbr))
             self._updateBlockButton(mbr)
 
     @QtCore.pyqtSlot()
@@ -608,7 +613,7 @@ def main(args):
         app.exec()
         # logging.shutdown()
     except:
-        with open('/tmp/error.log','a') as f:
+        with open('/tmp/error.log', 'a') as f:
             f.write(traceback.format_exc())
         traceback.print_exc(file=sys.stdout)
         Log.exception("Error in main:")

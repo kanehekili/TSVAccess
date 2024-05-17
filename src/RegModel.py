@@ -4,11 +4,10 @@ Created on Nov 21, 2023
 @author: matze
 '''
 import TsvDBCreator
-from TsvDBCreator import SetUpTSVDB,Konfig
+from TsvDBCreator import SetUpTSVDB, Konfig
 import DBTools
-from datetime import datetime
+from datetime import datetime,date
 import requests
-
 
 Log = DBTools.Log
 
@@ -16,11 +15,14 @@ Log = DBTools.Log
 We need controllers for mode register (you search for names and have a camera)
 and mode rfid (you have a registered user and search it with the rfid token)
 '''
-class RegisterController():
-    def __init__(self,ui):
-        self.mainFrame=ui
 
-    def handleRFIDChanged(self,str_RFID):
+
+class RegisterController():
+
+    def __init__(self, ui):
+        self.mainFrame = ui
+
+    def handleRFIDChanged(self, str_RFID):
         self.mainFrame.verifyRFID(str_RFID)
 
     def supportsCamera(self):
@@ -28,22 +30,24 @@ class RegisterController():
 
     def setInitialFocus(self):
         self.mainFrame.ui_SearchEdit.setFocus()
-        #self.mainFrame.ui_SearchEdit.setStyleSheet("QComboBox,QComboBox::editable { background: rgb(0,160,0); color:white}");
+        # self.mainFrame.ui_SearchEdit.setStyleSheet("QComboBox,QComboBox::editable { background: rgb(0,160,0); color:white}");
         self.mainFrame.ui_SearchEdit.setStyleSheet("QComboBox { padding: 2px; border-radius: 4px; border: 2px solid rgb(0,160,0);}");
 
-class RFIDController(RegisterController):
-    def __init__(self, ui):
-        RegisterController.__init__(self,ui)        
 
-    #slot if rfid search is active (mode)
-    def handleRFIDChanged(self,str_RFID):
-        #String may have a leading zero.
+class RFIDController(RegisterController):
+
+    def __init__(self, ui):
+        RegisterController.__init__(self, ui)        
+
+    # slot if rfid search is active (mode)
+    def handleRFIDChanged(self, str_RFID):
+        # String may have a leading zero.
         try:
-            tmp=int(str_RFID)
+            tmp = int(str_RFID)
         except:
             self.mainFrame.searchWithRFID(str_RFID)
             return
-        clean=str(tmp)
+        clean = str(tmp)
         self.mainFrame.searchWithRFID(clean)
 
     def supportsCamera(self):
@@ -51,7 +55,7 @@ class RFIDController(RegisterController):
 
     def setInitialFocus(self):
         self.mainFrame.ui_RFID.setFocus()
-        #self.mainFrame.ui_RFID.setStyleSheet("QLineEdit { background: rgb(0,160,0); color:white}");
+        # self.mainFrame.ui_RFID.setStyleSheet("QLineEdit { background: rgb(0,160,0); color:white}");
         self.mainFrame.ui_RFID.setStyleSheet("QLineEdit {padding: 2px; border-radius: 4px; border: 2px solid rgb(0,160,0); }");
 
 
@@ -62,9 +66,8 @@ class Registration():
         # self.accesscodes = []
         self.borders = []
         self.aaTransponders = []
-        self.memberList=None
-        self.configs=None #a Konfig instance containing KonfigEntry 
-        
+        self.memberList = None
+        self.configs = None  # a Konfig instance containing KonfigEntry 
 
     def connect(self):
         self.dbSystem = SetUpTSVDB(SetUpTSVDB.DATABASE)
@@ -82,9 +85,9 @@ class Registration():
             self.aaTransponders.append(uuid[0]) 
         Log.info("Loaded AA Transponders:%d", len(self.aaTransponders))
     
-    #Membercontrol
+    # Membercontrol
     def readConfigurations(self):
-        fields=','.join(Konfig.FIELD_DEF)
+        fields = ','.join(Konfig.FIELD_DEF)
         stmt = "SELECT " + fields + " from " + self.dbSystem.CONFIGTABLE
         res = self.db.select(stmt)
         return Konfig(res)
@@ -107,24 +110,24 @@ class Registration():
             self.memberList.append(m)
         return self.memberList
     
-    #used by memberControl
+    # used by memberControl
     def todaysAccessDateStrings(self, mbrID, activity):
         table = self.dbSystem.TIMETABLE
-        daysplit="13" #see TsvAuswertung
+        daysplit = "13"  # see TsvAuswertung
         partDay = "((HOUR(access_date) < " + daysplit + " AND HOUR(CURTIME()) < " + daysplit + ") OR (HOUR(access_date) >= " + daysplit + " AND HOUR(CURTIME()) >= " + daysplit + "))"
-        #stmt= "select access_date from %s where mitglied_id =%d and activity='%s' and DATE(access_date) = CURDATE();"%(table,mbrID,activity)
-        stmt= "select access_date from %s where mitglied_id =%d and activity='%s' and DATE(access_date) = CURDATE() AND %s"%(table,mbrID,activity,partDay)
+        # stmt= "select access_date from %s where mitglied_id =%d and activity='%s' and DATE(access_date) = CURDATE();"%(table,mbrID,activity)
+        stmt = "select access_date from %s where mitglied_id =%d and activity='%s' and DATE(access_date) = CURDATE() AND %s" % (table, mbrID, activity, partDay)
         rows = self.db.select(stmt)
-        timeData=[]
+        timeData = []
         for row in rows:
-            timeData.append(datetime.strftime(row[0],' %H:%M '))
+            timeData.append(datetime.strftime(row[0], ' %H:%M '))
         return timeData
     
-    #kind of manual cki - MemberControl
-    def saveAccessDate(self,mbr,accessDate,locConfig):
+    # kind of manual cki - MemberControl
+    def saveAccessDate(self, mbr, accessDate, locConfig):
         table = self.dbSystem.TIMETABLE
         data = []
-        data.append((mbr.id, accessDate,locConfig.activity,locConfig.room))
+        data.append((mbr.id, accessDate, locConfig.activity, locConfig.room))
         self.db.insertMany(table, ('mitglied_id', 'access_date', 'activity', 'room'), data)
     
     def updateMember(self, mbr):
@@ -148,19 +151,18 @@ class Registration():
         Log.info("Update ABO prepaid count from %s , %d +%d", section, oldCount, newCount)
         if newCount > 0:  # stays 0 if old has been changed
             msg = "Mitglied Nr %d (%s %s) \nhat heute ein 10er Abo bestellt - als Erinnerung zum abbuchen \U0001f604" % (mbr.id, mbr.firstName, mbr.lastName)
-            #TODO mit Link auf aktuelle Seite
+            # TODO mit Link auf aktuelle Seite
             self.dbSystem.sendEmail("Sauna Abo Daten", True, msg)
             self._insertAboData(mbr)
             
-            
         self.db.insertMany(self.dbSystem.BEITRAGTABLE, fields, data)
-        #TODO: data saved - so mbr.abo should be reset - can't we use a flag and add the stuff in dialog? 
+        # TODO: data saved - so mbr.abo should be reset - can't we use a flag and add the stuff in dialog? 
 
-    def _insertAboData(self,mbr):
+    def _insertAboData(self, mbr):
         now = datetime.now().isoformat()
-        fields = ('mitglied_id', 'buy_date','section')
-        section=mbr.abo[0]
-        data=[(mbr.id,now,section)]
+        fields = ('mitglied_id', 'buy_date', 'section')
+        section = mbr.abo[0]
+        data = [(mbr.id, now, section)]
         self.db.insertMany(self.dbSystem.ABOTABLE, fields, data)
 
     def updateAccessData(self, mbr):
@@ -186,9 +188,9 @@ class Registration():
             return
         now = datetime.now().isoformat()
         data = []
-        data.append((now, mbr.id,mbr.rfid))
-        self.db.insertMany(self.dbSystem.REGISTERTABLE, ('register_date', 'mitglied_id','uuid'), data)
-        Log.info("Dispensing NEW Chip %d to member %d",mbr.rfid,mbr.id)
+        data.append((now, mbr.id, mbr.rfid))
+        self.db.insertMany(self.dbSystem.REGISTERTABLE, ('register_date', 'mitglied_id', 'uuid'), data)
+        Log.info("Dispensing NEW Chip %d to member %d", mbr.rfid, mbr.id)
         mbr.initialRFID = mbr.rfid
 
     def readAboData(self, mbr):
@@ -257,18 +259,37 @@ class Registration():
             return None
         return pic
 
-    #used by member control
-    def isValidAccess(self,mbr,cfgEntry):
-        Log.info("Validation for:%d section:%s",mbr.id,cfgEntry.paySection)
+    # used by member control
+    def isValidAccess(self, mbr, cfgEntry):
+        Log.info("Validation for:%d section:%s", mbr.id, cfgEntry.paySection)
         if cfgEntry.activity == TsvDBCreator.ACTIVITY_SAUNA:
             if mbr.currentAbo[0] is None:
                 self.readAboData(mbr)
                 if mbr.currentAbo[0] is None:
-                    mbr.currentAbo=("Empty",0)
-            Log.info("Abo data %s count %d",mbr.currentAbo[0],mbr.currentAbo[1])
-            return mbr.currentAbo[0]==cfgEntry.paySection and mbr.currentAbo[1]>0
+                    mbr.currentAbo = ("Empty", 0)
+            Log.info("Abo data %s count %d", mbr.currentAbo[0], mbr.currentAbo[1])
+            return mbr.currentAbo[0] == cfgEntry.paySection and mbr.currentAbo[1] > 0
         # ÜL,KR in Group?
         return mbr.access in cfgEntry.groups
+    
+    def haveFeesBeenPaid(self,mbr,paySection):
+        if not mbr.fees:
+            payStr = Konfig.asDBString({paySection})
+            stmt = MemberFees.STMT%(mbr.id,payStr)
+            res = self.db.select(stmt)
+            mbr.saveMemberFees(res)
+        return self._checkValidFee(mbr, paySection)    
+        
+ 
+    def _checkValidFee(self,mbr,paysection):
+        #Sauna has prepaid, not payuntil
+        eolDate = mbr.fees.payUntilForSection(paysection)
+        if eolDate:
+            now = date.today()
+            if eolDate.date() < now:
+                Log.warning("Member EOL")
+                return False
+        return True
  
     def verifyRfid(self, rfidString, testId):
         # check if rfid  alreay exists ->False
@@ -293,9 +314,10 @@ class Mitglied():
         self.flag = 0
         self.abo = (None, 0)  # TsvDBCrator SECTION, count (str,int)
         self.currentAbo = (None, 0)  # TsvDBCrator SECTION, count (str,int)  
-        self.initalAccess = access
-        self.initialRFID = rfid_int           
+        self.initalAccess = access  # KR,GROUP;ÜL etc
+        self.initialRFID = rfid_int  # rfid token          
         self.update(mid_int, fn, ln, access, birthdate, rfid_int)
+        self.fees=None
         
     def searchName(self):
         return self.lastName + " " + self.firstName
@@ -334,6 +356,9 @@ class Mitglied():
             return str(self.rfid)
         return None
     
+    def saveMemberFees(self,rows):
+        self.fees=MemberFees(self,rows)
+    
     # data to save, no birthday        
     def dataSaveArray(self):
         row = []
@@ -341,5 +366,34 @@ class Mitglied():
         row.append(inner)
         return row
 
+
+# Will be created on demand
+class MemberFees():
+    STMT = "select section,payuntil_date,prepaid from BEITRAG where mitglied_id='%s' and section in (%s)"
+
+    def __init__(self, member, rows):
+        self.member = member
+        self.feeRows = {}  # section->payuntil,prepaid
+        self._setupRows(rows)
+        
+    def payUntilForSection(self, sectionName):
+        data = self.feeRows.get(sectionName, None)
+        if data: 
+            return data[0]
+        return None
+    
+    def prepaidForSection(self, sectionName):
+        data = self.feeRows.get(sectionName, None)
+        if data: 
+            return data[1]
+        return None
+
+    def _setupRows(self, rowList):
+        for row in rowList:
+            key = row[0]
+            data = row[1:]
+            self.feeRows[key] = data
+            
+             
 if __name__ == '__main__':
     pass
