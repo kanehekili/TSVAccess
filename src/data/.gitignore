@@ -1,2 +1,4 @@
 /.config.json*
 /mail.json
+/tsvcert.pem
+/tsvkey.pem

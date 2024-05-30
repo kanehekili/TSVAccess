@@ -1,0 +1,18 @@
+[Unit]
+Description=TSV access supervisor deamon
+Wants=network-online.target
+After=network-online.target
+#StartLimitIntervalSec=600
+#StartLimitBurst=3
+
+[Service]
+Restart=on-failure
+RestartSec=60s
+Type=simple
+WorkingDirectory=/opt/tsvserver
+ExecStart=/usr/bin/python3 /opt/tsvserver/TsvSupervisor.py
+
+
+[Install]
+WantedBy=multi-user.target
+
