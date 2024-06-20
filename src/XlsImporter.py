@@ -429,6 +429,7 @@ class Converter():
             self.findingsImport.extend(txt)
             self.dbSystem.close()
 
+    #TODO: if Flag=1 but Hauptwerein/Beitrag> CURRDATE, set flag to 0!
     def symDiff(self,importData,txtBuffer):
         stmt="select id,flag from %s"%(SetUpTSVDB.MAINTABLE)
         rows=self.dbSystem.db.select(stmt)

@@ -31,7 +31,7 @@ class Monitor():
             
 
     def checkDevice(self,hostnameOrIP):
-        isUp  = os.system(f"ping -c 1 {hostnameOrIP}"+ "> /dev/null 2>&1") == 0
+        isUp  = os.system(f"ping -4 -W 10 -c 5 {hostnameOrIP}"+ "> /dev/null 2>&1") == 0
         return isUp
     
     def checkAll(self):

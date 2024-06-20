@@ -11,6 +11,7 @@ Show graphs per Month or year.
 # pip install flask,plotly,(pandas?)
 from flask import Flask, render_template, request  # , has_request_context, session, url_for
 #import pandas as pd
+import werkzeug
 import json
 import plotly
 #import plotly.express as px
@@ -22,10 +23,11 @@ from TsvDBCreator import SetUpTSVDB
 import DBTools
 import sys, os
 import TsvDBCreator
+import time
 
 OSTools.setupRotatingLogger("TSVAuswertung", True)
 Log = DBTools.Log
-
+werkzeug.serving._log_add_style = False
 app = Flask(__name__,
             static_url_path='',
             static_folder='web/static',
@@ -492,10 +494,21 @@ class BarModel():
 
     def _connectToDB(self):
         self.dbSystem = SetUpTSVDB(SetUpTSVDB.DATABASE)
-        self.db = self.dbSystem.db
+        self._waitForConnection()
         if not self.dbSystem.isConnected():
-            Log.warning("DB connecton failed")
+            Log.warning("DB connecton terminally failed")
         #self.getMapping()
+    
+    def _waitForConnection(self):
+        cnt = 0
+        while not self.dbSystem.isConnected() and cnt < 10:
+            Log.warning("DB connection failed. Retry in 10 secs")
+            time.sleep(10)
+            Log.warning("Reconnect to database")
+            self.dbSystem.connectToDatabase(SetUpTSVDB.DATABASE)
+            cnt += 1    
+        
+        self.db = self.dbSystem.db  
     
     '''
     def getMapping(self):
@@ -647,6 +660,9 @@ class BarModel():
             stmt = "SELECT id,first_name,last_name,picpath,access_date FROM " + mbrTable + " m JOIN " + timetable + " z ON m.id = z.mitglied_id WHERE DATE(z.access_date) = CURDATE() AND ((HOUR(z.access_date) < " + daysplit + " AND HOUR(CURTIME()) < " + daysplit + ") OR (HOUR(z.access_date) >= " + daysplit + " AND HOUR(CURTIME()) >= " + daysplit + ")) and activity='" + activity + "' AND room='" + room+ "' ORDER By z.access_date DESC"
             
         rows = self.db.select(stmt)
+        if rows is None:
+            Log.warning("Picture retrieval failed")
+            return [{'name':"Fehler - bitte umgehend melden!",'image_path': 'halt.png'}]
         Log.info("Visitor rows:%d", len(rows))
         for row in rows:
             mid = row[0]
@@ -702,7 +718,9 @@ def main():
     # Log = DBTools.Log
     # OSTools.setupRotatingLogger("TSVAuswertung", True)
     barModel = BarModel()
-    app.run(debug=False, host='0.0.0.0', port=5001)    
+    #app.run(debug=False, host='0.0.0.0', port=5001,ssl_context=('data/tsvcert.pem', 'data/tsvkey.pem'))
+    app.run(debug=False, host='0.0.0.0', port=5001)
+    
 
 
 if __name__ == '__main__':
