@@ -24,14 +24,27 @@ class Connector():
         
 
     def connect(self, dbName):
+        mariah_config = {
+            'user': self.USER,
+            'password': self.PASSWORD,
+            'host': self.HOST,
+            'database': dbName,
+            'port': '3306',
+            'ssl_disabled': True,
+            'autocommit':True
+        }
         try:
-            self.dbConnection=mysql.connect(host=self.HOST,database=dbName, user=self.USER, password=self.PASSWORD,autocommit=True)
+            #self.dbConnection=mysql.connect(host=self.HOST,database=dbName, user=self.USER, password=self.PASSWORD,autocommit=True)
+            self.dbConnection=mysql.connect(**mariah_config)
             self.dbName=dbName
             Log.info("Connected to:%s", self.dbConnection.get_server_info())
         except mysql.Error as sqlError:
             Log.warning("Connect: %s",sqlError)
             self.dbConnection = None
-
+     
+    def _safeConnect(self):
+        if self.dbConnection.cursor() is None:
+            self.connect(self.dbName)
 
     def _getCursor(self):
         try:
@@ -104,6 +117,7 @@ class Connector():
     '''
     def insertMany(self,table,fields,dataSaveArray):
         try:
+            self._safeConnect()
             fieldNames = str(fields) #these are tuples. 
             start=0
             query = []
@@ -172,6 +186,7 @@ class Connector():
 
     def select(self,stmt):
         try:
+            self._safeConnect()
             Log.info(stmt)  
             with self._getCursor() as cursor:
                 cursor.execute(stmt)
