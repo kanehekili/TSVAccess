@@ -16,42 +16,39 @@ class Connector():
     DBError=mysql.Error
     
     def __init__(self,host,user,pwd):
-        self.HOST=host
-        self.USER=user
-        self.PASSWORD=pwd
         self.dbConnection = None
         self.dbName=None
-        
-
-    def connect(self, dbName):
-        mariah_config = {
-            'user': self.USER,
-            'password': self.PASSWORD,
-            'host': self.HOST,
-            'database': dbName,
+        self.mariah_config = {
+            'user': user,
+            'password': pwd,
+            'host': host,
             'port': '3306',
             'ssl_disabled': True,
             'autocommit':True
         }
+
+    def connect(self, dbName):
+        self.mariah_config['database'] = dbName
         try:
             #self.dbConnection=mysql.connect(host=self.HOST,database=dbName, user=self.USER, password=self.PASSWORD,autocommit=True)
-            self.dbConnection=mysql.connect(**mariah_config)
+            self.dbConnection=mysql.connect(**self.mariah_config)
             self.dbName=dbName
             Log.info("Connected to:%s", self.dbConnection.get_server_info())
         except mysql.Error as sqlError:
             Log.warning("Connect: %s",sqlError)
             self.dbConnection = None
-     
-    def _safeConnect(self):
-        if self.dbConnection.cursor() is None:
-            self.connect(self.dbName)
 
     def _getCursor(self):
         try:
-            return self.dbConnection.cursor()
+            if not self.isConnected():
+                Log.warning("Cursor reconnect!")
+                self.connect(self.dbName)
+            cursor = self.dbConnection.cursor()
+            return cursor
         except:
-            Log.warning("Cursor reconnect!")
+            Log.warning("Cursor reconnect fallback!")
             self.connect(self.dbName)
+            time.sleep(1)
             return self.dbConnection.cursor() #no recursion now
 
     def ensureConnection(self):
@@ -117,7 +114,6 @@ class Connector():
     '''
     def insertMany(self,table,fields,dataSaveArray):
         try:
-            self._safeConnect()
             fieldNames = str(fields) #these are tuples. 
             start=0
             query = []
@@ -186,7 +182,6 @@ class Connector():
 
     def select(self,stmt):
         try:
-            self._safeConnect()
             Log.info(stmt)  
             with self._getCursor() as cursor:
                 cursor.execute(stmt)
