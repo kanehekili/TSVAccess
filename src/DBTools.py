@@ -43,13 +43,16 @@ class Connector():
             if not self.isConnected():
                 Log.warning("Cursor reconnect!")
                 self.connect(self.dbName)
+
             cursor = self.dbConnection.cursor()
             return cursor
         except:
             Log.warning("Cursor reconnect fallback!")
             self.connect(self.dbName)
             time.sleep(1)
-            return self.dbConnection.cursor() #no recursion now
+            if self.dbConnection:
+                return self.dbConnection.cursor() #no recursion now
+            raise Exception("No database connection in cursor")
 
     def ensureConnection(self):
         retries=5

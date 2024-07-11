@@ -297,13 +297,13 @@ class SetUpTSVDB():
         table=self.CONFIGTABLE
         fields = ('config_id', 'room', 'activity',"paySection","groups", "grace_time","weekday","from_Time", "to_Time")
         entries=[]
-        entries.append((0,LOC_KRAFTRAUM,ACTIVITY_KR,SECTION_FIT, "['KR','ÜL','FFA']",900,None,None,None))
-        entries.append((1,LOC_KRAFTRAUM,ACTIVITY_GYM,SECTION_FIT, "['KR','ÜL','FFA','GROUP']",7200,0,"08:45:00","09:30:00"))
-        entries.append((2,LOC_KRAFTRAUM,ACTIVITY_GYM,SECTION_FIT, "['KR','ÜL','FFA','GROUP']",7200,3,"08:45:00","09:30:00"))
-        entries.append((3,LOC_NORD,ACTIVITY_GYM,SECTION_FIT, "['KR','ÜL','FFA','GROUP']",7200,None,None,None))
-        entries.append((4,LOC_SPIEGELSAAL,ACTIVITY_GYM,SECTION_FIT, "['KR','ÜL','FFA','GROUP']",7200,None,None,None))
-        entries.append((5,LOC_DOJO,ACTIVITY_GYM,SECTION_FIT, "['KR','ÜL','FFA','GROUP']",7200,None,None,None))
-        entries.append((6,LOC_SAUNA,ACTIVITY_SAUNA,SECTION_SAUNA,"[]",3600*4,None,None,None)) #Login every 4 hours, no logout
+        entries.append((0,LOC_KRAFTRAUM,ACTIVITY_KR,SECTION_FIT, "['KR','ÜL']",900,None,None,None))
+        entries.append((1,LOC_KRAFTRAUM,ACTIVITY_GYM,SECTION_FIT, "['KR','ÜL','FFA','GROUP']",2700,0,"08:45:00","09:30:00"))
+        entries.append((2,LOC_KRAFTRAUM,ACTIVITY_GYM,SECTION_FIT, "['KR','ÜL','FFA','GROUP']",2700,3,"08:45:00","09:30:00"))
+        entries.append((3,LOC_NORD,ACTIVITY_GYM,SECTION_FIT, "['KR','ÜL','FFA','GROUP']",2700,None,None,None))
+        entries.append((4,LOC_SPIEGELSAAL,ACTIVITY_GYM,SECTION_FIT, "['KR','ÜL','FFA','GROUP']",2700,None,None,None))
+        entries.append((5,LOC_DOJO,ACTIVITY_GYM,SECTION_FIT, "['KR','ÜL','FFA','GROUP']",2700,None,None,None))
+        entries.append((6,LOC_SAUNA,ACTIVITY_SAUNA,SECTION_SAUNA,"[]",14400*4,None,None,None)) #Login every 4 hours, no logout
         entries.append((7,"TEST",ACTIVITY_GYM,SECTION_FIT, "['KR','ÜL','FFA','GROUP']",120,5,"19:00:00","23:59:59"))
         self.db.insertMany(table, fields, entries)
         
@@ -318,6 +318,12 @@ class SetUpTSVDB():
         entries.append((6,"tsvaccess4",7)) #spare
         entries.append((7,"tsvaccess5",5)) #Dojo with ampel
         entries.append((8,"tsvaccess6",4)) #spiegel with ampel
+        #entries.append((9,"tsvaccess0",0)) #test entry
+        #The new Kraftraum device - replacing tsvaccess1
+        entries.append((10,"tsvaccess7",0)) #KR with ampel
+        entries.append((11,"tsvaccess7",1)) #FIT Group MO
+        entries.append((12,"tsvaccess7",2)) #FIT Group DO
+        
         #entries.append((9,"msi",0))
         #entries.append((10,"msi",7))
         self.db.insertMany(table, fields, entries)  
