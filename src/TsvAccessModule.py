@@ -105,21 +105,12 @@ class RFIDAccessor():
         # we just read the number... 
         if rfid:
             if rfid in self.eastereggs:
-                Log.info("Master check %s",rfid)
-                if self.ledCounter: 
-                    self.ledCounter.text("CHEF")
-                    Log.info("Displayed CHEF")
-                Log.info("Test connection")
-                self.db.ensureConnection()
-                if self.db.isConnected():
-                    Log.info("Test connection OK")
-                    self.gate.welcome1()
-                else:
-                    self.gate.signalAlarm()
-                    Log.warning("Test connection FAILS")
-                Log.info("Master check done")
-                return
+                return self._masterCheck(rfid)
+            
             #rfid & paysection must fit ->if section in PREPAID-> decrease count
+            if not self.db.isConnected():
+                raise Exception("Connection failed")
+
             ps = Konfig.asDBString(self.configData.allPaySections())
             stmt ="SELECT id,access,flag,payuntil_date,prepaid from %s m join %s b ON m.id=b.mitglied_id where m.uuid='%s' and b.section in (%s)"%(self.dbSystem.MAINTABLE,self.dbSystem.BEITRAGTABLE,str(rfid),ps) 
             rows = self.db.select(stmt)
@@ -137,6 +128,21 @@ class RFIDAccessor():
                 Log.info("--- Reject:%d ---", rfid)
         else:
             Log.warning("--- Invalid token %s ---", rfid)   
+
+    def _masterCheck(self,rfid):
+            Log.info("Master check %s",rfid)
+            if self.ledCounter: 
+                self.ledCounter.text("CHEF")
+                Log.info("Displayed CHEF")
+            Log.info("Test connection")
+            self.db.ensureConnection()
+            if self.db.isConnected():
+                Log.info("Test connection OK")
+                self.gate.welcome1()
+            else:
+                Log.warning("Test connection FAILS")
+                raise Exception("Connection failed")
+            Log.info("Master check done")        
         
     def __syncWriteTimer(self):
         if self.writeTimer is None:

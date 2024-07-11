@@ -34,7 +34,7 @@ class RaspberryGPIO():
     PINRED = 17
     PINSIGNAL = 27
     LIGHTON = False
-    LIGHTOFF = True  # depends how we cable the relais
+    LIGHTOFF = True  # depends how we cable the relais - Ali needs "inverted"
 
     def __init__(self,invertGPIO):
         if invertGPIO:
