@@ -669,10 +669,12 @@ class MainFrame(QtWidgets.QMainWindow):
         else:
             self.photoTaken = False
         self.updateAboButton(mbr)
-        if self.model.haveFeesBeenPaid(mbr,"Hauptverein"):
+        feeError = self.model.haveFeesBeenPaid(mbr,"Hauptverein") 
+        if not feeError:
             self.ui_Info.setPixmap(self.pixOK)
         else:
             self.ui_Info.setPixmap(self.pixFail)
+            #?feeError.printReason()
         self.ui_Info.show()                                    
         self.updateEditFields(False)        
 

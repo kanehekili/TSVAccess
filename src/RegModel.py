@@ -250,10 +250,11 @@ class Registration():
         targetPath = SetUpTSVDB.PICPATH
         pic = member.picpath
         host = SetUpTSVDB.HOST
+        #HTTPS: reqUrl = "https://%s:5001/%s/%s" % (host, targetPath, pic)
         reqUrl = "http://%s:5001/%s/%s" % (host, targetPath, pic)
         Log.debug("Load url:%s", reqUrl)
         try:
-            pic = requests.get(reqUrl).content
+            pic = requests.get(reqUrl,verify=False).content
         except:
             Log.error("Picture Server not present")
             return None
@@ -272,24 +273,33 @@ class Registration():
         # ÜL,KR in Group?
         return mbr.access in cfgEntry.groups
     
-    def haveFeesBeenPaid(self,mbr,paySection):
-        if not mbr.fees:
-            payStr = Konfig.asDBString({paySection})
-            stmt = MemberFees.STMT%(mbr.id,payStr)
-            res = self.db.select(stmt)
-            mbr.saveMemberFees(res)
-        return self._checkValidFee(mbr, paySection)    
+    def haveFeesBeenPaid(self,mbr,paySections):
+        #needs to be live! if not mbr.fees:
+        payStr = Konfig.asDBString({paySections})
+        stmt = MemberFees.STMT%(mbr.id,payStr)
+        res = self.db.select(stmt)
+        mbr.saveMemberFees(res)
+        return self._checkValidFee(mbr, paySections)    
         
  
     def _checkValidFee(self,mbr,paysection):
         #Sauna has prepaid, not payuntil
         eolDate = mbr.fees.payUntilForSection(paysection)
+        reason=[]
         if eolDate:
             now = date.today()
             if eolDate.date() < now:
                 Log.warning("Member EOL")
-                return False
-        return True
+                reason.append("Kein Beitrag")
+        if mbr.fees.isBlocked(paysection):
+            Log.warning("Member blocked")
+            reason.append("Gesperrt!")
+
+        if len(reason) == 0:
+            return None
+        mbr.fees.reason = ','.join(reason)
+        return mbr.fees
+
  
     def verifyRfid(self, rfidString, testId):
         # check if rfid  alreay exists ->False
@@ -336,8 +346,6 @@ class Mitglied():
         self.birthdate = birthdate  # This is a date
         self.rfid = rfid_int  # Must be int for faster search
     
-    # TODO error; Wrong datatype if no saved and retireved.
-    # Todo: no check if rfid is unique 
     def birthdayString(self):
         if self.birthdate is None:
             return ""
@@ -369,12 +377,14 @@ class Mitglied():
 
 # Will be created on demand
 class MemberFees():
-    STMT = "select section,payuntil_date,prepaid from BEITRAG where mitglied_id='%s' and section in (%s)"
+    STMT = "select section,payuntil_date,prepaid,flag from BEITRAG join Mitglieder on id = mitglied_id where id = '%s' and section in (%s)"
+    #STMT = "select section,payuntil_date,prepaid from BEITRAG where mitglied_id='%s' and section in (%s)"
 
     def __init__(self, member, rows):
         self.member = member
         self.feeRows = {}  # section->payuntil,prepaid
         self._setupRows(rows)
+        self.reason =""
         
     def payUntilForSection(self, sectionName):
         data = self.feeRows.get(sectionName, None)
@@ -382,18 +392,29 @@ class MemberFees():
             return data[0]
         return None
     
+    #unused!
     def prepaidForSection(self, sectionName):
         data = self.feeRows.get(sectionName, None)
         if data: 
             return data[1]
         return None
 
+    def isBlocked(self,sectionName):
+        data = self.feeRows.get(sectionName, None)
+        if data: 
+            return data[2]==1
+        return False
+
+    def printReason(self):
+        return self.reason;
+
     def _setupRows(self, rowList):
         for row in rowList:
             key = row[0]
+            #paiduntil->0, prepaid->1, blocked->2
             data = row[1:]
             self.feeRows[key] = data
-            
+         
              
 if __name__ == '__main__':
     pass
