@@ -18,13 +18,16 @@ class Connector():
     def __init__(self,host,user,pwd):
         self.dbConnection = None
         self.dbName=None
+        #https://pynative.com/python-mysql-database-connection/
+        #mariadb: show variables like 'collation%';
         self.mariah_config = {
             'user': user,
             'password': pwd,
             'host': host,
             'port': '3306',
             'ssl_disabled': True,
-            'autocommit':True
+            'autocommit':True,
+            'collation':'utf8mb3_general_ci'
         }
 
     def connect(self, dbName):
