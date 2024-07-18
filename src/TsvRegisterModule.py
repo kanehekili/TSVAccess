@@ -1236,7 +1236,8 @@ class CamModule():
         
         conv = self._currentFrame[y:y + h, x:x + w].copy()
         croppedPic = cv2.cvtColor(conv, cv2.COLOR_RGB2BGR)
-        cv2.imwrite(Registration.SAVEPIC, croppedPic)  # save picture needs that
+        cv2.imwrite(Registration.SAVEPIC, croppedPic)  # imwrite needs that
+        time.sleep(0.2) #Esoteric try to prevent BGR picures (blue tinted)
         return croppedPic
 
     def stopCamera(self):
