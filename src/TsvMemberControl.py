@@ -242,10 +242,12 @@ class MainFrame(QtWidgets.QMainWindow):
         self.ui_ckiButton = QtWidgets.QPushButton("Checkin")
         self.ui_ckiButton.setIcon(QtGui.QIcon("./web/static/checkin.png"))
         self.ui_ckiButton.clicked.connect(self._onCKIClicked)
+        self.ui_ckiButton.setToolTip("Ein- oder Auschecken") 
         
         self.ui_blockButton = QtWidgets.QPushButton("Sperren")
         self.ui_blockButton.setIcon(QtGui.QIcon("./web/static/halt.png"))
         self.ui_blockButton.clicked.connect(self._onBlockClicked)
+        self.ui_blockButton.setToolTip("Nur ändern in Absprache mit GS!")
         
         '''
         Abo -> just an idea  
@@ -500,16 +502,19 @@ class MainFrame(QtWidgets.QMainWindow):
         ckiText = "-" if len(res) == 0 else ','.join(res) 
         self.ui_ckiDisplay.setText(ckiText)
         accessOK = self.model.isValidAccess(mbr, cfgEntry)
-        paymentOK = self.model.haveFeesBeenPaid(mbr, cfgEntry.paySection)
-        notBlocked = mbr.flag == 0
-        if accessOK and paymentOK and notBlocked:
+        feeError = self.model.haveFeesBeenPaid(mbr, cfgEntry.paySection)
+        if accessOK and not feeError:
             self._updateCKIButton(len(res))
             blockState = "Zugang gültig"
         else:
             Log.warning("Member access not valid")
-            self.ui_ckiDisplay.setText("Kein Zugang für Bereich %s " % (cfgEntry.activity))
+            if feeError:
+                txt = feeError.printReason()
+            else:
+                txt = "Falsches Ticket"
+            self.ui_ckiDisplay.setText("Kein Zugang für Bereich %s : %s " % (cfgEntry.activity,txt))
             self.ui_ckiButton.setEnabled(False)
-            self.ui_blockButton.setEnabled(False)
+            #self.ui_blockButton.setEnabled(False)
             blockState = "Zugang gesperrt"
         self.ui_Blocked.setText(blockState)
 
