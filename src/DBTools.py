@@ -27,7 +27,8 @@ class Connector():
             'port': '3306',
             'ssl_disabled': True,
             'autocommit':True,
-            'collation':'utf8mb3_general_ci'
+            'collation':'utf8mb3_general_ci',
+            'raise_on_warnings': True
         }
 
     def connect(self, dbName):
@@ -70,6 +71,11 @@ class Connector():
 
     def isConnected(self):
         if self.dbConnection is None:
+            return False
+        host = self.mariah_config["host"]
+        hostUp = os.system(f"ping -c 1 {host}") == 0
+        if not hostUp:
+            Log.warning("Ping failed - Server not online")
             return False
         return self.dbConnection.is_connected()
 

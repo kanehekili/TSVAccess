@@ -54,6 +54,7 @@ class RFIDAccessor():
     def connect(self):
         self.dbSystem = SetUpTSVDB(SetUpTSVDB.DATABASE)
         self._waitForConnection()
+        self.db._getCursor().execute("SET SESSION MAX_STATEMENT_TIME=1000")
         self.readLocation()
         return self.dbSystem.isConnected()
     
@@ -69,7 +70,8 @@ class RFIDAccessor():
     def readLocation(self):
         table1 = self.dbSystem.LOCATIONTABLE
         table2 = self.dbSystem.CONFIGTABLE
-        host = socket.gethostname()
+        #host = socket.gethostname()
+        host="tsvaccess1"
         fields=','.join(Konfig.FIELD_DEF)
         stmt = "select %s from %s conf join %s loc where loc.host_name='%s' and conf.config_id =loc.config order by(conf.config_id)"%(fields,table2,table1,host)
         #stmt = "select activity,paySection,groups,grace_time,mode from %s loc JOIN %s conf where loc.config_id=conf.config_id and loc.host_name='%s'"%(table1,table2,host)
@@ -302,8 +304,6 @@ if __name__ == '__main__':
     signal.signal(signal.SIGHUP, handleSignals)  
     argv = sys.argv
     args = parse()
-    #invertGPIO=args.invert
-    #intermittentBuzz = args.buzz
      
     try:
         ACCESSOR = RFIDAccessor(args)
