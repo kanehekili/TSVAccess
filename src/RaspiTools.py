@@ -36,10 +36,11 @@ class RaspberryGPIO():
     LIGHTON = False
     LIGHTOFF = True  # depends how we cable the relais - Ali needs "inverted"
 
-    def __init__(self,invertGPIO):
+    def __init__(self,invertGPIO,buzzer):
         if invertGPIO:
             RaspberryGPIO.LIGHTON=True
             RaspberryGPIO.LIGHTOFF=False
+        self.intermittendBuzzer = buzzer  #Toggle buzzer on/off if not integrated.
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(self.PINGREEN, GPIO.OUT)
         GPIO.setup(self.PINRED, GPIO.OUT)
@@ -76,9 +77,21 @@ class RaspberryGPIO():
         
     def signalForbidden(self):
         self.reset()
-        GPIO.output(self.PINRED, self.LIGHTON)        
-        GPIO.output(self.PINSIGNAL, self.LIGHTON)
+        GPIO.output(self.PINRED, self.LIGHTON)  
+        if self.intermittendBuzzer:      
+            Timer(0,self.alternateSignal).start()
+        else:
+            GPIO.output(self.PINSIGNAL, self.LIGHTON)
+
         self._restartTimer()
+    
+    def alternateSignal(self):
+        for _ in range(5):
+            GPIO.output(self.PINSIGNAL, self.LIGHTON)
+            sleep(0.4)
+            GPIO.output(self.PINSIGNAL, self.LIGHTOFF)
+            sleep(0.6)
+            
     
     def signalAlarm(self):
         self.reset()
@@ -145,16 +158,30 @@ class RaspberryGPIO():
 
 class RaspberryFAKE():
 
-    def __init__(self):
-        self.timer = None    
+    def __init__(self,invert,buzz):
+        self.timer = None  
+        self.buzz=buzz  
+        if invert:
+            print("INVERTING PINS")
     
     def signalAccess(self):
         print("GREEN LIGHT") 
         self._restartTimer()
 
     def signalForbidden(self):
-        print("RED LIGHT")        
+        print("RED LIGHT")  
+        if self.buzz:
+            Timer(0,self.alternateSignal).start()      
         self._restartTimer()
+        
+
+    def alternateSignal(self):
+        for _ in range(5):
+            print("Buzz on")
+            sleep(0.6)
+            print("Buzz off")
+            sleep(0.6)
+        print ("finish")
 
     def welcome1(self):
         print("Welcome")

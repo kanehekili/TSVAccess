@@ -6,7 +6,7 @@ Reads some input, checks with remote db and gives a sign (RED=forbidden, GREEN=a
 "Zugangskontrolle auf RASPI"
 @author: matze
 '''
-import time, socket, signal, sys,threading
+import time, socket, signal, sys,threading,argparse
 import DBTools
 from DBTools import OSTools
 from TsvDBCreator import SetUpTSVDB,Konfig
@@ -31,16 +31,16 @@ from RaspiTools import RaspberryGPIO, MFRC522Reader,LED7,Clock,RaspberryFAKE
 class RFIDAccessor():
     HOUR_START=8
     HOUR_END=22
-    def __init__(self,invertGPIO):
+    def __init__(self,args):
         self.eastereggs = [2229782266]
         self.writeTimer=None
         # we might use a time between 8 and 22:00self.latestLocCheck=None
         self.condLock = threading.Condition()
         if RaspiTools.RASPI:
-            self.gate = RaspberryGPIO(invertGPIO)
+            self.gate = RaspberryGPIO(args.invert,args.buzz)
             self.reader = MFRC522Reader()
         else:
-            self.gate = RaspberryFAKE()
+            self.gate = RaspberryFAKE(args.invert,args.buzz)
             self.reader = RFCUSB() 
         if RaspiTools.LEDS:
             self.ledCounter=LED7()
@@ -289,6 +289,11 @@ def playSound(ok):
 def handleSignals(*_args):
     sys.exit(1)  # -> leads to finally
     
+def parse():
+    parser = argparse.ArgumentParser(description="access")
+    parser.add_argument('-i', dest="invert", action='store_true', help="invert gpios")
+    parser.add_argument('-b', dest="buzz", action='store_true', help= "intermittent buzzer")
+    return parser.parse_args()
 
 if __name__ == '__main__':
     global ACCESSOR
@@ -296,11 +301,12 @@ if __name__ == '__main__':
     signal.signal(signal.SIGTERM, handleSignals)
     signal.signal(signal.SIGHUP, handleSignals)  
     argv = sys.argv
-    invertGPIO=False
-    if len(argv)>1:
-        invertGPIO="-i" == argv[1]      
+    args = parse()
+    #invertGPIO=args.invert
+    #intermittentBuzz = args.buzz
+     
     try:
-        ACCESSOR = RFIDAccessor(invertGPIO)
+        ACCESSOR = RFIDAccessor(args)
         if ACCESSOR.connect():
             ACCESSOR.runDeamon()
         else:
