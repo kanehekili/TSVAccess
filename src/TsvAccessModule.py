@@ -35,6 +35,7 @@ class RFIDAccessor():
     def __init__(self,args):
         self.eastereggs = [2229782266]
         self.writeTimer=None
+        self.server = args.server
         # we might use a time between 8 and 22:00self.latestLocCheck=None
         self.condLock = threading.Condition()
         if RaspiTools.RASPI:
@@ -72,7 +73,10 @@ class RFIDAccessor():
     def readLocation(self):
         table1 = self.dbSystem.LOCATIONTABLE
         table2 = self.dbSystem.CONFIGTABLE
-        host = socket.gethostname()
+        if self.server:
+            host =self.server
+        else:
+            host = socket.gethostname()
         fields=','.join(Konfig.FIELD_DEF)
         stmt = "select %s from %s conf join %s loc where loc.host_name='%s' and conf.config_id =loc.config order by(conf.config_id)"%(fields,table2,table1,host)
         #stmt = "select activity,paySection,groups,grace_time,mode from %s loc JOIN %s conf where loc.config_id=conf.config_id and loc.host_name='%s'"%(table1,table2,host)
@@ -322,6 +326,7 @@ def parse():
     parser = argparse.ArgumentParser(description="access")
     parser.add_argument('-i', dest="invert", action='store_true', help="invert gpios")
     parser.add_argument('-b', dest="buzz", action='store_true', help= "intermittent buzzer")
+    parser.add_argument('-s', dest="server", type=str, default=None, help= "intermittent buzzer")
     return parser.parse_args()
 
 if __name__ == '__main__':
