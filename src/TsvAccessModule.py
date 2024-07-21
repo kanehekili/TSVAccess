@@ -72,8 +72,7 @@ class RFIDAccessor():
     def readLocation(self):
         table1 = self.dbSystem.LOCATIONTABLE
         table2 = self.dbSystem.CONFIGTABLE
-        #host = socket.gethostname()
-        host="tsvaccess1"
+        host = socket.gethostname()
         fields=','.join(Konfig.FIELD_DEF)
         stmt = "select %s from %s conf join %s loc where loc.host_name='%s' and conf.config_id =loc.config order by(conf.config_id)"%(fields,table2,table1,host)
         #stmt = "select activity,paySection,groups,grace_time,mode from %s loc JOIN %s conf where loc.config_id=conf.config_id and loc.host_name='%s'"%(table1,table2,host)
