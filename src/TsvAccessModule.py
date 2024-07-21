@@ -8,6 +8,7 @@ Reads some input, checks with remote db and gives a sign (RED=forbidden, GREEN=a
 '''
 import time, socket, signal, sys,threading,argparse
 import DBTools
+from threading import Thread,Event
 from DBTools import OSTools
 from TsvDBCreator import SetUpTSVDB,Konfig
 from datetime import datetime, date
@@ -56,6 +57,7 @@ class RFIDAccessor():
         self._waitForConnection()
         self.db._getCursor().execute("SET SESSION MAX_STATEMENT_TIME=1000")
         self.readLocation()
+        self.spawnNetControl()
         return self.dbSystem.isConnected()
     
     def _waitForConnection(self):
@@ -251,9 +253,22 @@ class RFIDAccessor():
             return ok    
         Log.warning("None access for required group")
         return False
+    
+    def spawnNetControl(self):
+        self.stopper=Event()
+        netCrtl = Repeater(self.stopper,10,self.__superviseConnection)
+        netCrtl.start()
+    
+    def __superviseConnection(self):
+        ret = self.db.pingHost()
+        if not ret: 
+            self.gate.signalBrokenConnection()
+    
+           
 
     def shutDown(self):
         self.running=False
+        self.stopper.set() #stop ping control
         with self.condLock:            
             self.condLock.notify_all()
         self.dbSystem.close()
@@ -262,6 +277,19 @@ class RFIDAccessor():
             self.ledCounter.text("StOP")
             del self.ledCounter
             del self.clock #rm all TM instances!
+
+
+class Repeater(Thread):
+    def __init__(self,event, freq, func):
+        Thread.__init__(self)
+        self.stopped=event
+        self.timeout=freq
+        self.func = func
+        
+    def run(self):
+        while not self.stopped.wait(self.timeout):
+            self.func()
+        
 
 #Testing only - not productive:
 class RFCUSB():

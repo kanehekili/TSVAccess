@@ -72,12 +72,16 @@ class Connector():
     def isConnected(self):
         if self.dbConnection is None:
             return False
+        return self.dbConnection.is_connected()
+
+    def pingHost(self):
         host = self.mariah_config["host"]
-        hostUp = os.system(f"ping -c 1 {host}") == 0
+        hostUp = os.system(f"ping -c 1 {host} >/dev/null 2>&1") == 0
         if not hostUp:
             Log.warning("Ping failed - Server not online")
             return False
-        return self.dbConnection.is_connected()
+        return True
+
 
     def createDatabase(self,dbName):
         try:
