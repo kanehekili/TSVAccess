@@ -17,7 +17,7 @@ from time import sleep
 from enum import Enum
 from collections import Counter
 
-
+Version="2.3"
 
 '''
 Unbelievable windows crap: To get your icon into the task bar:
@@ -41,7 +41,7 @@ class MainFrame(QtWidgets.QMainWindow):
         self.setWindowIcon(getAppIcon())
         self.initUI()
         self.centerWindow()
-        self.setWindowTitle("TSV XLSX Importer")
+        self.setWindowTitle("TSV XLSX Importer "+Version)
         self.show()
         qapp.applicationStateChanged.connect(self.__queueStarted)    
 

@@ -8,9 +8,7 @@ Show graphs per Month or year.
 # https://www.geeksforgeeks.org/create-a-bar-chart-from-a-dataframe-with-plotly-and-flask/
 # https://github.com/alanjones2/Flask-Plotly/tree/main/plotly
 # using  plotly and flask. 
-# pip install flask,plotly,(pandas?)
 from flask import Flask, render_template, request  # , has_request_context, session, url_for
-#import pandas as pd
 import werkzeug
 import json
 import plotly

@@ -24,7 +24,7 @@ class Connector():
             'user': user,
             'password': pwd,
             'host': host,
-            'port': '3306',
+            'port': 3306,
             'ssl_disabled': True,
             'autocommit':True,
             'collation':'utf8mb3_general_ci',
@@ -34,8 +34,8 @@ class Connector():
     def connect(self, dbName):
         self.mariah_config['database'] = dbName
         try:
-            #self.dbConnection=mysql.connect(host=self.HOST,database=dbName, user=self.USER, password=self.PASSWORD,autocommit=True)
             self.dbConnection=mysql.connect(**self.mariah_config)
+            self.dbConnection.auto_reconnect = True
             self.dbName=dbName
             Log.info("Connected to:%s", self.dbConnection.get_server_info())
         except mysql.Error as sqlError:
@@ -58,6 +58,17 @@ class Connector():
                 return self.dbConnection.cursor() #no recursion now
             raise Exception("No database connection in cursor")
 
+    def _getCursorWithReconnect(self, run=1): #Test -not productive
+        try:
+            self.dbConnection.ping(reconnect=True, attempts=3, delay=5)
+        except mysql.Error as err:
+            Log.warning("Cursor reconnect fails: %s",str(err))
+            if run ==1:
+                Log.warning("Can't reconnect")
+                raise Exception("No database in get cursor")
+            self.connect(self.dbName)
+        return self.dbConnection.cursor()
+
     def ensureConnection(self):
         retries=5
         while retries >0:
@@ -76,7 +87,7 @@ class Connector():
 
     def pingHost(self):
         host = self.mariah_config["host"]
-        hostUp = os.system(f"ping -c 1 {host} >/dev/null 2>&1") == 0
+        hostUp = os.system(f"ping -c 5 {host} >/dev/null 2>&1") == 0
         if not hostUp:
             Log.warning("Ping failed - Server not online")
             return False

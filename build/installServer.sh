@@ -17,7 +17,7 @@ cp -r web /opt/tsvserver/
 echo "######################################################################"
 echo "#                  Ensure you have installed (arch arm):             #"                     
 echo "#   python-mysql-connector                                           #"
-echo "#   pip install flask,pandas,plotly                                  #"
+echo "#   pip install flask,plotly                                         #"
 echo "######################################################################"
 echo "!config and mail json manually"
 echo "App installed."
