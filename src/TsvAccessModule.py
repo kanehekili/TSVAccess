@@ -35,7 +35,7 @@ class RFIDAccessor():
     def __init__(self,args):
         self.eastereggs = [2229782266]
         self.writeTimer=None
-        self.testserver = args.server
+        self.configuredDevice = args.configuredDevice
         # we might use a time between 8 and 22:00self.latestLocCheck=None
         self.condLock = threading.Condition()
         if RaspiTools.RASPI:
@@ -73,19 +73,19 @@ class RFIDAccessor():
     def readLocation(self):
         table1 = self.dbSystem.LOCATIONTABLE
         table2 = self.dbSystem.CONFIGTABLE
-        if self.testserver:
-            host =self.testserver
+        if self.configuredDevice:
+            client =self.configuredDevice
         else:
-            host = socket.gethostname()
+            client = socket.gethostname()
         fields=','.join(Konfig.FIELD_DEF)
-        stmt = "select %s from %s conf join %s loc where loc.host_name='%s' and conf.config_id =loc.config order by(conf.config_id)"%(fields,table2,table1,host)
+        stmt = "select %s from %s conf join %s loc where loc.host_name='%s' and conf.config_id =loc.config order by(conf.config_id)"%(fields,table2,table1,client)
         #stmt = "select activity,paySection,groups,grace_time,mode from %s loc JOIN %s conf where loc.config_id=conf.config_id and loc.host_name='%s'"%(table1,table2,host)
         rows = self.db.select(stmt)
         if len(rows) == 0:
             raise Exception("No location data - exiting")
 
         self.configData = Konfig(rows)
-        Log.info("Station info:%s room:%s",host,self.configData.configs[0].room) 
+        Log.info("Station info:%s room:%s",client,self.configData.configs[0].room) 
         for entry in self.configData.configs:
             Log.info("  %d) activity:%s paysection:%s groups:%s grace:%s weekday:%s from:%s to:%s",entry.id,entry.activity,entry.paySection,entry.groups,entry.graceTime,str(entry.weekday),str(entry.startTime),str(entry.endTime))
 
@@ -326,7 +326,8 @@ def parse():
     parser = argparse.ArgumentParser(description="access")
     parser.add_argument('-i', dest="invert", action='store_true', help="invert gpios")
     parser.add_argument('-b', dest="buzz", action='store_true', help= "intermittent buzzer")
-    parser.add_argument('-s', dest="server", type=str, default=None, help= "local server - testing only")
+    parser.add_argument('-d', dest="configuredDevice", type=str, default=None, help= "pretend device (testing only)")
+    #parser.add_argument('-s', dest="server", type=str, default="taserver", help= "server name(testing only)")
     return parser.parse_args()
 
 if __name__ == '__main__':

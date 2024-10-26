@@ -16,11 +16,12 @@ We need controllers for mode register (you search for names and have a camera)
 and mode rfid (you have a registered user and search it with the rfid token)
 '''
 
-
+#Registr new. Do not allow Abo change, only 10er tickets
 class RegisterController():
 
     def __init__(self, ui):
         self.mainFrame = ui
+        self.allowsAboCarryover=False
 
     def handleRFIDChanged(self, str_RFID):
         self.mainFrame.verifyRFID(str_RFID)
@@ -33,11 +34,18 @@ class RegisterController():
         # self.mainFrame.ui_SearchEdit.setStyleSheet("QComboBox,QComboBox::editable { background: rgb(0,160,0); color:white}");
         self.mainFrame.ui_SearchEdit.setStyleSheet("QComboBox { padding: 2px; border-radius: 4px; border: 2px solid rgb(0,160,0);}");
 
+    def mainTitle(self):
+        return "Registrierung für TSV Mitglieder"
+    
+    def getAppIcon(self):
+        return './web/static/tsv_logo_100.png'
 
+#Bearbeitung && Abo Control
 class RFIDController(RegisterController):
 
     def __init__(self, ui):
-        RegisterController.__init__(self, ui)        
+        RegisterController.__init__(self, ui)  
+        self.allowsAboCarryover=True      
 
     # slot if rfid search is active (mode)
     def handleRFIDChanged(self, str_RFID):
@@ -58,6 +66,11 @@ class RFIDController(RegisterController):
         # self.mainFrame.ui_RFID.setStyleSheet("QLineEdit { background: rgb(0,160,0); color:white}");
         self.mainFrame.ui_RFID.setStyleSheet("QLineEdit {padding: 2px; border-radius: 4px; border: 2px solid rgb(0,160,0); }");
 
+    def mainTitle(self):
+        return "Bearbeitung/Suche TSV Mitglieder"
+    
+    def getAppIcon(self):
+        return './web/static/TSV-check.png'
 
 class Registration():
     SAVEPIC = "/tmp/tsv.screenshot.png"   

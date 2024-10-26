@@ -366,11 +366,11 @@ class MainFrame(QtWidgets.QMainWindow):
         self.controller = RFIDController(self) if rfidMode else RegisterController(self)
         
         super(MainFrame, self).__init__()
-        self.setWindowIcon(getAppIcon())
+        self.setWindowIcon(QtGui.QIcon(self.controller.getAppIcon()))
         self._widgets = self.initUI()
         self.centerWindow()
         # self._widgets.enableUserActions(False)
-        self.setWindowTitle("Registrierung für TSV Mitglieder")
+        self.setWindowTitle(self.controller.mainTitle())
         self.show()
         qapp.applicationStateChanged.connect(self.__queueStarted)    
 
@@ -801,7 +801,7 @@ class MainFrame(QtWidgets.QMainWindow):
             Log.warning("Abo call with no member!")
             return
         self.model.readAboData(mbr)
-        dlg = AboDialog(self, mbr)
+        dlg = AboDialog(self, mbr,self.controller)
         dlg.show()  # async - dialog has to to the work
         
     def _clearFields(self):
@@ -981,9 +981,10 @@ class MainFrame(QtWidgets.QMainWindow):
             
 class AboDialog(QtWidgets.QDialog):
 
-    def __init__(self, parent, member):
+    def __init__(self, parent, member, controller):
         super(AboDialog, self).__init__(parent)
         self.model = member
+        self.accessController = controller
         self.init_ui()
 
     def init_ui(self):
@@ -1009,9 +1010,12 @@ class AboDialog(QtWidgets.QDialog):
         self.check_sauna.stateChanged.connect(self._onUpdateAboCount)
         self.aboLabel=QtWidgets.QLabel("0")
         fixLbl=QtWidgets.QLabel("Aktuell:")
-        self.saunaCount = QtWidgets.QSpinBox()
-        self.saunaCount.setValue(prepaid)
-        self.saunaCount.valueChanged.connect(self._prepaidChanged)        
+        if self.accessController.allowsAboCarryover:
+            self.saunaCount = QtWidgets.QSpinBox()
+            self.saunaCount.setValue(prepaid)
+            self.saunaCount.valueChanged.connect(self._prepaidChanged)
+        else:
+            self.saunaCount = QtWidgets.QLabel(str(prepaid))        
         
         self.check_sauna.setToolTip("Haken = 10 Tickets kaufen")
         self.saunaCount.setToolTip("Aktuell und Korrektur.\n Abo kann NICHT gelöscht werden!") 
@@ -1260,11 +1264,6 @@ class CamModule():
         res = DBTools.runExternal(cmd2)
         print(res)
 
-
-def getAppIcon():
-    return QtGui.QIcon('./web/static/tsv_logo_100.png')
-
-
 def handle_exception(exc_type, exc_value, exc_traceback):
     """ handle all exceptions """
     if WIN is not None:
@@ -1327,7 +1326,7 @@ def main(args):
             cIndex = _rapidCamIndexSearch()
         argv = sys.argv
         app = QApplication(argv)
-        app.setWindowIcon(getAppIcon())
+        #app.setWindowIcon(getAppIcon())
 
         Log.info("--- Start %s ---","TsvBearbeitung" if rfidMode else "TsvRegister")           
         WIN = MainFrame(app, cIndex, rfidMode)  # keep python reference!
