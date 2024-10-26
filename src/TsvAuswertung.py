@@ -347,14 +347,6 @@ def plot():
     return render_template('index.html', graphJSON=graphJSON, logo_path=logo_path, dynamic_activity=dynamic_activity)
 '''
 
-@app.route('/ratio')  # Access kraftraum
-def testRatio():
-    people = barModel.testRatio()
-    logo_path = "tsv_logo_100.png"
-    dynamic_activity = TsvDBCreator.ACTIVITY_KR
-    pv='/'    
-    return render_template('access.html', parentView=pv, people=people, logo_path=logo_path, dynamic_activity=dynamic_activity)
-
 '''
 @app.route('/')  # TODO lead to avalaibale pages ==Dashboard
 def plotFigTestWorking():
@@ -492,10 +484,7 @@ class BarModel():
 
     def _connectToDB(self):
         self.dbSystem = SetUpTSVDB(SetUpTSVDB.DATABASE)
-        self._waitForConnection()
-        if not self.dbSystem.isConnected():
-            Log.warning("DB connecton terminally failed")
-        #self.getMapping()
+        self.dbSystem.close()
     
     def _waitForConnection(self):
         cnt = 0
@@ -506,8 +495,20 @@ class BarModel():
             self.dbSystem.connectToDatabase(SetUpTSVDB.DATABASE)
             cnt += 1    
         
-        self.db = self.dbSystem.db  
+        return self.dbSystem.db  
     
+    def _connect(self):
+        self.dbSystem.connectToDatabase(SetUpTSVDB.DATABASE)
+        return self._waitForConnection()
+    
+    def atomicSelect(self,stmt):
+        dbi = self._connect()
+        rows = dbi.select(stmt)
+        self._close()
+        return rows
+    
+    def _close(self):
+        self.dbSystem.close()
     '''
     def getMapping(self):
         stmt = "select * from Konfig"
@@ -516,20 +517,6 @@ class BarModel():
         # Known rooms: Kraftraum,Spiegelsaal,Sauna
         for entry in rows:  # room>activity = dic value for getting access 
             self.configMapping[entry[0]] = entry[1]
-    '''
-    '''        
-    def pandaData(self):  # demo
-        # data=[ ["12/4/2023", 50],["13/4/2023", 25],["14/4/2023", 54],["15/4/2023", 32]]
-        data = []
-        now = datetime.now()
-        delta = timedelta(days=1)
-        start = now - timedelta(days=68)
-        while start <= now:
-            dbTime = start.date().isoformat()
-            cnt = random.randint(0, 250)
-            data.append([dbTime, cnt])
-            start = start + delta          
-        return data
     '''
 
     def rawData(self):  # demo
@@ -611,12 +598,14 @@ class BarModel():
     
     # returns a {date-> {id -> rowCount} ] double dict 
     def __collectCountRows(self, activity,room):
+        dbi = self._connect()
         timetable = self.dbSystem.TIMETABLE
         breakTime = 13
         members = {}
         #stmt = "SELECT mitglied_id,access_date from " + timetable + " where activity='" + activity + "'"
         stmt = "SELECT mitglied_id,access_date from %s where activity='%s' and room='%s'"%(timetable,activity,room)
-        rows = self.db.select(stmt)    
+        rows = dbi.select(stmt)   
+        self._close() 
         for row in rows:
             # date_str = datetime.strptime(row[0], '%Y-%m-%d %H:%M:%S.%f').strftime('%Y-%m-%d')
             date_str = row[1].strftime('%Y-%m-%d')
@@ -633,10 +622,12 @@ class BarModel():
         return members
     
     def countSectionMembers(self):
+        dbi = self._connect()
         payTable = self.dbSystem.BEITRAGTABLE
         mbrTable = self.dbSystem.MAINTABLE
         stmt = "SELECT section , COUNT(section) AS CountOf from %s join %s on id=mitglied_id where flag=0 and (payuntil_date > CURDATE() or payuntil_date is Null) GROUP BY section  ORDER BY COUNT(section) DESC" % (payTable,mbrTable)
-        rows = self.db.select(stmt)
+        rows = dbi.select(stmt)
+        self._close()
         x_values = []
         y_values = []    
         for row in rows:
@@ -646,6 +637,7 @@ class BarModel():
         
     # show pic and names of those that are curently in the activity +#TOSO AND ROOM
     def currentVisitorPictures(self, activity,room = None, dwellMinutes=-1):
+        dbi = self._connect()
         mbrTable = self.dbSystem.MAINTABLE
         timetable = self.dbSystem.TIMETABLE
         daysplit = "13"  # time between morning and afternoon
@@ -657,7 +649,8 @@ class BarModel():
         else:
             stmt = "SELECT id,first_name,last_name,picpath,access_date FROM " + mbrTable + " m JOIN " + timetable + " z ON m.id = z.mitglied_id WHERE DATE(z.access_date) = CURDATE() AND ((HOUR(z.access_date) < " + daysplit + " AND HOUR(CURTIME()) < " + daysplit + ") OR (HOUR(z.access_date) >= " + daysplit + " AND HOUR(CURTIME()) >= " + daysplit + ")) and activity='" + activity + "' AND room='" + room+ "' ORDER By z.access_date DESC"
             
-        rows = self.db.select(stmt)
+        rows = dbi.select(stmt)
+        self._close()
         if rows is None:
             Log.warning("Picture retrieval failed")
             return [{'name':"Fehler - bitte umgehend melden!",'image_path': 'halt.png'}]
@@ -673,56 +666,40 @@ class BarModel():
                 # Log.debug("Visitor toggle: %s",members[mid].checked)
         
         present = [item for item in members.values() if item.isInPlace()]     
-        # people = [{'name': fn+" "+name+"("+datetime.strftime(accDate,"%H:%M")+")", 'image_path': picFolder+picpath} for fn, name, picpath,accDate in rows]
         people = []
         for row in present:
+            print("pic:",picFolder + row.data[3])
             people.append({'name': row.data[1] + " " + row.data[2] + "(" + row.checkInTimeString() + ")", 'image_path': picFolder + row.data[3]}) 
-        # people = [{'name': fn+" "+name+"("+datetime.strftime(accDate,"%H:%M")+")", 'image_path': picFolder+picpath} for id,fn, name, picpath,accDate in present]
         Log.info("Checked in:%d", len(people))
         return people
 
     def configTable(self):
         stmt = "SELECT * from Konfig"
-        return self.db.select(stmt)
+        return self.atomicSelect(stmt)
     
     def registerTable(self):
         # list only NON Assa Abloy keys
         stmt = "select id,register_date,last_name,CAST(birth_date AS DATE),access,r.uuid from Mitglieder m LEFT JOIN AssaAbloy a on a.uuid=m.uuid join RegisterList r on m.id=r.mitglied_id where a.uuid IS NULL and month(register_date)>month(CURDATE())-3 ORDER BY r.register_date ASC"
-        return self.db.select(stmt)
+        return self.atomicSelect(stmt)
     
     def aboTable(self):
         stmt = "select a.buy_date,m.id,m.last_name,m.first_name,a.section from AboList a join Mitglieder m on m.id=a.mitglied_id;"
-        return self.db.select(stmt)
+        return self.atomicSelect(stmt)
     
     def locationTable(self):
         stmt = "Select host_name,config from Location"
-        return self.db.select(stmt)
-
-    def testRatio(self):
-        people = []
-        picFolder = "TSVPIC/"
-        pics = "/home/matze/Pictures/TSPIC"
-        for filename in os.listdir(pics):
-            print(filename)
-            people.append({'name':filename, 'image_path':picFolder + filename})
-        return people
+        return self.atomicSelect(stmt)
 
         
 def main():
-    # global Log
     global barModel
     wd = OSTools().getLocalPath(__file__)
     OSTools.setMainWorkDir(wd)
-    # Log = DBTools.Log
-    # OSTools.setupRotatingLogger("TSVAuswertung", True)
     barModel = BarModel()
     #app.run(debug=False, host='0.0.0.0', port=5001,ssl_context=('data/tsvcert.pem', 'data/tsvkey.pem'))
     app.run(debug=False, host='0.0.0.0', port=5001)
     
-
-
 if __name__ == '__main__':
     sys.exit(main())
-    # r=SimpleBarRenderer(m)
-    # r.app.run(debug=True, host='0.0.0.0', port=5001)
+
     
