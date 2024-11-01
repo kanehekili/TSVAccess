@@ -75,8 +75,27 @@ body {
     margin-left: auto;
   }
 
+  /* Busy cursor class */
+  .busy-cursor {
+    cursor: wait;
+  }
+
 </style>
 
+  <style>
+    .busy-cursor {
+      cursor: wait;
+    }
+  </style>
+ <script>
+    function showBusyCursor() {
+      document.body.classList.add('busy-cursor');
+    }
+
+    window.addEventListener('load', function () {
+      document.body.classList.remove('busy-cursor');
+    });
+  </script>
 
  <body>
    <h1>
@@ -90,10 +109,12 @@ body {
  <nav class="center">
   <ul class="inside">
   {% for row in listData %}
-    <li onclick="location.href='{{row['href']}}'"><a> {{row['title']}} </a></li>
+    <li onclick="showBusyCursor(); location.href='{{row['href']}}'"><a> {{row['title']}} </a></li>
   {% endfor %}
   </ul>
  </nav>      
+ 
+ 
 </body>
 
 </html>
