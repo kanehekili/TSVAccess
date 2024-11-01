@@ -22,6 +22,7 @@ import DBTools
 import sys, os
 import TsvDBCreator
 import time
+import statistics
 
 OSTools.setupRotatingLogger("TSVAuswertung", True)
 Log = DBTools.Log
@@ -34,11 +35,12 @@ app = Flask(__name__,
 '''
 ** Kraftraum Section = TsvDBCreator.ACTIVITY_KR
 '''
-
+MODE_MEAN = "Durchschnitt"
+MODE_MEDIAN = "Median"
 
 @app.route('/' + TsvDBCreator.ACTIVITY_KR)
 def statisticsKraftraum():
-    return statisticsTemplate(TsvDBCreator.ACTIVITY_KR,TsvDBCreator.LOC_KRAFTRAUM)
+    return statisticsTemplate(TsvDBCreator.ACTIVITY_KR,TsvDBCreator.LOC_KRAFTRAUM,pv="/krStatistics")
 
 
 @app.route('/accessKR')  # Access kraftraum
@@ -165,7 +167,7 @@ def dashboard():
         listDataLeft.append(data)
     
     #Statistik
-    entries=(('Kraftraum','Kraftraum '),('Sauna','Sauna '),('groupStatistics','Group '))
+    entries=(('krStatistics','Kraftraum '),('Sauna','Sauna '),('groupStatistics','Group '))
     listDataRight=[]
     for entry in entries:
         data = {"href":entry[0],"title":entry[1]}
@@ -189,6 +191,18 @@ def groupRooms():
         listData.append(data)
      
     return render_template('sublist.html', logo_path=logo_path, listData=listData,sublistheader="TSV Group Aktiv")
+
+@app.route('/krStatistics')
+def listKRStatistics():
+    logo_path = "tsv_logo_100.png"
+    entries=((TsvDBCreator.ACTIVITY_KR,"Kraftraum Nutzung"),("blockKR", "Kraftraum Auslastung"),(("blockKRMedian", "Kraftraum Auslastung Median")))
+    listData=[]
+    for entry in entries:
+        data = {"href":entry[0],"title":entry[1]}
+        listData.append(data)
+    
+    return render_template('sublist.html', logo_path=logo_path, listData=listData,sublistheader="Kraftraum Statistiken")        
+    
 
 @app.route('/groupStatistics')
 def groupStatistics():
@@ -219,6 +233,20 @@ def manage_picture(picture_name):
             return None
         return "200"
 
+@app.route('/blockKR')
+def statisticsBlockUsageKRMean():
+    activity = TsvDBCreator.LOC_KRAFTRAUM
+    pv="/krStatistics"
+    return _statisticsBlockTemplate(activity,MODE_MEAN,pv)
+    
+
+@app.route('/blockKRMedian')
+def statisticsBlockUsageKRMedian():
+    activity = TsvDBCreator.LOC_KRAFTRAUM
+    pv="/krStatistics"
+    return _statisticsBlockTemplate(activity,MODE_MEDIAN,pv)
+
+    
 
 # subcall:
 def statisticsTemplate(activity,room=TsvDBCreator.LOC_KRAFTRAUM,pv='/'):
@@ -238,6 +266,43 @@ def statisticsTemplate(activity,room=TsvDBCreator.LOC_KRAFTRAUM,pv='/'):
     logo_path = "tsv_logo_100.png"
     return render_template('index.html', graphJSON=graphJSON, logo_path=logo_path, dynamic_activity=activity,parentView=pv)    
 
+
+def _statisticsBlockTemplate(activity,calcMode=MODE_MEAN, parentView='/'):
+    logo_path = "tsv_logo_100.png"
+    weekdays = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"]
+    colors=["#FFA500","#1f77b4","#800080","#B41111"]
+    res = barModel.collectBlockUsage(activity,calcMode) #dict[block] = [weekday array sums]
+    
+    # Create a trace for each time block
+    data=[]
+    colIdx=0
+    for block,dailyData in res.items():
+        goBar = go.Bar(
+            x=weekdays,
+            y=dailyData,
+            name=block,
+            text=dailyData,
+            textposition="auto",
+            marker_color=colors[colIdx]
+        )
+        data.append(goBar)
+        colIdx+=1
+    
+    # Set layout options for stacked bars and other settings
+    layout = go.Layout(
+        title="Auslastung pro Zeitblock (%s)"%(calcMode),
+        xaxis=dict(title="Wochentag"),
+        yaxis=dict(title="Besucher"),
+        barmode="stack"
+    )
+    
+    # Generate figure
+    fig = go.Figure(data=data, layout=layout)
+    
+    # Convert figure to JSON for rendering in template
+    graphJSON = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
+    return render_template('index.html', graphJSON=graphJSON, logo_path=logo_path, dynamic_activity=activity,parentView=parentView)
+    
 
 @app.route('/sectionS', methods=["GET", "POST"])
 def drawSectionMembers(): 
@@ -404,6 +469,7 @@ class AccessRow():
     def __gt__(self, other):
         return self.da > other.da
 
+  
 
 class CountRow():
     # SELECT mitglied_id,access_date
@@ -668,10 +734,52 @@ class BarModel():
         present = [item for item in members.values() if item.isInPlace()]     
         people = []
         for row in present:
-            print("pic:",picFolder + row.data[3])
+            #print("pic:",picFolder + row.data[3])
             people.append({'name': row.data[1] + " " + row.data[2] + "(" + row.checkInTimeString() + ")", 'image_path': picFolder + row.data[3]}) 
         Log.info("Checked in:%d", len(people))
         return people
+
+    '''
+    Usage Block:
+    select a hour block on a weekday for an activity. Calculate MEAN or MEDIAN
+    '''
+    def collectBlockUsage(self,activity,calcMode):
+        blockDefs =[(9,12),(15,18),(18,20),(20,22)] #= 0,1,2,3
+        weekdays = range(7) #Monday thru Sunday
+        #produce an array of 4 blocks with 7 values each. Try median or mean?
+        #open connection
+        res = {}
+        #blockCount=0
+        dbi = self._connect()
+        for block in blockDefs:
+            key = "%d-%d"%(block[0],block[1])
+            res[key] = []
+            for day in weekdays:
+                rows = self._countBlockUsage(dbi,activity, block[0], block[1], day)
+                if calcMode==MODE_MEAN:
+                    summary = self._calcMeanBlockUsage(rows)
+                else:
+                    summary = self._calcMedianBlockUsage(rows)
+                res[key].append(round(summary))
+        self._close()
+        return res
+    
+    def _countBlockUsage(self,dbi,activity,blockStart,blockEnd,weekday):
+        table="Zugang"
+        stmt = "SELECT DATE(access_date) AS aDate, COUNT(DISTINCT mitglied_id) AS cnt FROM %s WHERE activity = '%s' AND HOUR(access_date) >= %d AND HOUR(access_date) < %d AND WEEKDAY(access_date) = %d GROUP BY DATE(access_date) ORDER BY DATE(access_date)"%(table,activity,blockStart,blockEnd,weekday)
+        return dbi.select(stmt)
+    
+    def _calcMeanBlockUsage(self,rows):
+        summaries = [row[1] for row in rows]
+        return statistics.mean(summaries)
+    
+    def _calcMedianBlockUsage(self,rows):
+        #list comprehension, we don't need the dates.  
+        summaries = [row[1] for row in rows]
+        return statistics.median(summaries)
+    '''
+    End block usage part
+    '''
 
     def configTable(self):
         stmt = "SELECT * from Konfig"
