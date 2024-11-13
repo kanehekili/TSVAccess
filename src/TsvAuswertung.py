@@ -51,6 +51,14 @@ def visitorsKraftraum():
     pv='/' 
     return render_template('access.html', parentView=pv, people=people, logo_path=logo_path, dynamic_activity=dynamic_activity, location_count=len(people))
 
+@app.route('/dumpUsers')
+def dumpUsers():
+    people = barModel.debugAllUsers()
+    logo_path = "tsv_logo_100.png"
+    dynamic_activity = TsvDBCreator.ACTIVITY_KR   
+    pv='/' 
+    return render_template('access.html', parentView=pv, people=people, logo_path=logo_path, dynamic_activity=dynamic_activity, location_count=len(people))
+
     
 @app.route('/' + TsvDBCreator.ACTIVITY_KR + "Usage")
 def testVerweilzeitKraftraum():
@@ -673,6 +681,19 @@ class BarModel():
         Log.info("Checked in:%d", len(people))
         return people
 
+    def debugAllUsers(self):
+        dbi = self._connect()
+        picFolder = self.dbSystem.PICPATH + "/"
+        mbrTable = self.dbSystem.MAINTABLE
+        stmt = "SELECT id,first_name,last_name,picpath from %s where picpath is not NULL"%(mbrTable)
+        rows = dbi.select(stmt)
+        self._close()
+        people = []
+        for row in rows:
+            people.append({'name': row[1] + " " + row[2], 'image_path': picFolder + row[3]}) 
+        Log.info("Checked in:%d", len(people))
+        return people       
+    
     def configTable(self):
         stmt = "SELECT * from Konfig"
         return self.atomicSelect(stmt)
