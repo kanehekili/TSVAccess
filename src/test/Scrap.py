@@ -275,7 +275,21 @@ def testDailyCount():
     
     db.close()
     
-    
+def countBlockUsage():
+    table="Zugang"
+    room="Kraftraum"
+    startHour = 9
+    endHour = 12
+    weekday=0
+    stmt = "SELECT DATE(access_date) AS aDate, COUNT(DISTINCT mitglied_id) AS cnt FROM %s WHERE room = '%s' AND HOUR(access_date) >= %d AND HOUR(access_date) < %d AND WEEKDAY(access_date) = %d GROUP BY DATE(access_date) ORDER BY DATE(access_date)"%(table,room,startHour,endHour,weekday)
+    c=openConnector()
+    rows = c.select(stmt)
+    for info in rows:
+        print(info)
+    #(datetime.date(2024, 5, 13), 22)    
+    c.close()    
+        
+          
 
 def testTimeSpan():
     table="Zugang"
@@ -454,5 +468,6 @@ if __name__ == '__main__':
     #testSelect()
     #testCreateAccessData()
     #nextDay()
-    sendEmail()
+    #sendEmail()
+    countBlockUsage()
     pass
