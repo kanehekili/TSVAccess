@@ -57,7 +57,7 @@ def visitorsKraftraum():
 def dumpUsers():
     people = barModel.debugAllUsers()
     logo_path = "tsv_logo_100.png"
-    dynamic_activity = TsvDBCreator.ACTIVITY_KR   
+    dynamic_activity = "Alle Fit&Fun"   
     pv='/' 
     return render_template('access.html', parentView=pv, people=people, logo_path=logo_path, dynamic_activity=dynamic_activity, location_count=len(people))
 
