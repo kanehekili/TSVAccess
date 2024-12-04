@@ -562,7 +562,7 @@ def parseOptions(args):
         opts, args = getopt.getopt(args[1:], "rlmst:c:", ["convert","reset", "updateLocation", "updateMail" "updateScheme","transponder"])
         if len(opts) == 0:
             printUsage()
-    except getopt.GetoptError as err:
+    except getopt.GetoptError:
         printUsage()
         sys.exit(2)
     

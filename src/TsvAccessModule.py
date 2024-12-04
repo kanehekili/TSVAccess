@@ -38,6 +38,7 @@ class RFIDAccessor():
         self.configuredDevice = args.configuredDevice
         # we might use a time between 8 and 22:00self.latestLocCheck=None
         self.condLock = threading.Condition()
+        self.stopper=Event()
         if RaspiTools.RASPI:
             self.gate = RaspberryGPIO(args.invert,args.buzz)
             self.reader = MFRC522Reader()
@@ -258,7 +259,6 @@ class RFIDAccessor():
         return False
     
     def spawnNetControl(self):
-        self.stopper=Event()
         netCrtl = Repeater(self.stopper,10,self.__superviseConnection)
         netCrtl.start()
     
