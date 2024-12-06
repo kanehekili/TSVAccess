@@ -10,7 +10,7 @@ import time, socket, signal, sys,threading,argparse
 import DBTools
 from threading import Thread,Event
 from DBTools import OSTools
-from TsvDBCreator import SetUpTSVDB,Konfig
+from TsvDBCreator import SetUpTSVDB,Konfig,DBAccess
 from datetime import datetime, date
 from threading import Timer
 import TsvDBCreator
@@ -35,6 +35,7 @@ class RFIDAccessor():
     def __init__(self,args):
         self.eastereggs = [2229782266]
         self.writeTimer=None
+        self.stopper=None
         self.configuredDevice = args.configuredDevice
         # we might use a time between 8 and 22:00self.latestLocCheck=None
         self.condLock = threading.Condition()
@@ -55,25 +56,25 @@ class RFIDAccessor():
         
     
     def connect(self):
-        self.dbSystem = SetUpTSVDB(SetUpTSVDB.DATABASE)
+        self.dbSystem = DBAccess()
         self._waitForConnection()
-        self.db._getCursor().execute("SET SESSION MAX_STATEMENT_TIME=1000")
+        #self.db._getCursor().execute("SET SESSION MAX_STATEMENT_TIME=1000")
         self.readLocation()
         self.spawnNetControl()
-        return self.dbSystem.isConnected()
+        return self.dbSystem.isConnected(self.db)
     
     def _waitForConnection(self):
-        while not self.dbSystem.isConnected():
+        self.db = self.dbSystem.connectToDatabase()
+        while not self.db.isConnected():
             self.gate.signalBrokenConnection()
             time.sleep(10)
             Log.warning("Reconnect to database")
-            self.dbSystem.connectToDatabase(SetUpTSVDB.DATABASE)    
-        
-        self.db = self.dbSystem.db        
+            self.db=self.dbSystem.connectToDatabase()    
+                
         
     def readLocation(self):
-        table1 = self.dbSystem.LOCATIONTABLE
-        table2 = self.dbSystem.CONFIGTABLE
+        table1 = SetUpTSVDB.LOCATIONTABLE
+        table2 = SetUpTSVDB.CONFIGTABLE
         if self.configuredDevice:
             client =self.configuredDevice
         else:
@@ -98,7 +99,7 @@ class RFIDAccessor():
                 self.verifyAccess(rfid)  
                 self.__syncWriteTimer()  
             except KeyboardInterrupt:
-                print("Exit")
+                Log.warnig("Exit keyinterrupt")
                 return
             except Exception as ex:
                 self.gate.signalAlarm()
@@ -120,7 +121,7 @@ class RFIDAccessor():
                 raise Exception("Connection failed")
 
             ps = Konfig.asDBString(self.configData.allPaySections())
-            stmt ="SELECT id,access,flag,payuntil_date,prepaid from %s m join %s b ON m.id=b.mitglied_id where m.uuid='%s' and b.section in (%s)"%(self.dbSystem.MAINTABLE,self.dbSystem.BEITRAGTABLE,str(rfid),ps) 
+            stmt ="SELECT id,access,flag,payuntil_date,prepaid from %s m join %s b ON m.id=b.mitglied_id where m.uuid='%s' and b.section in (%s)"%(SetUpTSVDB.MAINTABLE,SetUpTSVDB.BEITRAGTABLE,str(rfid),ps) 
             rows = self.db.select(stmt)
             if len(rows) > 0:
                 # | id    | access | flag | payuntil_date       |
@@ -190,7 +191,7 @@ class RFIDAccessor():
 
     def __forkWriteAccess(self, key,prepaidCount,cEntry):
         now = datetime.now().isoformat()
-        table = self.dbSystem.TIMETABLE
+        table = SetUpTSVDB.TIMETABLE
         #UPDATE? to row count in order to see whether cki or cko. Use the "pause" which part of day to select...
         stmt = "SELECT mitglied_id,access_date from %s where mitglied_id=%s AND activity='%s' AND room='%s' AND TIMESTAMPDIFF(SECOND,access_date,NOW()) <= %s"%(table,str(key),cEntry.activity,cEntry.room,str(cEntry.graceTime))
         timerows = self.db.select(stmt) 
@@ -216,12 +217,12 @@ class RFIDAccessor():
 
     #kann nur was aus dem PREPAID_INDICATOR sein = Sauna
     def voidPrepaid(self,mid,count,paySection):
-        stmt="UPDATE %s set prepaid=%d where mitglied_id=%d and section='%s'"%(self.dbSystem.BEITRAGTABLE,count-1,mid,paySection)
+        stmt="UPDATE %s set prepaid=%d where mitglied_id=%d and section='%s'"%(SetUpTSVDB.BEITRAGTABLE,count-1,mid,paySection)
         self.db.select(stmt) 
     
     def hasCheckedInToday(self,key):
         dx = Konfig.asDBString(self.configData.allActivities())
-        table = self.dbSystem.TIMETABLE
+        table = SetUpTSVDB.TIMETABLE
         stmt = "select count(*) from %s where mitglied_id=%s and DATE(access_date) = CURDATE() and activity in (%s)"%(table,key,dx)
         rows=self.db.select(stmt)
         return rows[0][0]>0 
@@ -271,10 +272,11 @@ class RFIDAccessor():
 
     def shutDown(self):
         self.running=False
-        self.stopper.set() #stop ping control
+        if self.stopper: #None, if it couldn't even start the connectionr33per45
+            self.stopper.set() #stop ping control
         with self.condLock:            
             self.condLock.notify_all()
-        self.dbSystem.close()
+        self.dbSystem.close(self.db)
         if self.ledCounter:
             self.clock.stop()
             self.ledCounter.text("StOP")

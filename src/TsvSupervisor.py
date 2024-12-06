@@ -6,14 +6,16 @@ Later we might feed a dashbord
 '''
 
 import os, DBTools, time
-from TsvDBCreator import SetUpTSVDB
+from TsvDBCreator import SetUpTSVDB,DBAccess
 
-ACCESSPOINTS ={"192.168.178.113":"tsvaccess1",
-"192.168.178.99":"tsvaccess2",
-"192.168.178.175":"tsvaccess3",
-"192.168.178.172":"tsvaccess4",
-"192.168.178.184":"tsvaccess5",
-"192.168.178.188":"tsvaccess6"
+#1 and 2 are gone, 4 and 7 are replacements
+ACCESSPOINTS ={"192.168.178.12":"tsvaccess1",
+"192.168.178.13":"tsvaccess2",
+"192.168.178.14":"tsvaccess3",
+"192.168.178.16":"tsvaccess4",
+"192.168.178.17":"tsvaccess5",
+"192.168.178.18":"tsvaccess6",
+"192.168.178.19":"tsvaccess7"
 #,"localhost":"me"
 }
 FREQ=60 #Check frequency in seconds
@@ -21,14 +23,23 @@ FREQ=60 #Check frequency in seconds
 DBTools.OSTools.setupRotatingLogger("TSVSupervisor", True)
 Log = DBTools.Log
 
-tsvDB = SetUpTSVDB(SetUpTSVDB.DATABASE)
+# no: tsvDB = SetUpTSVDB(SetUpTSVDB.DATABASE)
+tsvDB = DBAccess()
 
 class Monitor():
     def __init__(self):
         self.devices=[]
         for ip,hn in ACCESSPOINTS.items():
             self.devices.append(Device(ip,hn))
-            
+        self._initializeConnection()
+        
+    def _initializeConnection(self):
+        self.db = self.dbSystem.connectToDatabase()
+        while not self.db.isConnected():
+            time.sleep(10)
+            Log.warning("Reconnect to database")
+            self.db=self.dbSystem.connectToDatabase()    
+        
 
     def checkDevice(self,hostnameOrIP):
         isUp  = os.system(f"ping -4 -W 10 -c 5 {hostnameOrIP}"+ "> /dev/null 2>&1") == 0
@@ -53,8 +64,9 @@ class Monitor():
             self.prepareMail(txt)
             
     def prepareMail(self,failNames):
+        #broken! Pass Connector! USe DBAccess!
         txt = " Warnung\n Folgende Geräte haben den Zustand geändert: \n\n %s\n\n Sent by TSVSupervisor"%(failNames)
-        tsvDB.sendEmail("Device offline warning",False,txt)  
+        tsvDB.sendEmail(self.db,"Device offline warning",False,txt)  
 
     def runDeamon(self):
         self.running = True

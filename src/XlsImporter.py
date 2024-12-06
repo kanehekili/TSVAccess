@@ -311,6 +311,7 @@ class Converter():
         self.dbSystem=None
 
     def connectDB(self):
+        #TODO deprecated!
         self.dbSystem = SetUpTSVDB("TsvDB")#TODO must be executed at start - incl error dialog
         return self.dbSystem.isConnected()
 

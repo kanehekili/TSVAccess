@@ -117,7 +117,7 @@ class GROUPS(Enum):
     UKR =5
 '''
 
-class SetUpTSVDB():
+class DBAccess():
     path = OSTools.getLocalPath(__file__)
     cfg = OSTools.joinPathes(path, "data", ".config.json")
     with open(cfg, "r") as jr:
@@ -127,7 +127,71 @@ class SetUpTSVDB():
         USER = dic["USER"]             
         PASSWORD = dic["PASSWORD"]    
         #---------- RegisterModule only -----------
-        PICPATH = dic.get("PICPATH",None)
+        PICPATH = dic.get("PICPATH",None)    
+        
+    def __init__(self):
+        self.log = DBTools.Log
+
+    def connectToDatabase(self):
+        try:
+            db = Connector(self.HOST, self.USER, self.PASSWORD)
+            db.connect(self.DATABASE)
+        except Connector.DBError as sqlError:
+            db = None
+            self.log.warning(sqlError)
+        return db
+
+    def isConnected(self,db):
+        if db:
+            return db.isConnected()
+        return False
+
+    def close(self,db):
+        if db:
+            db.close()
+
+    def sendEmail(self,db,subject,isMsg,messageText):
+        if not db:
+            self.log.warning("Mail failure, no valid database")
+            return
+        stmt="select * from %s"%(SetUpTSVDB.MAILTABLE)
+        rows = db.select(stmt)
+        #'server'0,'port'1,'sender'2,'passwd'3,'mailTo'4,'mailErr'5,'addText'6)
+        if len(rows)==0:
+            self.log.warning("No mail config - aborting")
+            return
+        data=rows[0]
+        smtp_server = data[0]
+        port = data[1]
+        sender=data[2]
+        password =data[3] 
+        if isMsg:
+            to=data[4]
+            origin=""
+        else:
+            to=data[5]
+            origin=socket.gethostname()
+            
+        footer=data[6]
+        msg = EmailMessage()
+        msg['Subject'] = subject
+        msg['From'] = sender
+        msg['To'] = to
+        fn=to.split('.')[0]
+        fullMessage="Griasdi %s,\n\n%s\n%s\n%s"%(fn,messageText,origin,footer)
+        
+        msg.set_content(fullMessage)
+        try:
+            context = ssl.create_default_context()  
+            with smtplib.SMTP(smtp_server, port) as server:
+                server.starttls(context=context)
+                server.login(sender, password)
+                server.send_message(msg) 
+        except:
+            DBTools.Log.error("Mail could not be sent! Server:%s port:%s from:%s pwd: %s ",smtp_server, port,sender,password)             
+
+#Definition and creation of TSV Tables. This class should not be instantiated in prod - just for creation or db manipulation
+class SetUpTSVDB():
         
     MAINTABLE ="Mitglieder"
     TABLE1 = """
@@ -244,23 +308,11 @@ class SetUpTSVDB():
     ######
     
     
-    def __init__(self, dbName):
-        self.databaseName=dbName
+    def __init__(self, dbAccess):
+        self.dbAccess = dbAccess
         self.log = DBTools.Log
-        self.connectToDatabase(dbName)
+        self.db = self.dbAccess.connectToDatabase()
         
-        
-    def connectToDatabase(self, dbName):
-        try:
-            self.db = Connector(self.HOST, self.USER, self.PASSWORD)
-            self.db.connect(dbName)
-        except Connector.DBError as sqlError:
-            self.db = None
-            self.log.warning(sqlError)
-
-    def isConnected(self):
-        return self.db.isConnected()
-
     def resetDatabase(self):
         try:
             self.db.dropDatabase(self.DATABASE)
@@ -348,67 +400,26 @@ class SetUpTSVDB():
         data=[(server,port,sender,passwd,mailTo,mailErr,"TSV Access")]    
         table=self.MAILTABLE
         self.db.insertMany(table, fields, data)
-        
-    def close(self):
-        if self.db:
-            self.db.close()
+    
 
-
-    def sendEmail(self,subject,isMsg,messageText):
-        stmt="select * from %s"%(self.MAILTABLE)
-        rows = self.db.select(stmt)
-        #'server'0,'port'1,'sender'2,'passwd'3,'mailTo'4,'mailErr'5,'addText'6)
-        if len(rows)==0:
-            self.log.warning("No mail config - aborting")
-            return
-        data=rows[0]
-        smtp_server = data[0]
-        port = data[1]
-        sender=data[2]
-        password =data[3] 
-        if isMsg:
-            to=data[4]
-            origin=""
-        else:
-            to=data[5]
-            origin=socket.gethostname()
-            
-        footer=data[6]
-        msg = EmailMessage()
-        msg['Subject'] = subject
-        msg['From'] = sender
-        msg['To'] = to
-        fn=to.split('.')[0]
-        fullMessage="Griasdi %s,\n\n%s\n%s\n%s"%(fn,messageText,origin,footer)
-        
-        msg.set_content(fullMessage)
-        try:
-            context = ssl.create_default_context()  
-            with smtplib.SMTP(smtp_server, port) as server:
-                server.starttls(context=context)
-                server.login(sender, password)
-                server.send_message(msg) 
-        except:
-            DBTools.Log.error("Mail could not be sent! Server:%s port:%s from:%s pwd: %s ",smtp_server, port,sender,password)
-
-def basicSetup():
-    s = SetUpTSVDB(SetUpTSVDB.DATABASE)
+def basicSetup(dbAccess):
+    s = SetUpTSVDB(dbAccess)
     s.resetDatabase()
     s.db.connect("")
     s.setupDatabase()    
 
-def updateScheme():
-    s = SetUpTSVDB(SetUpTSVDB.DATABASE)
+def updateScheme(dbAccess):
+    s = SetUpTSVDB(dbAccess)
     s.defineDatabases()
 
-def updateAssaAbloy(filename):
+def updateAssaAbloy(dbAccess,filename):
     #filename="/home/matze/Documents/TSV/AssaAbloy/Tranponder1.txt"
     '''
     Text is created with:
     pdfgrep Valid SCALA-transponders.pdf >Tranponder1.txt
     pdfgrep Blocked SCALA-transponders.pdf >>Tranponder1.txt
     '''
-    s = SetUpTSVDB(SetUpTSVDB.DATABASE)
+    s = SetUpTSVDB(dbAccess)
     blocked=[]
     active=[]
     final=[]
@@ -529,8 +540,8 @@ class KonfigEntry():
         return currTime >= self.startTime and currTime <= self.endTime
 
 
-def updateLocationTable():
-    s = SetUpTSVDB("TsvDB")
+def updateLocationTable(dbAccess):
+    s = SetUpTSVDB(dbAccess)
     try:
         s._fillLocationTable()
     except Exception:
@@ -539,8 +550,8 @@ def updateLocationTable():
         s.close()
 #TODO switchLocation(host,loctableID)    
 
-def updateMailTable():
-    s = SetUpTSVDB("TsvDB")
+def updateMailTable(dbAccess):
+    s = SetUpTSVDB(dbAccess)
     try:
         s._fillMailTable()
     except Exception:
@@ -566,17 +577,19 @@ def parseOptions(args):
         printUsage()
         sys.exit(2)
     
+    dbAccess = DBAccess()
+    
     for o, a in opts:
         if o in ("-r", "--reset"):
-            basicSetup()
+            basicSetup(dbAccess)
         elif o in ("-l", "--updateLocation"):
-            updateLocationTable()
+            updateLocationTable(dbAccess)
         elif o in ("-m", "--updateMail"):
-            updateMailTable()            
+            updateMailTable(dbAccess)            
         elif o in ("-s", "--updateScheme"):
-            updateScheme() #Removes data from Zutritt and Beitrag! 
+            updateScheme(dbAccess) #Removes data from Zutritt and Beitrag! 
         elif o in ("-t", "--transponder"):
-            updateAssaAbloy(a)
+            updateAssaAbloy(dbAccess,a)
         elif o in ("-c", "--convert"):
             rfidFromTableToAssaAbloy(a)
         else:

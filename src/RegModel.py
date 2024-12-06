@@ -4,7 +4,7 @@ Created on Nov 21, 2023
 @author: matze
 '''
 import TsvDBCreator
-from TsvDBCreator import SetUpTSVDB, Konfig
+from TsvDBCreator import SetUpTSVDB, Konfig, DBAccess
 import DBTools
 from datetime import datetime,date
 import requests
@@ -83,9 +83,9 @@ class Registration():
         self.configs = None  # a Konfig instance containing KonfigEntry 
 
     def connect(self):
-        self.dbSystem = SetUpTSVDB(SetUpTSVDB.DATABASE)
-        self.db = self.dbSystem.db
-        if self.dbSystem.isConnected():
+        self.dbSystem = DBAccess() 
+        self.db = self.dbSystem.connectToDatabase()
+        if self.dbSystem.isConnected(self.db):
             self.readAATransponders()
             self.configs = self.readConfigurations()
             return True
@@ -101,7 +101,7 @@ class Registration():
     # Membercontrol
     def readConfigurations(self):
         fields = ','.join(Konfig.FIELD_DEF)
-        stmt = "SELECT " + fields + " from " + self.dbSystem.CONFIGTABLE
+        stmt = "SELECT " + fields + " from " + SetUpTSVDB.CONFIGTABLE
         res = self.db.select(stmt)
         return Konfig(res)
     
@@ -112,7 +112,7 @@ class Registration():
     def getMembers(self):
         fields = ','.join(Mitglied.FIELD_DEF)  # FIELD_DEF=('id','first_name','last_name','access','birth_date,picpath,uuid,flag') 
         # stmt = "SELECT id,first_name,last_name from " + self.dbSystem.MAINTABLE
-        stmt = "SELECT " + fields + " from " + self.dbSystem.MAINTABLE
+        stmt = "SELECT " + fields + " from " + SetUpTSVDB.MAINTABLE
         self.memberList = []
         res = self.db.select(stmt)
         for titem in res:
@@ -125,7 +125,7 @@ class Registration():
     
     # used by memberControl
     def todaysAccessDateStrings(self, mbrID, activity):
-        table = self.dbSystem.TIMETABLE
+        table = SetUpTSVDB.TIMETABLE
         daysplit = "13"  # see TsvAuswertung
         partDay = "((HOUR(access_date) < " + daysplit + " AND HOUR(CURTIME()) < " + daysplit + ") OR (HOUR(access_date) >= " + daysplit + " AND HOUR(CURTIME()) >= " + daysplit + "))"
         # stmt= "select access_date from %s where mitglied_id =%d and activity='%s' and DATE(access_date) = CURDATE();"%(table,mbrID,activity)
@@ -138,13 +138,13 @@ class Registration():
     
     # kind of manual cki - MemberControl
     def saveAccessDate(self, mbr, accessDate, locConfig):
-        table = self.dbSystem.TIMETABLE
+        table = SetUpTSVDB.TIMETABLE
         data = []
         data.append((mbr.id, accessDate, locConfig.activity, locConfig.room))
         self.db.insertMany(table, ('mitglied_id', 'access_date', 'activity', 'room'), data)
     
     def updateMember(self, mbr):
-        table = self.dbSystem.MAINTABLE
+        table = SetUpTSVDB.MAINTABLE
         fields = Mitglied.FIELD_SAVE_DEF
         data = mbr.dataSaveArray()
         Log.info("Saving member:%s", str(data[0]))
@@ -165,10 +165,10 @@ class Registration():
         if newCount > 0:  # stays 0 if old has been changed
             msg = "Mitglied Nr %d (%s %s) \nhat heute ein 10er Abo bestellt - als Erinnerung zum abbuchen \U0001f604" % (mbr.id, mbr.firstName, mbr.lastName)
             # TODO mit Link auf aktuelle Seite
-            self.dbSystem.sendEmail("Sauna Abo Daten", True, msg)
+            self.dbSystem.sendEmail(self.db,"Sauna Abo Daten", True, msg)
             self._insertAboData(mbr)
             
-        self.db.insertMany(self.dbSystem.BEITRAGTABLE, fields, data)
+        self.db.insertMany(SetUpTSVDB.BEITRAGTABLE, fields, data)
         # TODO: data saved - so mbr.abo should be reset - can't we use a flag and add the stuff in dialog? 
 
     def _insertAboData(self, mbr):
@@ -176,7 +176,7 @@ class Registration():
         fields = ('mitglied_id', 'buy_date', 'section')
         section = mbr.abo[0]
         data = [(mbr.id, now, section)]
-        self.db.insertMany(self.dbSystem.ABOTABLE, fields, data)
+        self.db.insertMany(SetUpTSVDB.ABOTABLE, fields, data)
 
     def updateAccessData(self, mbr):
         if mbr.initalAccess == mbr.access:  # no change
@@ -193,7 +193,7 @@ class Registration():
         section = rows[0][0]
         fields = ('mitglied_id', 'section')
         data = [(mbr.id, section)]
-        self.db.insertMany(self.dbSystem.BEITRAGTABLE, fields, data)
+        self.db.insertMany(SetUpTSVDB.BEITRAGTABLE, fields, data)
         mbr.initalAccess = mbr.access
      
     def updateRFIDAbrechnung(self, mbr):
@@ -202,7 +202,7 @@ class Registration():
         now = datetime.now().isoformat()
         data = []
         data.append((now, mbr.id, mbr.rfid))
-        self.db.insertMany(self.dbSystem.REGISTERTABLE, ('register_date', 'mitglied_id', 'uuid'), data)
+        self.db.insertMany(SetUpTSVDB.REGISTERTABLE, ('register_date', 'mitglied_id', 'uuid'), data)
         Log.info("Dispensing NEW Chip %d to member %d", mbr.rfid, mbr.id)
         mbr.initialRFID = mbr.rfid
 
@@ -217,16 +217,16 @@ class Registration():
         Log.info("Abo count:%d", rows[0][0])
     
     def mailError(self, msg):
-        self.dbSystem.sendEmail("Registration Error Msg", False, msg)
+        self.dbSystem.sendEmail(self.db,"Registration Error Msg", False, msg)
     
     # beware_ connection could be broken
     def savePicture(self, member):
         self.db.ensureConnection() 
         saved = Registration.SAVEPIC       
-        targetPath = SetUpTSVDB.PICPATH
+        targetPath = DBAccess.PICPATH
         pic = member.lastName + "-" + member.primKeyString() + ".png"
         
-        host = SetUpTSVDB.HOST
+        host = DBAccess.HOST
         response = None
         try:
             reqUrl = "http://%s:5001/%s/%s" % (host, targetPath, pic)     
@@ -245,7 +245,7 @@ class Registration():
     def savePicture2(self, member):
         saved = Registration.SAVEPIC
         data = member.lastName + "-" + member.primKeyString() + ".png"
-        targetPath = SetUpTSVDB.PICPATH
+        targetPath = DBAccess.PICPATH
         member.picpath = data
         try:
             with SCPClient(self.sshClient.get_transport()) as scp:
@@ -260,9 +260,9 @@ class Registration():
       
     def loadPicture(self, member):
         self.db.ensureConnection()
-        targetPath = SetUpTSVDB.PICPATH
+        targetPath = DBAccess.PICPATH
         pic = member.picpath
-        host = SetUpTSVDB.HOST
+        host = DBAccess.HOST
         #HTTPS: reqUrl = "https://%s:5001/%s/%s" % (host, targetPath, pic)
         reqUrl = "http://%s:5001/%s/%s" % (host, targetPath, pic)
         Log.debug("Load url:%s", reqUrl)
@@ -316,7 +316,7 @@ class Registration():
  
     def verifyRfid(self, rfidString, testId):
         # check if rfid  alreay exists ->False
-        stmt = "SELECT id from " + self.dbSystem.MAINTABLE + " where uuid=" + rfidString
+        stmt = "SELECT id from " + SetUpTSVDB.MAINTABLE + " where uuid=" + rfidString
         res = self.db.select(stmt)
         if len(res) > 0:
             if res[0][0] == testId:

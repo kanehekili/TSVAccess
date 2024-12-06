@@ -17,9 +17,10 @@ import plotly.graph_objs as go
 from datetime import datetime, timedelta
 import random
 from DBTools import OSTools
-from TsvDBCreator import SetUpTSVDB
+#from TsvDBCreator import SetUpTSVDB
+from TsvDBCreator import DBAccess,SetUpTSVDB
 import DBTools
-import sys, os
+import sys
 import TsvDBCreator
 import time
 import statistics
@@ -554,35 +555,29 @@ class CountRow():
 class BarModel():
 
     def __init__(self):
-        self._connectToDB()
-
-    def _connectToDB(self):
-        self.dbSystem = SetUpTSVDB(SetUpTSVDB.DATABASE)
-        self.dbSystem.close()
+        self.dbSystem = DBAccess()
     
-    def _waitForConnection(self):
+    def _connect(self):
+        db = self.dbSystem.connectToDatabase()
         cnt = 0
-        while not self.dbSystem.isConnected() and cnt < 10:
+        while cnt < 10:
+            if self.dbSystem.isConnected(db):
+                return db
             Log.warning("DB connection failed. Retry in 10 secs")
             time.sleep(10)
             Log.warning("Reconnect to database")
-            self.dbSystem.connectToDatabase(SetUpTSVDB.DATABASE)
+            db = self.dbSystem.connectToDatabase()
             cnt += 1    
-        
-        return self.dbSystem.db  
-    
-    def _connect(self):
-        self.dbSystem.connectToDatabase(SetUpTSVDB.DATABASE)
-        return self._waitForConnection()
+        return None
     
     def atomicSelect(self,stmt):
         dbi = self._connect()
-        rows = dbi.select(stmt)
-        self._close()
-        return rows
-    
-    def _close(self):
-        self.dbSystem.close()
+        if dbi:
+            rows = dbi.select(stmt)
+            self.dbSystem.close(dbi)
+            return rows
+        return []
+
     '''
     def getMapping(self):
         stmt = "select * from Konfig"
@@ -672,14 +667,11 @@ class BarModel():
     
     # returns a {date-> {id -> rowCount} ] double dict 
     def __collectCountRows(self, activity,room):
-        dbi = self._connect()
-        timetable = self.dbSystem.TIMETABLE
+        timetable = SetUpTSVDB.TIMETABLE
         breakTime = 13
         members = {}
-        #stmt = "SELECT mitglied_id,access_date from " + timetable + " where activity='" + activity + "'"
         stmt = "SELECT mitglied_id,access_date from %s where activity='%s' and room='%s'"%(timetable,activity,room)
-        rows = dbi.select(stmt)   
-        self._close() 
+        rows = self.atomicSelect(stmt)
         for row in rows:
             # date_str = datetime.strptime(row[0], '%Y-%m-%d %H:%M:%S.%f').strftime('%Y-%m-%d')
             date_str = row[1].strftime('%Y-%m-%d')
@@ -696,24 +688,24 @@ class BarModel():
         return members
     
     def countSectionMembers(self):
-        dbi = self._connect()
-        payTable = self.dbSystem.BEITRAGTABLE
-        mbrTable = self.dbSystem.MAINTABLE
+        payTable = SetUpTSVDB.BEITRAGTABLE
+        mbrTable = SetUpTSVDB.MAINTABLE
+        hack = ("Aufnahmegebühr","Kurs")
         stmt = "SELECT section , COUNT(section) AS CountOf from %s join %s on id=mitglied_id where flag=0 and (payuntil_date > CURDATE() or payuntil_date is Null) GROUP BY section  ORDER BY COUNT(section) DESC" % (payTable,mbrTable)
-        rows = dbi.select(stmt)
-        self._close()
+        rows = self.atomicSelect(stmt)
+
         x_values = []
         y_values = []    
         for row in rows:
-            x_values.append(row[0])
-            y_values.append(row[1])
+            if row[0] not in hack:
+                x_values.append(row[0])
+                y_values.append(row[1])
         return (x_values, y_values)
         
     # show pic and names of those that are curently in the activity +#TOSO AND ROOM
     def currentVisitorPictures(self, activity,room = None, dwellMinutes=-1):
-        dbi = self._connect()
-        mbrTable = self.dbSystem.MAINTABLE
-        timetable = self.dbSystem.TIMETABLE
+        mbrTable = SetUpTSVDB.MAINTABLE
+        timetable = SetUpTSVDB.TIMETABLE
         daysplit = "13"  # time between morning and afternoon
         members = {}
         AccessRow.dwellMinutes = dwellMinutes  # Automatic checkout, negative means: we don't care (Sauna)
@@ -723,8 +715,7 @@ class BarModel():
         else:
             stmt = "SELECT id,first_name,last_name,picpath,access_date FROM " + mbrTable + " m JOIN " + timetable + " z ON m.id = z.mitglied_id WHERE DATE(z.access_date) = CURDATE() AND ((HOUR(z.access_date) < " + daysplit + " AND HOUR(CURTIME()) < " + daysplit + ") OR (HOUR(z.access_date) >= " + daysplit + " AND HOUR(CURTIME()) >= " + daysplit + ")) and activity='" + activity + "' AND room='" + room+ "' ORDER By z.access_date DESC"
             
-        rows = dbi.select(stmt)
-        self._close()
+        rows = self.atomicSelect(stmt)
         if rows is None:
             Log.warning("Picture retrieval failed")
             return [{'name':"Fehler - bitte umgehend melden!",'image_path': 'halt.png'}]
@@ -742,18 +733,17 @@ class BarModel():
         present = [item for item in members.values() if item.isInPlace()]     
         people = []
         for row in present:
-            print("pic:",picFolder + row.data[3])
+            #print("pic:",picFolder + row.data[3])
             people.append({'name': row.data[1] + " " + row.data[2] + "(" + row.checkInTimeString() + ")", 'image_path': picFolder + row.data[3]}) 
         Log.info("Checked in:%d", len(people))
         return people
 
     def debugAllUsers(self):
-        dbi = self._connect()
         picFolder = self.dbSystem.PICPATH + "/"
-        mbrTable = self.dbSystem.MAINTABLE
+        mbrTable = SetUpTSVDB.MAINTABLE
         stmt = "SELECT id,first_name,last_name,picpath from %s where picpath is not NULL"%(mbrTable)
-        rows = dbi.select(stmt)
-        self._close()
+        rows = self.atomicSelect(stmt)
+        
         people = []
         for row in rows:
             people.append({'name': row[1] + " " + row[2], 'image_path': picFolder + row[3]}) 
@@ -782,7 +772,7 @@ class BarModel():
                 else:
                     summary = self._calcMedianBlockUsage(rows)
                 res[key].append(round(summary))
-        self._close()
+        self.dbSystem.close(dbi)
         return res
     
     def _countBlockUsage(self,dbi,activity,blockStart,blockEnd,weekday):
