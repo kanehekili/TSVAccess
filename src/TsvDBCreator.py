@@ -24,9 +24,6 @@ import smtplib,ssl,struct
 from email.message import EmailMessage
 from ast import literal_eval
 
-# codes found on migration
-ACCESSCODES = ["GROUP","ÜL","FFA","KR","JUGGLING","UKR"]
-
 # Allowed access rooms: Display only
 LOC_KRAFTRAUM = "Kraftraum"
 LOC_SPIEGELSAAL="Spiegelsaal"
@@ -350,24 +347,32 @@ class SetUpTSVDB():
         fields = ('config_id', 'room', 'activity',"paySection","groups", "grace_time","weekday","from_Time", "to_Time")
         entries=[]
         entries.append((0,LOC_KRAFTRAUM,ACTIVITY_KR,SECTION_FIT, "['KR','ÜL']",900,None,None,None))
-        entries.append((1,LOC_KRAFTRAUM,ACTIVITY_GYM,SECTION_FIT, "['KR','ÜL','FFA','GROUP']",2700,0,"08:45:00","09:30:00"))
-        entries.append((2,LOC_KRAFTRAUM,ACTIVITY_GYM,SECTION_FIT, "['KR','ÜL','FFA','GROUP']",2700,3,"08:45:00","09:30:00"))
+        entries.append((1,LOC_KRAFTRAUM,ACTIVITY_GYM,SECTION_FIT, "['GROUP']",2700,0,"08:45:00","09:30:00"))
+        entries.append((2,LOC_KRAFTRAUM,ACTIVITY_GYM,SECTION_FIT, "['GROUP']",2700,3,"08:45:00","09:30:00"))
         entries.append((3,LOC_NORD,ACTIVITY_GYM,SECTION_FIT, "['KR','ÜL','FFA','GROUP']",2700,None,None,None))
         entries.append((4,LOC_SPIEGELSAAL,ACTIVITY_GYM,SECTION_FIT, "['KR','ÜL','FFA','GROUP']",2700,None,None,None))
         entries.append((5,LOC_DOJO,ACTIVITY_GYM,SECTION_FIT, "['KR','ÜL','FFA','GROUP']",2700,None,None,None))
         entries.append((6,LOC_SAUNA,ACTIVITY_SAUNA,SECTION_SAUNA,"[]",14400*4,None,None,None)) #Login every 4 hours, no logout
         entries.append((7,"TEST",ACTIVITY_GYM,SECTION_FIT, "['KR','ÜL','FFA','GROUP']",120,5,"19:00:00","23:59:59"))
+        entries.append((8,LOC_KRAFTRAUM,ACTIVITY_GYM,SECTION_FIT, "['SUP']",900,0,"15:30:00","17:30:00"))
+        entries.append((9,LOC_KRAFTRAUM,ACTIVITY_GYM,SECTION_FIT, "['SUP']",900,3,"15:30:00","17:30:00"))        
+        entries.append((10,"TEST",ACTIVITY_GYM,SECTION_FIT, "['SUP']",900,4,"23:45:00","23:59:00"))
+        entries.append((11,"TEST",ACTIVITY_GYM,SECTION_FIT, "['SUP']",900,5,"00:01:00","23:59:00"))
+        
         self.db.insertMany(table, fields, entries)
         
         table = self.LOCATIONTABLE
         fields = ('id','host_name', 'config')
         entries=[]
+        #Currently offline and used as test device
         entries.append((1,"tsvaccess1",0)) #KR with ampel
         entries.append((2,"tsvaccess1",1)) #FIT Group MO
         entries.append((3,"tsvaccess1",2)) #FIT Group DO
-        entries.append((4,"tsvaccess2",6)) #Sauna with 7-LED 
+        entries.append((15,"tsvaccess1",10)) #Special Fri
+        entries.append((16,"tsvaccess1",11)) #Special Sa
+        entries.append((4,"tsvaccess2",6)) #Sauna backup 
         entries.append((5,"tsvaccess3",3)) #Nord
-        entries.append((6,"tsvaccess4",7)) #spare
+        entries.append((6,"tsvaccess4",6)) #Sauna with 7-LED
         entries.append((7,"tsvaccess5",5)) #Dojo with ampel
         entries.append((8,"tsvaccess6",4)) #spiegel with ampel
         #entries.append((9,"tsvaccess0",0)) #test entry
@@ -375,6 +380,8 @@ class SetUpTSVDB():
         entries.append((10,"tsvaccess7",0)) #KR with ampel
         entries.append((11,"tsvaccess7",1)) #FIT Group MO
         entries.append((12,"tsvaccess7",2)) #FIT Group DO
+        entries.append((13,"tsvaccess7",8)) #Special Fri
+        entries.append((14,"tsvaccess7",9)) #Special Sa
         
         #entries.append((9,"msi",0))
         #entries.append((10,"msi",7))
@@ -440,7 +447,7 @@ def updateAssaAbloy(dbAccess,filename):
     fields=('uuid','remark')
     s.db.createTable(SetUpTSVDB.TABLE6)
     s.db.insertMany(SetUpTSVDB.ASSAABLOY, fields, final)
-    s.close()                     
+    self.db.close()                     
     print("Detected %d valid and %d blocked"%(len(active),len(blocked)))
     for x in blocked:
         if x in active:
@@ -547,7 +554,7 @@ def updateLocationTable(dbAccess):
     except Exception:
         traceback.print_exc()
     finally:
-        s.close()
+        s.db.close()
 #TODO switchLocation(host,loctableID)    
 
 def updateMailTable(dbAccess):
@@ -557,7 +564,7 @@ def updateMailTable(dbAccess):
     except Exception:
         traceback.print_exc()
     finally:
-        s.close()
+        s.db.close()
         
 #Convert the big endian to little endian, which assa abloy needs    
 def rfidFromTableToAssaAbloy(decimalString):

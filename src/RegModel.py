@@ -216,6 +216,11 @@ class Registration():
         mbr.currentAbo = (section, rows[0][0])
         Log.info("Abo count:%d", rows[0][0])
     
+    def accessTypes(self):
+        stmt = "select distinct access from %s" % (SetUpTSVDB.MAINTABLE)
+        rows = self.db.select(stmt)
+        return [access[0] for access in rows if len(access[0])>1]
+    
     def mailError(self, msg):
         self.dbSystem.sendEmail(self.db,"Registration Error Msg", False, msg)
     

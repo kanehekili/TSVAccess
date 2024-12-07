@@ -438,10 +438,8 @@ class MainFrame(QtWidgets.QMainWindow):
         self.ui_AccessLabel.setToolTip("Hier kann der Zugangscode (Multi3) angepasst werden - aktuell nur einer")
         
         self.ui_AccessCombo = QtWidgets.QComboBox(self)
-        themes = TsvDBCreator.ACCESSCODES
+
         self.ui_AccessCombo.addItem("-")
-        for item in themes:
-            self.ui_AccessCombo.addItem(item)
         self.ui_AccessCombo.currentTextChanged.connect(self._onAccessChanged)
         self.ui_AccessCombo.setToolTip("Angabe des Zugangsbereichs")
 
@@ -553,6 +551,10 @@ class MainFrame(QtWidgets.QMainWindow):
         for member in sortedList:
             entry = member.searchName()
             self.ui_SearchEdit.addItem(entry, member)
+    
+    def fillAccessCombo(self,codes):
+        for item in codes:
+            self.ui_AccessCombo.addItem(item)
             
     def updateAboButton(self, mbr):
         self.ui_AboButton.setEnabled(mbr is not None)
@@ -961,6 +963,7 @@ class MainFrame(QtWidgets.QMainWindow):
         else:
             memberList = self.model.getMembers()
             self.fillSearchCombo(memberList)
+            self.fillAccessCombo(self.model.accessTypes())
 
         self.controller.setInitialFocus()
             

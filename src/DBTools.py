@@ -87,7 +87,7 @@ class Connector():
 
     def pingHost(self):
         host = self.mariah_config["host"]
-        hostUp = os.system(f"ping -c 5 {host} >/dev/null 2>&1") == 0
+        hostUp = os.system(f"ping -c 10 {host} >/dev/null 2>&1") == 0
         if not hostUp:
             Log.warning("Ping failed - Server not online")
             return False
