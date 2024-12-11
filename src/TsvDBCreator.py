@@ -113,6 +113,20 @@ class GROUPS(Enum):
     Juggling = 4
     UKR =5
 '''
+'''
+collection of usable statements
+'''
+def halfDayStatement(dateField,daysplit):
+    return f"""DATE({dateField}) = CURDATE() AND 
+         ((TIME({dateField}) < '{daysplit}' AND CURTIME() <= '{daysplit}') 
+         OR 
+         (TIME({dateField}) >= '{daysplit}' AND CURTIME() >= '{daysplit}'))"""
+    
+
+'''
+End of collection
+'''
+
 
 class DBAccess():
     path = OSTools.getLocalPath(__file__)

@@ -8,7 +8,9 @@ Show graphs per Month or year.
 # https://www.geeksforgeeks.org/create-a-bar-chart-from-a-dataframe-with-plotly-and-flask/
 # https://github.com/alanjones2/Flask-Plotly/tree/main/plotly
 # using  plotly and flask. 
-from flask import Flask, render_template, request  # , has_request_context, session, url_for
+from flask import Flask, render_template, request,send_file,make_response  # , has_request_context, session, url_for
+import openpyxl
+from io import BytesIO
 import werkzeug
 import json
 import plotly
@@ -255,7 +257,55 @@ def statisticsBlockUsageKRMedian():
     pv="/krStatistics"
     return _statisticsBlockTemplate(activity,MODE_MEDIAN,pv)
 
+@app.route('/download_excel', methods=['POST'])
+def download_excel():
+    # Get graphJson from the POST request
+    graph_json = request.json['graphJson']
     
+    # Extract data from the graphJson (Example: we assume data is in the first trace)
+    title = graph_json['layout']["title"]
+    xAxis = graph_json['layout']["xaxis"]
+    yAxis = graph_json['layout']["yaxis"]
+    yColumns=graph_json['data']
+    nbrOfYcolumns = len(yColumns)
+    primcol=yColumns[0]
+    yHeaders=[]
+    for i in range(nbrOfYcolumns):
+        heady= yAxis['title']['text']
+        addy = yColumns[i].get("name","")
+        yHeaders.append(heady+":"+addy)
+        
+   
+    # Prepare the data for Excel 
+    df = [[xAxis['title']['text']]]# Headers
+    tmp=df[0]
+    for txt in yHeaders:
+        tmp.append(txt)
+    for i in range(len(primcol['x'])):
+        row = [primcol['x'][i]]
+        
+        for y in range(nbrOfYcolumns):
+            entry=yColumns[y]['y'][i]
+            row.append(entry)
+        df.append(row)
+    
+    # Create a workbook and add data
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Data"
+
+    # Write the data to the Excel file
+    for row in df:
+        ws.append(row)
+
+    # Save the workbook to a BytesIO buffer
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+    fn = title['text']
+    # Return the Excel file as a download - Name is defined on Script side!
+    return send_file(output,as_attachment=True,download_name=f"{fn}.xlsx",mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
 
 # subcall:
 def statisticsTemplate(activity,room=TsvDBCreator.LOC_KRAFTRAUM,pv='/'):
@@ -273,7 +323,7 @@ def statisticsTemplate(activity,room=TsvDBCreator.LOC_KRAFTRAUM,pv='/'):
     
     graphJSON = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
     logo_path = "tsv_logo_100.png"
-    return render_template('index.html', graphJSON=graphJSON, logo_path=logo_path, dynamic_activity=activity,parentView=pv)    
+    return render_template('plot.html', graphJSON=graphJSON, logo_path=logo_path, dynamic_activity=activity,parentView=pv)    
 
 
 def _statisticsBlockTemplate(activity,calcMode=MODE_MEAN, parentView='/'):
@@ -310,7 +360,7 @@ def _statisticsBlockTemplate(activity,calcMode=MODE_MEAN, parentView='/'):
     
     # Convert figure to JSON for rendering in template
     graphJSON = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
-    return render_template('index.html', graphJSON=graphJSON, logo_path=logo_path, dynamic_activity=activity,parentView=parentView)
+    return render_template('plot.html', graphJSON=graphJSON, logo_path=logo_path, dynamic_activity=activity,parentView=parentView)
     
 
 @app.route('/sectionS', methods=["GET", "POST"])
@@ -706,14 +756,23 @@ class BarModel():
     def currentVisitorPictures(self, activity,room = None, dwellMinutes=-1):
         mbrTable = SetUpTSVDB.MAINTABLE
         timetable = SetUpTSVDB.TIMETABLE
-        daysplit = "13"  # time between morning and afternoon
+        #daysplit = "13"  # time between morning and afternoon
+
         members = {}
+        #Warning: Class scope, will break on multiple sessions!
         AccessRow.dwellMinutes = dwellMinutes  # Automatic checkout, negative means: we don't care (Sauna)
         picFolder = self.dbSystem.PICPATH + "/"
+        halfPart = TsvDBCreator.halfDayStatement("z.access_date", "13:30:00")
         if not room:
-            stmt = "SELECT id,first_name,last_name,picpath,access_date FROM " + mbrTable + " m JOIN " + timetable + " z ON m.id = z.mitglied_id WHERE DATE(z.access_date) = CURDATE() AND ((HOUR(z.access_date) < " + daysplit + " AND HOUR(CURTIME()) < " + daysplit + ") OR (HOUR(z.access_date) >= " + daysplit + " AND HOUR(CURTIME()) >= " + daysplit + ")) and activity='" + activity + "' ORDER By z.access_date DESC"
+            stmt = f"""SELECT id,first_name,last_name,picpath,access_date FROM {mbrTable} m 
+            JOIN {timetable} z ON m.id = z.mitglied_id 
+            WHERE {halfPart} AND 
+            activity='{activity}' ORDER By z.access_date DESC"""
         else:
-            stmt = "SELECT id,first_name,last_name,picpath,access_date FROM " + mbrTable + " m JOIN " + timetable + " z ON m.id = z.mitglied_id WHERE DATE(z.access_date) = CURDATE() AND ((HOUR(z.access_date) < " + daysplit + " AND HOUR(CURTIME()) < " + daysplit + ") OR (HOUR(z.access_date) >= " + daysplit + " AND HOUR(CURTIME()) >= " + daysplit + ")) and activity='" + activity + "' AND room='" + room+ "' ORDER By z.access_date DESC"
+            stmt = f"""SELECT id,first_name,last_name,picpath,access_date FROM {mbrTable} m 
+            JOIN {timetable} z ON m.id = z.mitglied_id 
+            WHERE {halfPart} AND
+            activity='{activity}' AND room='{room}' ORDER By z.access_date DESC"""
             
         rows = self.atomicSelect(stmt)
         if rows is None:

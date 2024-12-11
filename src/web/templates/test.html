@@ -1,0 +1,118 @@
+<!doctype html>
+<html>
+<head>
+    <title>TSV Auswertung</title>
+</head> 
+<style>
+	* {
+	    -webkit-box-sizing: border-box;
+	    box-sizing: border-box;
+	}
+	body {
+	    background-color: #272b34;
+	    font-family: 'Khula', sans-serif;
+	    color: white;
+	    margin: 0;
+	    padding: 2em 1em;
+	}
+	
+	  /* CSS for the header */
+	  h1 {
+	    align-items: flex-start;
+	    display: flex;
+	    font-size:3em;  
+	    margin-top:0;
+	    margin-bottom:0;
+	  }
+	
+	  .logo-container {
+	    margin-left: auto;
+	  }
+
+        /* Button styling */
+        #download-btn {
+            font-size: 18px;  /* Bigger text size */
+            padding: 12px 24px; /* Bigger padding for a larger button */
+            margin-top: 30px; /* Space above the button */
+            cursor: pointer; /* Change cursor to pointer */
+            background-color: #4CAF50; /* Green background */
+            color: white;  /* White text */
+            border: none;  /* No border */
+            border-radius: 8px;  /* Rounded corners */
+            transition: background-color 0.3s ease;  /* Smooth transition */
+            display: none; /* Hide the button by default */
+        }
+        #download-btn:hover {
+            background-color: #006505;  /* Darker green when hovered */
+        }
+
+	@media (any-pointer: coarse) {
+		h1 {font-size:3em; }
+	}
+</style>
+
+
+ 	<body>
+	   	<h1>
+	    	<span>TSV Statistik-&nbsp</span>
+	     	<span id="location">{{ dynamic_activity }}</span>
+	     	<div class="logo-container">
+	     		<a href="{{parentView}}" data-toogle="back" title="Zurück zum Dashboard">
+	       		<img src="{{ logo_path }}" alt="Logo">
+	       		</a>
+	     	</div>
+	  	</h1>
+	  	<br/>
+	   	<div id='plotly-graph' class='chart'”></div>
+	   	<button id="download-btn">Excel speichern</button>
+	</body>
+ 
+	<script src='https://cdn.plot.ly/plotly-latest.min.js'></script>
+	<script type='text/javascript'>
+  		var graphs = {{graphJSON | safe}};
+  		Plotly.plot('plotly-graph',graphs,{});
+	</script>
+    <script>
+       (function () { $("[data-toggle='back']").tooltip(); });
+    </script>
+    <script>
+        // Embed the Plotly chart from the graph_json variable
+        var graphJson = {{ graphJSON | safe }};  // This is your Plotly graph JSON
+        var title = graphJson.layout.title; // Chart title
+  		var xAxisLabel = graphJson.layout.xaxis?.title; // X-axis label
+        var yAxisLabel = graphJson.layout.yaxis?.title; // Y-axis label
+          // Render the graph to the div
+        Plotly.newPlot('plotly-graph', graphJson.data, graphJson.layout).then(function () {
+        
+        // Handle the button click
+        document.getElementById('download-btn').style.display = 'block';
+        document.getElementById('download-btn').addEventListener('click', function() {
+            // Send the graphJson to the server via Fetch API (POST request)
+            fetch('/download_excel', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    graphJson: graphJson  // Send the JSON object to the server
+                })
+            })
+            .then(response => response.blob())  // Expecting a binary file (Excel)
+            .then(blob => {
+                // Trigger file download
+                //const filename = (title ? title.text.replace(/[<>:"/\\|?*]+/g, '_') : 'TSVAccess') + '.xlsx';
+                const filename = title.text
+                    .replace(/[<>:"/\\|?*]+/g, '_') // Replace special characters
+                    .replace(/\s+/g, '_')          // Replace spaces with underscores
+                    + '.xlsx';
+                var link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = filename;
+                link.click();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        })});
+    </script>	
+</html>

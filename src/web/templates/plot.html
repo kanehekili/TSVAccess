@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plotly Chart</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+   	<h1>
+    	<span>TSV Statistik-&nbsp</span>
+     	<span id="location">{{ dynamic_activity }}</span>
+     	<div class="logo-container">
+     		<a href="{{parentView}}" data-toogle="back" title="Zurück zum Dashboard">
+       		<img src="{{ logo_path }}" alt="Logo">
+       		</a>
+     	</div>
+  	</h1>
+  	<br/>
+
+    <!-- Graph Data -->
+    <div id="graph-data" style="display: none;">{{ graphJSON | safe }}</div>
+
+    <!-- Plotly Graph -->
+    <div id='plotly-graph' class='chart'”></div>
+
+    <!-- Download Button -->
+    <button id="download-btn" style="display: none;">Download Excel</button>
+
+    <!-- External JavaScript -->
+    <script src="{{ url_for('static', filename='js/plot.js') }}"></script>
+</body>
+</html>

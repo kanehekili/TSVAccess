@@ -1,0 +1,45 @@
+	* {
+	    -webkit-box-sizing: border-box;
+	    box-sizing: border-box;
+	}
+	body {
+	    background-color: #272b34;
+	    font-family: 'Khula', sans-serif;
+	    color: white;
+	    margin: 0;
+	    padding: 2em 1em;
+	}
+	
+	  /* CSS for the header */
+	  h1 {
+	    align-items: flex-start;
+	    display: flex;
+	    font-size:3em;  
+	    margin-top:0;
+	    margin-bottom:0;
+	  }
+	
+	  .logo-container {
+	    margin-left: auto;
+	  }
+
+        /* Button styling */
+        #download-btn {
+            font-size: 18px;  /* Bigger text size */
+            padding: 12px 24px; /* Bigger padding for a larger button */
+            margin-top: 30px; /* Space above the button */
+            cursor: pointer; /* Change cursor to pointer */
+            background-color: #4CAF50; /* Green background */
+            color: white;  /* White text */
+            border: none;  /* No border */
+            border-radius: 8px;  /* Rounded corners */
+            transition: background-color 0.3s ease;  /* Smooth transition */
+            display: none; /* Hide the button by default */
+        }
+        #download-btn:hover {
+            background-color: #006505;  /* Darker green when hovered */
+        }
+
+	@media (any-pointer: coarse) {
+		h1 {font-size:3em; }
+	}
