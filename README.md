@@ -82,18 +82,20 @@ should list spidev und spi_bcm2835
 A python flask server, that provides html data:
  * Who is currently on the premises
  * Statistics about how many many have been visiting
- * uses flask, plotly and (optional - not decided yet) pandas
+ * Statistics for usage (mean and median) 
+ * uses flask, plotly and openpyxl
+ * provides xlsx data files for statistics
 
 It usually resides in the "server" which is comprised of the database service and the "Auswertung". All "access" devices are connected to this server.
 
-This module runs, together with mariadb on an plain Raspi 2:
+This module runs, together with mariadb on an old Raspi 2:
 ![Screenshot](https://github.com/kanehekili/TSVAccess/blob/main/server.jpg)
 
 
 ### Dependencies
 * python-mysql-connector
-* pip install flask,(pandas?),plotly
-* pandas will be perished in favour of dash (under contruction)
+* pip install flask,plotly,openpyxl
+
 
 #### Only needed for backup (in progress - switch to rsync)
 Pure rysnc implementation.
