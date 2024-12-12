@@ -309,7 +309,7 @@ class OSTools():
             logHandlers.append(logging.StreamHandler(sys.stdout))    
         logging.basicConfig(
             handlers=logHandlers,
-            #level=logging.INFO
+            #level=logging.INFO,
             level=logging.DEBUG,
             format='%(asctime)s %(levelname)s : %(message)s'
         )
@@ -318,13 +318,17 @@ class OSTools():
     @classmethod
     def setLogLevel(cls,levelString):
         if levelString == "Debug":
-            Log.setLevel(logging.DEBUG)
+            level = logging.DEBUG
         elif levelString == "Info":
-            Log.setLevel(logging.INFO)
+            level = logging.INFO
         elif levelString == "Warning":
-            Log.setLevel(logging.WARNING)
+            level = logging.WARNING
         elif levelString == "Error":
-            Log.setLevel(logging.ERROR)
+            level = logging.ERROR
+            
+        Log.setLevel(level)
+        for handler in logging.getLogger().handlers:
+            handler.setLevel(level)
 
     #will not work in windows
     @classmethod
