@@ -19,7 +19,7 @@ import re,socket
 from datetime import datetime,timedelta
 import json, getopt, sys
 from enum import Enum
-import traceback
+import traceback,mimetypes
 import smtplib,ssl,struct
 from email.message import EmailMessage
 from ast import literal_eval
@@ -162,45 +162,78 @@ class DBAccess():
             db.close()
 
     def sendEmail(self,db,subject,isMsg,messageText):
+        mailer = TSVMailer(db)
+        if not mailer.isConnected:
+            return
+        if isMsg:
+            to=mailer.defaultReceipient
+            origin=""
+        else:
+            to=mailer.adminReceipient
+            origin=socket.gethostname()
+
+        fn=to.split('.')[0]
+        fullMessage="Griasdi %s,\n\n%s\n%s\n%s"%(fn,messageText,origin,mailer.footer)
+        sendTo=[to]
+        mailer.sendEmail(sendTo, subject, fullMessage)
+        
+    def genericEmail(self,db,subject,text,recipientList,attachment=None ): #attachment: (ioBuffer, filename) 
+        mailer = TSVMailer(db)
+        if not mailer.isConnected:
+            return
+        mailer.sendEmail(recipientList, subject, text,attachment)
+        
+        
+class TSVMailer:
+    def __init__(self,db):
+        self.isConnected=False
+        self._getCredentials(db)
+        
+    def _getCredentials(self,db):
         if not db:
             self.log.warning("Mail failure, no valid database")
             return
         stmt="select * from %s"%(SetUpTSVDB.MAILTABLE)
         rows = db.select(stmt)
-        #'server'0,'port'1,'sender'2,'passwd'3,'mailTo'4,'mailErr'5,'addText'6)
         if len(rows)==0:
             self.log.warning("No mail config - aborting")
             return
+        self.isConnected=True
         data=rows[0]
-        smtp_server = data[0]
-        port = data[1]
-        sender=data[2]
-        password =data[3] 
-        if isMsg:
-            to=data[4]
-            origin=""
-        else:
-            to=data[5]
-            origin=socket.gethostname()
-            
-        footer=data[6]
+        self.smtp_server = data[0]
+        self.port = data[1]
+        self.sender=data[2]
+        self.password =data[3]
+        self.defaultReceipient=data[4]
+        self.adminReceipient=data[5]
+        self.footer=data[6]
+               
+    def sendEmail(self,recipientList,subject,text,attachment=None):
+        to = ",".join(recipientList)
         msg = EmailMessage()
         msg['Subject'] = subject
-        msg['From'] = sender
+        msg['From'] = self.sender
         msg['To'] = to
-        fn=to.split('.')[0]
-        fullMessage="Griasdi %s,\n\n%s\n%s\n%s"%(fn,messageText,origin,footer)
         
-        msg.set_content(fullMessage)
+        msg.set_content(text)
+        if attachment:
+            buffer= attachment[0]
+            buffer.seek(0)
+            binaryData= buffer.read()
+            # Guess MIME type or use 'application/octet-stream'
+            maintype, _, subtype = (mimetypes.guess_type(attachment[1])[0] or 'application/octet-stream').partition("/")
+            msg.add_attachment(binaryData,maintype=maintype, subtype=subtype, filename=attachment[1])
+        DBTools.Log.info("Sending email to %s content:\n %s\n--------------------------------------------------------------",to, text)    
         try:
             context = ssl.create_default_context()  
-            with smtplib.SMTP(smtp_server, port) as server:
+            with smtplib.SMTP(self.smtp_server, self.port) as server:
                 server.starttls(context=context)
-                server.login(sender, password)
+                server.login(self.sender, self.password)
                 server.send_message(msg) 
         except:
-            DBTools.Log.error("Mail could not be sent! Server:%s port:%s from:%s pwd: %s ",smtp_server, port,sender,password)             
-
+            DBTools.Log.error("Mail could not be sent! Server:%s port:%s from:%s pwd: %s ",self.smtp_server, self.port,self.sender,self.password)
+        
+                
 #Definition and creation of TSV Tables. This class should not be instantiated in prod - just for creation or db manipulation
 class SetUpTSVDB():
         
