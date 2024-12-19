@@ -118,7 +118,7 @@ class RFIDAccessor():
             
             #rfid & paysection must fit ->if section in PREPAID-> decrease count
             if not self.db.isConnected():
-                raise Exception("Connection failed")
+                self._waitForConnection()
 
             ps = Konfig.asDBString(self.configData.allPaySections())
             stmt ="SELECT id,access,flag,payuntil_date,prepaid from %s m join %s b ON m.id=b.mitglied_id where m.uuid='%s' and b.section in (%s)"%(SetUpTSVDB.MAINTABLE,SetUpTSVDB.BEITRAGTABLE,str(rfid),ps) 

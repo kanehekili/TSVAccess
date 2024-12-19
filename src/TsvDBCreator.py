@@ -183,7 +183,12 @@ class DBAccess():
             return
         mailer.sendEmail(recipientList, subject, text,attachment)
         
-        
+'''
+Mailer for this project:
+Reads connection data from a table in TSVDB
+Writes text + footer (which is currently not used) 
+Accepts attachments as io.BytesIO (aka image) plus filename as a tuple
+'''        
 class TSVMailer:
     def __init__(self,db):
         self.isConnected=False
