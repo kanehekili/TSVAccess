@@ -232,11 +232,11 @@ def manage_picture(picture_name):
     """Used to send the requested picture from the pictures folder."""
     picture_path = "TSVPIC/" + picture_name  # TODO -get configured
     if request.method == 'GET':
-        Log.debug("Read pic:%s", picture_name)
+        #Log.debug("Read pic:%s", picture_name)
         return app.send_static_file(picture_path)
     elif request.method == 'POST':
         file = request.files['file']
-        Log.debug("Save pic:%s", picture_path)
+        Log.info("Save pic:%s", picture_path)
         try:
             file.save(app.static_folder + "/" + picture_path)
         except:
@@ -378,7 +378,7 @@ def drawSectionMembers():
     
     graphJSON = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
     logo_path = "tsv_logo_100.png"
-    return render_template('index.html', graphJSON=graphJSON, logo_path=logo_path, dynamic_activity="Gesamt",parentView="/") 
+    return render_template('plot.html', graphJSON=graphJSON, logo_path=logo_path, dynamic_activity="Gesamt",parentView="/") 
 
 
 @app.route('/config', methods=["GET", "POST"])

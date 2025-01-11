@@ -401,39 +401,36 @@ class SetUpTSVDB():
         entries.append((0,LOC_KRAFTRAUM,ACTIVITY_KR,SECTION_FIT, "['KR','ÜL']",900,None,None,None))
         entries.append((1,LOC_KRAFTRAUM,ACTIVITY_GYM,SECTION_FIT, "['GROUP']",2700,0,"08:45:00","09:30:00"))
         entries.append((2,LOC_KRAFTRAUM,ACTIVITY_GYM,SECTION_FIT, "['GROUP']",2700,3,"08:45:00","09:30:00"))
-        entries.append((3,LOC_NORD,ACTIVITY_GYM,SECTION_FIT, "['KR','ÜL','FFA','GROUP']",2700,None,None,None))
-        entries.append((4,LOC_SPIEGELSAAL,ACTIVITY_GYM,SECTION_FIT, "['KR','ÜL','FFA','GROUP']",2700,None,None,None))
-        entries.append((5,LOC_DOJO,ACTIVITY_GYM,SECTION_FIT, "['KR','ÜL','FFA','GROUP']",2700,None,None,None))
+        entries.append((3,LOC_NORD,ACTIVITY_GYM,SECTION_FIT, "['KR','ÜL','GROUP']",2700,None,None,None))
+        entries.append((4,LOC_SPIEGELSAAL,ACTIVITY_GYM,SECTION_FIT, "['KR','ÜL','GROUP']",2700,None,None,None))
+        entries.append((5,LOC_DOJO,ACTIVITY_GYM,SECTION_FIT, "['KR','ÜL','GROUP']",2700,None,None,None))
         entries.append((6,LOC_SAUNA,ACTIVITY_SAUNA,SECTION_SAUNA,"[]",14400*4,None,None,None)) #Login every 4 hours, no logout
-        entries.append((7,"TEST",ACTIVITY_GYM,SECTION_FIT, "['KR','ÜL','FFA','GROUP']",120,5,"19:00:00","23:59:59"))
-        entries.append((8,LOC_KRAFTRAUM,ACTIVITY_GYM,SECTION_FIT, "['SUP']",900,0,"15:30:00","17:30:00"))
-        entries.append((9,LOC_KRAFTRAUM,ACTIVITY_GYM,SECTION_FIT, "['SUP']",900,3,"15:30:00","17:30:00"))        
-        entries.append((10,"TEST",ACTIVITY_GYM,SECTION_FIT, "['SUP']",900,4,"23:45:00","23:59:00"))
-        entries.append((11,"TEST",ACTIVITY_GYM,SECTION_FIT, "['SUP']",900,5,"00:01:00","23:59:00"))
-        
+        entries.append((7,LOC_KRAFTRAUM,ACTIVITY_KR,SECTION_FIT, "['SKR']",900,0,"15:15:00","17:45:00")) #add 15mins delta start/end
+        entries.append((8,LOC_KRAFTRAUM,ACTIVITY_KR,SECTION_FIT, "['SKR']",900,3,"15:15:00","17:45:00")) #add 15mins delta start/end
+        entries.append((9,LOC_KRAFTRAUM,ACTIVITY_KR,SECTION_FIT, "['SKR']",900,5,"09:45:00","12:15:00")) #add 15mins delta start/end       
         self.db.insertMany(table, fields, entries)
         
         table = self.LOCATIONTABLE
         fields = ('id','host_name', 'config')
         entries=[]
         #Currently offline and used as test device
-        entries.append((1,"tsvaccess1",0)) #KR with ampel
-        entries.append((2,"tsvaccess1",1)) #FIT Group MO
-        entries.append((3,"tsvaccess1",2)) #FIT Group DO
-        entries.append((15,"tsvaccess1",10)) #Special Fri
-        entries.append((16,"tsvaccess1",11)) #Special Sa
+        #entries.append((1,"tsvaccess1",0)) #KR with ampel
+        #entries.append((2,"tsvaccess1",1)) #FIT Group MO
+        #entries.append((3,"tsvaccess1",2)) #FIT Group DO
+        #entries.append((15,"tsvaccess1",10)) #Special Fri
+        #entries.append((16,"tsvaccess1",11)) #Special Sa
         entries.append((4,"tsvaccess2",6)) #Sauna backup 
         entries.append((5,"tsvaccess3",3)) #Nord
         entries.append((6,"tsvaccess4",6)) #Sauna with 7-LED
         entries.append((7,"tsvaccess5",5)) #Dojo with ampel
         entries.append((8,"tsvaccess6",4)) #spiegel with ampel
-        #entries.append((9,"tsvaccess0",0)) #test entry
         #The new Kraftraum device - replacing tsvaccess1
-        entries.append((10,"tsvaccess7",0)) #KR with ampel
-        entries.append((11,"tsvaccess7",1)) #FIT Group MO
-        entries.append((12,"tsvaccess7",2)) #FIT Group DO
-        entries.append((13,"tsvaccess7",8)) #Special Fri
-        entries.append((14,"tsvaccess7",9)) #Special Sa
+        entries.append((9,"tsvaccess7",0))  #KR with ampel
+        entries.append((10,"tsvaccess7",1)) #FIT Group MO
+        entries.append((11,"tsvaccess7",2)) #FIT Group DO
+        entries.append((12,"tsvaccess7",7)) #Special Sa
+        entries.append((13,"tsvaccess7",8)) #Special Mo
+        entries.append((14,"tsvaccess7",9)) #Special Do
         
         #entries.append((9,"msi",0))
         #entries.append((10,"msi",7))

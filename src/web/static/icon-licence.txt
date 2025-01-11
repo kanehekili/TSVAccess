@@ -1,9 +1,8 @@
-Most icons are taken from the icon-archive.
+The icons are taken from the icon-archive.
 
-Most of them are from
 https://www.iconarchive.com/show/cristal-intense-icons-by-tatice/ok-icon.html
 that uses the following licence:
 https://creativecommons.org/licenses/by-nc-nd/4.0/
 
-None of the images have be changed, the filenames have been adapted.
+Some of the images have been changed, the filenames have been adapted.
 

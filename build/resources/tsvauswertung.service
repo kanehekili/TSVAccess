@@ -2,6 +2,7 @@
 Description=TSV access Flask server
 Wants=mariadb.target
 After=mariadb.target
+RequiresMountsFor=/mnt/drive1
 
 [Service]
 Type=simple

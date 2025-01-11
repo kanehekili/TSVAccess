@@ -11,13 +11,17 @@ mkdir -p /opt/tsvserver;
 mkdir -p /opt/tsvserver/data;
 path1="$(dirname "$DIR")"
 path2="$path1/src"
+path3="$path1/build/resources"
 cd $path2
 cp DBTools.py TsvDBCreator.py TsvAuswertung.py /opt/tsvserver/;
 cp -r web /opt/tsvserver/
+cd $path3
+cp -u tsvauswertung.service /etc/systemd/system/;
+cp -u tsvbackup.* /etc/systemd/system/;
 echo "######################################################################"
 echo "#                  Ensure you have installed (arch arm):             #"                     
-echo "#   python-mysql-connector                                           #"
-echo "#   pip install flask,plotly                                         #"
+echo "#   python-mysql-connector, rsync ,sshpass                           #"
+echo "#   pip install flask,plotly, openpyxl                               #"
 echo "######################################################################"
-echo "!config and mail json manually"
+echo "!set .config.json manually - enable & start tsv services"
 echo "App installed."

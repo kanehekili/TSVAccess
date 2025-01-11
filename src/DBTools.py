@@ -14,7 +14,8 @@ from subprocess import Popen
 
 class Connector():
     DBError=mysql.Error
-    
+    logging.getLogger("mysql.connector").setLevel(logging.INFO)
+        
     def __init__(self,host,user,pwd):
         self.dbConnection = None
         self.dbName=None

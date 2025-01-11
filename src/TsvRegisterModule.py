@@ -782,7 +782,8 @@ class MainFrame(QtWidgets.QMainWindow):
                 mbr = Mitglied(mid, firstName, lastName, access, None, rfid_int)
                 entry = mbr.searchName()
                 self.ui_SearchEdit.addItem(entry, mbr)
-            # need a try catch.
+            #Error: check if that RFID is taken by someone else! Bearbeitung only!
+            #Code here
             if self.photoTaken:
                 res = self.model.savePicture(mbr)  # posts the pic to remote and adds uri to db...
                 if not res:
@@ -1217,17 +1218,20 @@ class CamModule():
                     py = max(0, top + 2)
                     dw = right - px - 2
                     dh = bottom - py - 2;
-                    if bok and self.cameraOn:
+                    #camlock.aquire()
+                    if bok and self.cameraOn: #use lock instead
                         self._currentFrame = frame
                         self.borders = [px, py, dw, dh]
+                        #camlock.release()
                 
                 if self.cameraOn: 
                     cameraThread.showFrame(frame)
 
     def takeScreenshot(self):
-        
+        #camlock.aquire()
         self.cameraOn = False
-        if self._currentFrame is None or len(self.borders) == 0:
+        #camlock.release()
+        if self._currentFrame is None or len(self.borders) == 0: #use lock!
             Log.info("Screenshot failed")
             return False
         return True   
@@ -1235,16 +1239,17 @@ class CamModule():
     def saveCroppedScreenShot(self):
         if len(self.borders) == 0 or self._currentFrame is None:
             return None
-        
+        #camlock.aquire()
         x = self.borders[0]
         y = self.borders[1]
         w = self.borders[2]
         h = self.borders[3]
         
-        conv = self._currentFrame[y:y + h, x:x + w].copy()
+        conv = self._currentFrame[y:y + h, x:x + w].copy() #use lock
         croppedPic = cv2.cvtColor(conv, cv2.COLOR_RGB2BGR)
         cv2.imwrite(Registration.SAVEPIC, croppedPic)  # imwrite needs that
         time.sleep(0.2) #Esoteric try to prevent BGR picures (blue tinted)
+        #camlock.release()
         return croppedPic
 
     def stopCamera(self):
