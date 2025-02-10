@@ -10,7 +10,7 @@ from PyQt6 import QtWidgets, QtGui, QtCore
 #install python-openpyxl (arch native) or pylightxl which handles Softmaker better
 from openpyxl import load_workbook
 from DBTools import OSTools
-from TsvDBCreator import SetUpTSVDB
+from TsvDBCreator import DBAccess,SetUpTSVDB
 import DBTools
 from datetime import datetime
 from time import sleep
@@ -312,8 +312,11 @@ class Converter():
 
     def connectDB(self):
         #TODO deprecated!
-        self.dbSystem = SetUpTSVDB("TsvDB")#TODO must be executed at start - incl error dialog
-        return self.dbSystem.isConnected()
+        #self.dbSystem = SetUpTSVDB("TsvDB")#TODO must be executed at start - incl error dialog
+        #return self.dbSystem.isConnected()
+        self.dbSystem = DBAccess()
+        self.db = self.dbSystem.connectToDatabase()
+        return self.db.isConnected()
 
     def exportInstructions(self):
         txt=[]
@@ -418,7 +421,7 @@ class Converter():
             lostMembers=self.symDiff(memberList,txt)
             for pk in lostMembers:
                 stmt="UPDATE Mitglieder set flag=1 where id=%d"%(pk)
-                self.dbSystem.db.select(stmt)
+                self.db.select(stmt)
             txt.append("<li>%d Mitglieder ausgetreten</li>"%(len(lostMembers)))
             self.updateMembers(memberList)
         except Exception:
@@ -428,12 +431,12 @@ class Converter():
         finally:
             txt.append("</ul>")
             self.findingsImport.extend(txt)
-            self.dbSystem.close()
+            self.dbSystem.close(self.db)
 
     #TODO: if Flag=1 but Hauptwerein/Beitrag> CURRDATE, set flag to 0!
     def symDiff(self,importData,txtBuffer):
         stmt="select id,flag from %s"%(SetUpTSVDB.MAINTABLE)
-        rows=self.dbSystem.db.select(stmt)
+        rows=self.db.select(stmt)
         ids = [data[0] for data in rows] #int
         currIds=[int(mbr.getID()) for mbr in importData]
         txtBuffer.append("<li>%d Mitglieder werden übertragen</li>"%(len(currIds)))
@@ -461,11 +464,11 @@ class Converter():
         for mbr in tsvMembers:
             main.append(mbr.baseData)
             sections.extend(mbr.sectionData())
-        self.dbSystem.db.insertMany(table, fields, main)
+        self.db.insertMany(table, fields, main)
 
         fields=("mitglied_id", "payuntil_date","section")
         table=SetUpTSVDB.BEITRAGTABLE
-        self.dbSystem.db.insertMany(table, fields, sections)
+        self.db.insertMany(table, fields, sections)
     
     
     def makeImportFindings(self, sections,multiSet, mbrCount,rogue):

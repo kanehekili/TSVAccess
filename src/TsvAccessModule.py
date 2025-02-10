@@ -272,7 +272,7 @@ class RFIDAccessor():
 
     def shutDown(self):
         self.running=False
-        if self.stopper: #None, if it couldn't even start the connectionr33per45
+        if self.stopper: #None, if it couldn't even start the connection
             self.stopper.set() #stop ping control
         with self.condLock:            
             self.condLock.notify_all()
