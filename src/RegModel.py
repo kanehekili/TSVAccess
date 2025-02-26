@@ -270,7 +270,12 @@ class Registration():
         reqUrl = "http://%s:5001/%s/%s" % (host, targetPath, pic)
         Log.debug("Load url:%s", reqUrl)
         try:
-            pic = requests.get(reqUrl,verify=False).content
+            req= requests.get(reqUrl,verify=False)
+            code = req.status_code
+            pic = req.content
+            #https://de.wikipedia.org/wiki/HTTP-Statuscode#Liste_der_HTTP-Statuscodes
+            if code >= 400:
+                Log.error("Picture Server replies: %d",code)
         except:
             Log.error("Picture Server not present")
             return None

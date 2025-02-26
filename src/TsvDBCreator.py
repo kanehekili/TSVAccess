@@ -386,7 +386,7 @@ class SetUpTSVDB():
         self.db.createTable(self.TABLE8)
         self.db.close()        
 
-    def _fillLocationTable(self):
+    def _fillConfigTable(self):
         #list the correlations:
         #select host_name,room,activity,paySection,groups from Location loc JOIN Konfig conf where loc.config_id=conf.config_id;
         #No start-end at location = always
@@ -405,9 +405,9 @@ class SetUpTSVDB():
         entries.append((4,LOC_SPIEGELSAAL,ACTIVITY_GYM,SECTION_FIT, "['KR','ÜL','GROUP']",2700,None,None,None))
         entries.append((5,LOC_DOJO,ACTIVITY_GYM,SECTION_FIT, "['KR','ÜL','GROUP']",2700,None,None,None))
         entries.append((6,LOC_SAUNA,ACTIVITY_SAUNA,SECTION_SAUNA,"[]",14400*4,None,None,None)) #Login every 4 hours, no logout
-        entries.append((7,LOC_KRAFTRAUM,ACTIVITY_KR,SECTION_FIT, "['SKR']",900,0,"15:15:00","17:45:00")) #add 15mins delta start/end
-        entries.append((8,LOC_KRAFTRAUM,ACTIVITY_KR,SECTION_FIT, "['SKR']",900,3,"15:15:00","17:45:00")) #add 15mins delta start/end
-        entries.append((9,LOC_KRAFTRAUM,ACTIVITY_KR,SECTION_FIT, "['SKR']",900,5,"09:45:00","12:15:00")) #add 15mins delta start/end       
+        entries.append((7,LOC_KRAFTRAUM,ACTIVITY_KR,SECTION_FIT, "['SKR0','SKR03','SKR05','SKR035']",900,0,"15:15:00","17:45:00")) #add 15mins delta start/end
+        entries.append((8,LOC_KRAFTRAUM,ACTIVITY_KR,SECTION_FIT, "['SKR3','SKR03','SKR035']",900,3,"15:15:00","17:45:00")) #add 15mins delta start/end
+        entries.append((9,LOC_KRAFTRAUM,ACTIVITY_KR,SECTION_FIT, "['SKR5','SKR05','SKR035']",900,5,"09:45:00","12:15:00")) #add 15mins delta start/end       
         self.db.insertMany(table, fields, entries)
         
         table = self.LOCATIONTABLE
@@ -514,14 +514,20 @@ def _convertMSB(hexStr):
     
 '''
     The Konfig table
-    +-----------+-------------+-----------+----------------+--------------------+------------+
-    | config_id | room        | activity  | paySection     | groups             | grace_time |
-    +-----------+-------------+-----------+----------------+--------------------+------------+
-    |         0 | Kraftraum   | Kraftraum | Fit & Fun      | ['KR','ÜL','UKR']  |        120 |
-    |         1 | Spiegelsaal | GroupFitness| Fit & Fun    | [GROUP]            |       3600 |
-    |         2 | Spiegelsaal | Spinning  | Leichtathletik | []                 |       3600 | < no control
-    |         3 | Sauna       | Sauna     | Sauna          | []                 |       3600 | <Taged as prepaid
-    +-----------+-------------+-----------+----------------+--------------------+------------+
++-----------+-------------+---------------+------------+----------------------+------------+---------+-----------+----------+
+| config_id | room        | activity      | paySection | groups               | grace_time | weekday | from_Time | to_Time  |
++-----------+-------------+---------------+------------+----------------------+------------+---------+-----------+----------+
+|         0 | Kraftraum   | Kraftraum     | Fit & Fun  | ['KR','ÜL']          |        900 |    NULL | NULL      | NULL     |
+|         1 | Kraftraum   | GroupFitnesse | Fit & Fun  | ['GROUP']            |       2700 |       0 | 08:45:00  | 09:30:00 |
+|         2 | Kraftraum   | GroupFitnesse | Fit & Fun  | ['GROUP']            |       2700 |       3 | 08:45:00  | 09:30:00 |
+|         3 | HalleNord   | GroupFitnesse | Fit & Fun  | ['KR','ÜL','GROUP']  |       2700 |    NULL | NULL      | NULL     |
+|         4 | Spiegelsaal | GroupFitnesse | Fit & Fun  | ['KR','ÜL','GROUP']  |       2700 |    NULL | NULL      | NULL     |
+|         5 | Dojo        | GroupFitnesse | Fit & Fun  | ['KR','ÜL','GROUP']  |       2700 |    NULL | NULL      | NULL     |
+|         6 | Sauna       | Sauna         | Sauna      | []                   |      57600 |    NULL | NULL      | NULL     | <- no group
+|         7 | Kraftraum   | Kraftraum     | Fit & Fun  | ['SKR']              |        900 |       0 | 15:15:00  | 17:45:00 |
+|         8 | Kraftraum   | Kraftraum     | Fit & Fun  | ['SKR']              |        900 |       3 | 15:15:00  | 17:45:00 |
+|         9 | Kraftraum   | Kraftraum     | Fit & Fun  | ['SKR']              |        900 |       5 | 09:45:00  | 12:15:00 |
++-----------+-------------+---------------+------------+----------------------+------------+---------+-----------+----------+
 '''    
 class Konfig():
     FIELD_DEF=["activity","paySection","groups","grace_time", "weekday","from_Time","to_Time","room","config_id"]
@@ -596,10 +602,10 @@ class KonfigEntry():
         return currTime >= self.startTime and currTime <= self.endTime
 
 
-def updateLocationTable(dbAccess):
+def updateConfigTable(dbAccess):
     s = SetUpTSVDB(dbAccess)
     try:
-        s._fillLocationTable()
+        s._fillConfigTable()
     except Exception:
         traceback.print_exc()
     finally:
@@ -626,7 +632,7 @@ def rfidFromTableToAssaAbloy(decimalString):
 def parseOptions(args):
     
     try:
-        opts, args = getopt.getopt(args[1:], "rlmst:c:", ["convert","reset", "updateLocation", "updateMail" "updateScheme","transponder"])
+        opts, args = getopt.getopt(args[1:], "rkmst:c:", ["convert","reset", "updateLocation", "updateMail" "updateScheme","transponder"])
         if len(opts) == 0:
             printUsage()
     except getopt.GetoptError:
@@ -638,8 +644,8 @@ def parseOptions(args):
     for o, a in opts:
         if o in ("-r", "--reset"):
             basicSetup(dbAccess)
-        elif o in ("-l", "--updateLocation"):
-            updateLocationTable(dbAccess)
+        elif o in ("-k", "--updateKonfig"):
+            updateConfigTable(dbAccess)
         elif o in ("-m", "--updateMail"):
             updateMailTable(dbAccess)            
         elif o in ("-s", "--updateScheme"):
@@ -654,7 +660,7 @@ def parseOptions(args):
 def printUsage():
     print("Creator commands: \n"\
           "\t-r > !reset the database! (--reset) \n"
-          "\t-l > update location (--updateLocation) \n"
+          "\t-k > update konfig (--updateKonfig) \n"
           "\t-s > !update the database! (--updateScheme) \n"
           "\t-t filename > read transponder (--transponder) \n"
           "\t-c decimal rfid > convert rfid to AA (--convert) \n"

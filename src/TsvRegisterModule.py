@@ -923,7 +923,12 @@ class MainFrame(QtWidgets.QMainWindow):
             self.capturing = False
             img = QtGui.QImage()
             img.loadFromData(raw)
-            self.mbrPhoto = img  # that will be handled async by _handleFramesDone
+            #unknown picture leads to a binary with no dimensions...
+            box = img.rect()
+            if box.height()==0:
+                self.mbrPhoto = None
+            else:
+                self.mbrPhoto = img  # that will be handled async by _handleFramesDone
             if not camOn:
                 self._handleFramesDone()
         except:
