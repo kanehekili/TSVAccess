@@ -74,6 +74,7 @@ class RFIDController(RegisterController):
 
 class Registration():
     SAVEPIC = "/tmp/tsv.screenshot.png"   
+    NOT_FOUND="Picture not found"
 
     def __init__(self):
         # self.accesscodes = []
@@ -276,6 +277,7 @@ class Registration():
             #https://de.wikipedia.org/wiki/HTTP-Statuscode#Liste_der_HTTP-Statuscodes
             if code >= 400:
                 Log.error("Picture Server replies: %d",code)
+                return self.NOT_FOUND
         except:
             Log.error("Picture Server not present")
             return None
@@ -292,6 +294,8 @@ class Registration():
             Log.info("Abo data %s count %d", mbr.currentAbo[0], mbr.currentAbo[1])
             return mbr.currentAbo[0] == cfgEntry.paySection and mbr.currentAbo[1] > 0
         # ÜL,KR in Group?
+        #check the corret weekday and current time within that range
+        
         return mbr.access in cfgEntry.groups
     
     def haveFeesBeenPaid(self,mbr,paySections):

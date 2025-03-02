@@ -18,6 +18,7 @@ from datetime import datetime
 import TsvDBCreator
 
 WIN = None
+LOCATION = TsvDBCreator.LOC_KRAFTRAUM
 
 from RegModel import Registration
 
@@ -346,20 +347,25 @@ class MainFrame(QtWidgets.QMainWindow):
         for member in sortedList:
             entry = member.searchName()
             self.ui_SearchEdit.addItem(entry, member)
-            
+    
+    #store all configs for Room Kraftraum? Else we would have to select Room and actitivity       
     def fillActivityCombo(self):
         # themes=self.model.configs.allActivities()
         allConfig = self.model.configs.configs
         cfgDic = {}
         for cfg in allConfig:
             # No prepaid support yet:
-            if cfg.activity in TsvDBCreator.PREPAID_INDICATOR:
+            if cfg.room != LOCATION:
                 continue
-            res = cfgDic.get(cfg.activity, cfg)
+            #TODO - we need a list of configs behind that activity. not just the first one
+            res = cfgDic.get(cfg.activity, [])
+            res.append(cfg)
             cfgDic[cfg.activity] = res
             
         for key, value in cfgDic.items():
-            self.ui_ActivityCombo.addItem(key, value)
+            kx = TsvDBCreator.Konfig([])
+            kx.configs=value
+            self.ui_ActivityCombo.addItem(key,kx )
         self.ui_ActivityCombo.setCurrentIndex(self._defaultActivityIdx)
             
     def makeGridLayout(self):
@@ -492,37 +498,45 @@ class MainFrame(QtWidgets.QMainWindow):
         # setIcon
     
     def currentLocationConfig(self):
-        cfg = self.ui_ActivityCombo.currentData()
-        return cfg
+        config = self.ui_ActivityCombo.currentData()
+        return config #Konfig with correponding entries
         
     def _updateCheckinData(self, mbr):
-        # activity= self.model.curentConfig.activity #FAIL
-        cfgEntry = self.currentLocationConfig() 
-        res = self.model.todaysAccessDateStrings(mbr.id, cfgEntry.activity)
-        ckiText = "-" if len(res) == 0 else ','.join(res) 
-        self.ui_ckiDisplay.setText(ckiText)
-        accessOK = self.model.isValidAccess(mbr, cfgEntry)
-        feeError = self.model.haveFeesBeenPaid(mbr, cfgEntry.paySection)
-        if accessOK and not feeError:
-            self._updateCKIButton(len(res))
-            blockState = "Zugang gültig"
-        else:
-            Log.warning("Member access not valid")
-            if feeError:
-                txt = feeError.printReason()
+        # A Konfig with correponding entries:
+        konfig = self.currentLocationConfig() 
+        #find the correct entry for the current activity:
+        foundEntry = konfig.configForUserGroup(mbr.access)
+        primentry = konfig.configs[0]
+        blockState = "Zugang gesperrt"
+        ckiText = "-"
+        if foundEntry:    
+            res = self.model.todaysAccessDateStrings(mbr.id, foundEntry.activity)
+            ckiText = "-" if len(res) == 0 else ','.join(res) 
+            #!self.ui_ckiDisplay.setText(ckiText)
+            feeError = self.model.haveFeesBeenPaid(mbr, foundEntry.paySection)
+            if not feeError:
+                self._updateCKIButton(len(res))
+                blockState = "Zugang gültig"
             else:
-                txt = "Falsches Ticket"
-            self.ui_ckiDisplay.setText("Kein Zugang für Bereich %s : %s " % (cfgEntry.activity,txt))
+                Log.warning("Member access not valid")
+                if feeError:
+                    ckiText = feeError.printReason()
+        else:
+            ckiText = "Kein Zugang für Bereich %s : Ticket nicht für aktuellen Zeitpunkt oder Ort"% (primentry.activity)
             self.ui_ckiButton.setEnabled(False)
-            #self.ui_blockButton.setEnabled(False)
-            blockState = "Zugang gesperrt"
+           
         self.ui_Blocked.setText(blockState)
+        self.ui_ckiDisplay.setText(ckiText)
 
     def _displayMemberFace(self, member):
         raw = self.model.loadPicture(member)
         if raw == None:
             self.getErrorDialog("Verbindungsproblem", "Bilder sind nicht erreichbar", "Der Server, der die Bilder  liefern soll ist nicht erreichbar - Der Fehler wurde per eMail gemeldet").show()
             return False
+        if raw == self.model.NOT_FOUND:
+            self.ui_VideoFrame.showFrame(None)
+            return True
+            
         try:
             img = QtGui.QImage()
             img.loadFromData(raw)
