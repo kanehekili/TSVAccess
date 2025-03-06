@@ -603,6 +603,12 @@ class KonfigEntry():
 
 
 def updateConfigTable(dbAccess):
+
+    target=dbAccess.HOST
+    res = input("Change config on server ***%s***? [Y/N]"%(target))
+    if not (res == "Y"):
+        print("Abort")
+        return
     s = SetUpTSVDB(dbAccess)
     try:
         s._fillConfigTable()

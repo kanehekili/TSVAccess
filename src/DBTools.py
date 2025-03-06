@@ -195,7 +195,7 @@ class Connector():
             for db in cursor:
                 Log.debug(db)
 
-    def deleteEntry(self,table,fn,condition):
+    def deleteConfigEntry(self,table,fn,condition):
         try:
             cond = str(condition)
             stmt ="DELETE FROM "+table+" WHERE "+fn+" = " + cond 

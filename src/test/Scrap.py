@@ -10,6 +10,8 @@ import json
 from TsvAccessModule import RaspberryFAKE
 import smtplib,ssl
 from email.message import EmailMessage
+from TsvAuswertung import BarModel
+import TsvDBCreator
 
 '''
 def setupDB():
@@ -26,10 +28,7 @@ def setupDB():
 '''
 
 def openConnector(dbName="TsvDB"):
-    HOST="T410Arch.fritz.box"
-    USER = "pyuser"
-    PASSWORD = "bertiga7"
-    db = Connector(HOST,USER,PASSWORD)
+    db = Connector()
     db.connect(dbName)
     return db        
 
@@ -65,10 +64,6 @@ def fakeData():
         (24,'Karl','Schmock2',ts,None,"8978ff894599")
     ]
     c=openConnector()
-    #c.dropTable("Mitglieder")
-    #c.dropTable("Zugang")
-    #c.createTable(TABLES1)
-    #c.createTable(TABLES2)
     c.insertMany(table,fields,data)
     #add zugang
     now=datetime.now().isoformat()
@@ -76,7 +71,7 @@ def fakeData():
     c.insertMany("Zugang", ('mitglied_id','access_date'), zug)
     
     #c.testInsertSimple(table,fields,data)
-    c.deleteEntry("Mitglieder", "id", 24)
+    c.deleteConfigEntry("Mitglieder", "id", 24)
     c.close()
 
 def showTables():
@@ -289,6 +284,110 @@ def countBlockUsage():
     #(datetime.date(2024, 5, 13), 22)    
     c.close()    
         
+'''
++-------+-------------+------------------+---------------------------+---------------------+
+| id    | first_name  | last_name        | picpath                   | access_date         |
++-------+-------------+------------------+---------------------------+---------------------+
+| 29133 | Brigitte    | Drexler-Schaal   | Drexler-Schaal-29133.png  | 2025-02-24 19:03:58 |
+| 26322 | Cornelia    | Abt              | Abt-26322.png             | 2025-02-24 18:00:12 |
+| 25352 | Hanni       | Selbherr         | Selbherr-25352.png        | 2025-02-24 18:00:08 |
+| 21812 | Sabine      | Lübbers          | Lübbers-21812.png         | 2025-02-24 18:00:06 |
+| 23662 | Christiane  | Klasmeier        | Klasmeier-23662.png       | 2025-02-24 17:58:06 |
+| 16315 | Ulrike      | Rutke            | Rutke-16315.png           | 2025-02-24 17:57:45 |
+| 24605 | Lourdes     | Pascual Llorens  | Pascual Llorens-24605.png | 2025-02-24 17:57:36 |
+| 24716 | Johanna     | Mathe            | Mathe-24716.png           | 2025-02-24 17:57:19 |
+| 26412 | Christina   | Knappe           | Knappe-26412.png          | 2025-02-24 17:56:26 |
+| 23458 | Brigitte    | Zieringer        | Zieringer-23458.png       | 2025-02-24 17:55:23 |
+| 28894 | Petra       | Niederreiter     | Niederreiter-28894.png    | 2025-02-24 17:54:30 |
+| 29072 | Serhii      | Nestulia         | Nestulia-29072.png        | 2025-02-24 17:54:02 |
+| 20971 | Jana        | Leiman           | Leiman-20971.png          | 2025-02-24 17:53:59 |
+| 15821 | Margarita   | Spiegler         | Spiegler-15821.png        | 2025-02-24 17:53:50 |
+| 29133 | Brigitte    | Drexler-Schaal   | Drexler-Schaal-29133.png  | 2025-02-24 17:53:31 |
+|  9827 | Imke        | Ladwig           | Ladwig-9827.png           | 2025-02-24 17:53:28 |
+| 29068 | Tetiana     | Nestulia         | Nestulia-29068.png        | 2025-02-24 17:53:22 |
+| 29215 | Jürgen      | Bleidießel       | Bleidießel-29215.png      | 2025-02-24 17:53:17 |
+| 21048 | Sabine      | von Fabeck       | von Fabeck-21048.png      | 2025-02-24 17:53:13 |
+| 28657 | Barbara     | Weigl            | Weigl-28657.png           | 2025-02-24 17:53:06 |
+| 14915 | Sieglinde   | Hepp             | Hepp-14915.png            | 2025-02-24 17:52:58 |
+| 23031 | Dagmar      | Schießler        | Schießler-23031.png       | 2025-02-24 17:52:53 |
+| 18278 | Birgit      | Piel             | Piel-18278.png            | 2025-02-24 17:52:46 |
+| 27389 | Peter       | Fuchs            | Fuchs-27389.png           | 2025-02-24 16:37:02 |
+| 26643 | Simone      | Pohl             | Pohl-26643.png            | 2025-02-24 16:29:39 |
+|  4753 | Gudrun      | Uhl              | Uhl-4753.png              | 2025-02-24 16:26:12 |
+| 10214 | Monika      | Bastin           | Bastin-10214.png          | 2025-02-24 16:26:09 |
+| 23986 | Günter      | Groß             | Groß-23986.png            | 2025-02-24 16:25:31 |
+| 20656 | Horst       | Hammerschmidt    | Hammerschmidt-20656.png   | 2025-02-24 16:24:27 |
+| 21162 | Ingrid      | Hojer            | Hojer-21162.png           | 2025-02-24 16:24:02 |
+|  1672 | Irmtraud    | Hammerschmidt    | Hammerschmidt-1672.png    | 2025-02-24 16:23:43 |
+|  3132 | Ilse        | Steiner          | Steiner-3132.png          | 2025-02-24 16:22:57 |
+| 15659 | Ursula      | Dörnhöfer        | Dörnhöfer-15659.png       | 2025-02-24 16:22:46 |
+| 25829 | Friedericke | Heckl            | Heckl-25829.png           | 2025-02-24 16:22:37 |
+| 15474 | Johanna     | Joachimsthaler   | Joachimsthaler-15474.png  | 2025-02-24 16:22:30 |
+| 22176 | Susanne     | Hiebl            | Hiebl-22176.png           | 2025-02-24 16:22:27 |
+|  4551 | Ilse        | Schmidt-Albrecht | Schmidt-Albrecht-4551.png | 2025-02-24 16:22:23 |
+|  2038 | Huesniye    | Klose            | Klose-2038.png            | 2025-02-24 16:22:20 |
+| 12875 | Eleonore    | Buba             | Buba-12875.png            | 2025-02-24 16:22:13 |
+| 26027 | Doris       | Thallmair        | Thallmair-26027.png       | 2025-02-24 16:22:09 |
+| 19040 | Karl Georg  | Kontowski        | Kontowski-19040.png       | 2025-02-24 16:20:02 |
+| 27881 | Ramona      | Hofmann          | Hofmann-27881.png         | 2025-02-24 16:19:50 |
+|   885 | Franz       | Oswald           | Oswald-885.png            | 2025-02-24 10:03:39 |
+|  2373 | Sabine      | Melzer           | Melzer-2373.png           | 2025-02-24 09:01:39 |
+| 27711 | Agnes       | Pohly            | Pohly-27711.png           | 2025-02-24 08:57:12 |
+| 27756 | Olaf        | Mundigl          | Mundigl-27756.png         | 2025-02-24 08:56:57 |
+| 17774 | Irmgard     | Wolf-Erdt        | Wolf-Erdt-17774.png       | 2025-02-24 08:56:43 |
+| 26028 | Johannes    | Thallmair        | Thallmair-26028.png       | 2025-02-24 08:56:35 |
+| 28738 | Elisabeth   | Göpfert          | Göpfert-23366.png         | 2025-02-24 08:56:32 |
+| 25013 | Herta       | Morböck          | Morböck-25013.png         | 2025-02-24 08:56:10 |
+| 22665 | Gerhard     | Leuchtenmüller   | Leuchtenmüller-22665.png  | 2025-02-24 08:55:23 |
+| 27318 | Sabine      | Hiltner          | Hiltner-27318.png         | 2025-02-24 08:54:45 |
+|   399 | Alfred      | Brandl           | Brandl-399.png            | 2025-02-24 08:54:33 |
+| 27812 | Manfred     | Wörle            | Wörle-27812.png           | 2025-02-24 08:54:32 |
+| 28188 | Ulrike      | Wörle            | Wörle-28188.png           | 2025-02-24 08:54:03 |
+| 16978 | Cornelia    | Geßner           | Geßner-16978.png          | 2025-02-24 08:53:44 |
+|  7559 | Christa     | Ferner           | Ferner-7559.png           | 2025-02-24 08:53:27 |
+| 27006 | Walburga    | Erhard           | Erhard-27006.png          | 2025-02-24 08:53:23 |
+|   400 | Monika      | Brandl           | Brandl-400.png            | 2025-02-24 08:52:30 |
+| 16328 | Martina     | Zöllner          | Zöllner-16328.png         | 2025-02-24 08:52:27 |
+| 21011 | Rainer      | Perl             | Perl-21011.png            | 2025-02-24 08:52:19 |
+| 19389 | Claudia     | Thallmair        | Thallmair-19389.png       | 2025-02-24 08:52:18 |
+| 23305 | Petra       | Kade             | Kade-23305.png            | 2025-02-24 08:52:07 |
+|   425 | Rosa        | Deutschenbaur    | Deutschenbaur-425.png     | 2025-02-24 08:51:54 |
+| 15198 | Liliane     | Decker           | Decker-15198.png          | 2025-02-24 08:51:50 |
+| 21638 | Marianne    | Förg             | Förg-21638.png            | 2025-02-24 08:51:37 |
+| 22343 | Heinz       | Strasser         | Strasser-22343.png        | 2025-02-24 08:51:33 |
+|   987 | Erwin       | Schmid           | Schmid-987.png            | 2025-02-24 08:51:11 |
+|   885 | Franz       | Oswald           | Oswald-885.png            | 2025-02-24 08:50:56 |
+| 19057 | Astrid      | Borris           | Borris-19057.png          | 2025-02-24 08:50:32 |
+| 17625 | Ulrike      | Göpfert          | Göpfert-17625.png         | 2025-02-24 08:49:53 |
+|  8803 | Sabrina     | Reidl            | Reidl-8803.png            | 2025-02-24 08:49:39 |
+|  3603 | Waltraud    | Perl             | Perl-3603.png             | 2025-02-24 08:49:09 |
+| 12712 | Klaus       | Erler            | Erler-12712.png           | 2025-02-24 08:49:01 |
+| 21850 | Tamara      | Hannig           | Hannig-21850.png          | 2025-02-24 08:48:59 |
+| 21158 | Agnes       | Schwabe          | Schwabe-21158.png         | 2025-02-24 08:48:39 |
+| 27320 | Theresa     | Luttner          | Luttner-27320.png         | 2025-02-24 08:48:30 |
+| 25974 | Brigitte    | Birk             | Birk-25974.png            | 2025-02-24 08:48:13 |
+| 27735 | Margit      | Engelstädter     | Engelstädter-27735.png    | 2025-02-24 08:48:03 |
+| 29098 | Marlene     | Heitmann         | Heitmann-29098.png        | 2025-02-24 08:40:55 |
+|  9827 | Imke        | Ladwig           | Ladwig-9827.png           | 2025-02-24 08:40:51 |
++-------+-------------+------------------+---------------------------+---------------------+
+Why only two persons?:
+|  1082 | Hans       | Birzer           | Birzer-1082.png            | 2025-02-20 18:27:38 |
+|  4022 | Ursula     | Schleich         | Schleich-4022.png          | 2025-02-20 18:27:23 |
+| 22591 | Alexandra  | Rothmann         | Rothmann-22591.png         | 2025-02-20 18:09:35 |
+'''
+def testSKR():
+    testime = '2025-02-24 18:01:00'
+    testime = '2025-02-20 18:01:00'
+    bm = BarModel()
+    #def currentVisitorPictures(self, activity,room = None, checkout = True, dwellMinutes=-1):
+    #people = bm.currentVisitorPictures(TsvDBCreator.ACTIVITY_GYM,TsvDBCreator.LOC_KRAFTRAUM,checkout=False)
+    stmt = "SELECT id,first_name,last_name,picpath,access_date FROM Mitglieder m JOIN Zugang z ON m.id = z.mitglied_id WHERE DATE(z.access_date) = DATE('"+testime+"') AND activity='GroupFitnesse' AND room='Spiegelsaal' ORDER By z.access_date DESC"
+    rows = bm.atomicSelect(stmt)
+    testdate = datetime.strptime(testime, '%Y-%m-%d %H:%M:%S')
+    members =bm._buildGroupMembers(rows,testdate) #(id > member)
+    print("####### ",testime, ' #############')
+    for p in members.values():
+        print(p.data[1],p.data[2],p.checkInTimeString())
           
 
 def testTimeSpan():
@@ -469,5 +568,6 @@ if __name__ == '__main__':
     #testCreateAccessData()
     #nextDay()
     #sendEmail()
-    countBlockUsage()
+    #countBlockUsage()
+    testSKR()
     pass

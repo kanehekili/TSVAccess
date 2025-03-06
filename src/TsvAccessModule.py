@@ -329,7 +329,6 @@ def parse():
     parser.add_argument('-i', dest="invert", action='store_true', help="invert gpios")
     parser.add_argument('-b', dest="buzz", action='store_true', help= "intermittent buzzer")
     parser.add_argument('-d', dest="configuredDevice", type=str, default=None, help= "pretend device (testing only)")
-    #parser.add_argument('-s', dest="server", type=str, default="taserver", help= "server name(testing only)")
     return parser.parse_args()
 
 if __name__ == '__main__':

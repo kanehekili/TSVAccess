@@ -50,7 +50,7 @@ def statisticsKraftraum():
 def visitorsKraftraum():
     # https://stackoverflow.com/questions/58996870/update-flask-web-page-with-python-script
     #people = barModel.currentVisitorPictures(TsvDBCreator.ACTIVITY_KR, 150)  # checkout after 150 mins
-    people = barModel.currentVisitorPictures(TsvDBCreator.ACTIVITY_KR)  
+    people = barModel.currentVisitorPictures(TsvDBCreator.ACTIVITY_KR,checkout=True)  
     logo_path = "tsv_logo_100.png"
     dynamic_activity = TsvDBCreator.ACTIVITY_KR   
     pv='/' 
@@ -64,6 +64,26 @@ def dumpUsers():
     pv='/' 
     return render_template('access.html', parentView=pv, people=people, logo_path=logo_path, dynamic_activity=dynamic_activity, location_count=len(people))
 
+@app.route('/personUseDay')
+def daysPerPerson():
+    peopleCount,nbrOfDays = barModel.listDaysPerPerson()
+    logo_path = "tsv_logo_100.png"
+    dynamic_activity = "Besuch Tage pro Person"
+
+    data = [go.Bar(
+       x=nbrOfDays,
+       y=peopleCount,
+       text=nbrOfDays,
+       textposition='auto',       
+       marker_color='#FFA500'
+    )]
+    
+    layout = go.Layout(title="Mitglieder Besuche", xaxis=dict(title="Tage"), yaxis=dict(title="Personen"))
+    fig = go.Figure(data=data, layout=layout)
+    
+    graphJSON = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
+    return render_template('plot.html', graphJSON=graphJSON, logo_path=logo_path, dynamic_activity=dynamic_activity,parentView="/krStatistics") 
+    
     
 @app.route('/' + TsvDBCreator.ACTIVITY_KR + "Usage")
 def testVerweilzeitKraftraum():
@@ -112,7 +132,7 @@ def statisticsGFRoom4():
 
 @app.route('/accessGYM_KR')  
 def visitorsGroupFitnesse():
-    people = barModel.currentVisitorPictures(TsvDBCreator.ACTIVITY_GYM,TsvDBCreator.LOC_KRAFTRAUM,60)
+    people = barModel.currentVisitorPictures(TsvDBCreator.ACTIVITY_GYM,TsvDBCreator.LOC_KRAFTRAUM,checkout=False)
     logo_path = "tsv_logo_100.png"
     act = TsvDBCreator.ACTIVITY_GYM +" Kraftraum"
     pv='/groupRooms'
@@ -120,7 +140,7 @@ def visitorsGroupFitnesse():
 
 @app.route('/accessGYM_Spiegelsaal') 
 def visitorsGFS():
-    people = barModel.currentVisitorPictures(TsvDBCreator.ACTIVITY_GYM,TsvDBCreator.LOC_SPIEGELSAAL,60)
+    people = barModel.currentVisitorPictures(TsvDBCreator.ACTIVITY_GYM,TsvDBCreator.LOC_SPIEGELSAAL,checkout=False)
     logo_path = "tsv_logo_100.png"
     act = TsvDBCreator.ACTIVITY_GYM+" Spiegelsaal"
     pv='/groupRooms'
@@ -128,7 +148,7 @@ def visitorsGFS():
 
 @app.route('/accessGYM_Dojo')  # Access kraftraum TODO: mit Raum!
 def visitorsGFD():
-    people = barModel.currentVisitorPictures(TsvDBCreator.ACTIVITY_GYM,TsvDBCreator.LOC_DOJO,60)
+    people = barModel.currentVisitorPictures(TsvDBCreator.ACTIVITY_GYM,TsvDBCreator.LOC_DOJO,checkout=False)
     logo_path = "tsv_logo_100.png"
     act = TsvDBCreator.ACTIVITY_GYM+" Dojo"
     pv='/groupRooms'
@@ -136,7 +156,7 @@ def visitorsGFD():
 
 @app.route('/accessGYM_Nord')  # Access kraftraum TODO: mit Raum!
 def visitorsGFN():
-    people = barModel.currentVisitorPictures(TsvDBCreator.ACTIVITY_GYM,TsvDBCreator.LOC_NORD,60)
+    people = barModel.currentVisitorPictures(TsvDBCreator.ACTIVITY_GYM,TsvDBCreator.LOC_NORD,checkout=False)
     logo_path = "tsv_logo_100.png"
     act = TsvDBCreator.ACTIVITY_GYM +" Nord" 
     pv='/groupRooms'
@@ -153,7 +173,7 @@ def statisticsSauna():
     return statisticsTemplate(TsvDBCreator.ACTIVITY_SAUNA,TsvDBCreator.LOC_SAUNA)
 
 
-@app.route('/accessSA')  # Access kraftraum
+@app.route('/accessSA')  # Access sauna (people)
 def visitorsSauna():
     people = barModel.currentVisitorPictures(TsvDBCreator.ACTIVITY_SAUNA)
     logo_path = "tsv_logo_100.png"
@@ -206,7 +226,7 @@ def groupRooms():
 @app.route('/krStatistics')
 def listKRStatistics():
     logo_path = "tsv_logo_100.png"
-    entries=((TsvDBCreator.ACTIVITY_KR,"Kraftraum Nutzung"),("blockKR", "Kraftraum Auslastung"),(("blockKRMedian", "Kraftraum Auslastung Median")))
+    entries=((TsvDBCreator.ACTIVITY_KR,"Kraftraum Nutzung"),("blockKR", "Kraftraum Auslastung"),("blockKRMedian", "Kraftraum Auslastung Median"),("personUseDay","Spezial: Tage pro Person"))
     listData=[]
     for entry in entries:
         data = {"href":entry[0],"title":entry[1]}
@@ -494,6 +514,11 @@ def plotFigTestWorking():
 # model for the access row part - checkin/checkout
 class AccessRow():
     dwellMinutes = -1  # we dont care
+    PRE_MIN_FULL=40
+    POST_MIN_FULL=15
+    PRE_MIN_HALF=10
+    POST_MIN_HALF=45
+    
 
     def __init__(self, dbRow):
         self.id = dbRow[0]
@@ -511,6 +536,7 @@ class AccessRow():
         self.checked = not self.checked
         self.da = acDate
     
+    #Dwell minutes are obsolete now!
     def isInPlace(self):
         if not self.checked:
             return False  # has gone
@@ -521,6 +547,21 @@ class AccessRow():
         secs = delta.total_seconds()
         mins = secs / 60
         return mins < AccessRow.dwellMinutes
+     
+    #CKI must be within 10/15 mins before/after :00 or :30 (Group fitnesse only)  
+    #This way we can differentiate between adjacent courses in the same room 
+    def isInTime(self,aDatetime):
+        reference_time = aDatetime
+        #hour = reference_time.hour
+        minute = reference_time.minute
+
+        if minute < 30: #volle stunde
+            startTime = reference_time.replace(minute=self.PRE_MIN_FULL) - timedelta(hours=1)
+            endTime = reference_time.replace(minute=self.POST_MIN_FULL)
+        else: #halbe stunde
+            startTime = reference_time.replace(minute=self.PRE_MIN_HALF)
+            endTime = reference_time.replace(minute=self.POST_MIN_HALF)       
+        return self.da >= startTime and self.da < endTime         
         
     def __lt__(self, other):
         return self.da < other.da
@@ -654,26 +695,6 @@ class BarModel():
     
     # TODO respect checkin/checkout there is a gracetime 0r 120 seconds between check in and checkout
     def countPeoplePerDay(self, activity,room):
-        '''
-        timetable= self.dbSystem.TIMETABLE
-        breakTime=13
-        members={}
-        stmt = "SELECT mitglied_id,access_date from "+timetable+" where location='"+location+"'"
-        rows = self.db.select(stmt)    
-        for row in rows:
-            #date_str = datetime.strptime(row[0], '%Y-%m-%d %H:%M:%S.%f').strftime('%Y-%m-%d')
-            date_str = row[1].strftime('%Y-%m-%d')
-            mid = row[0]
-            acr= members.get(date_str,None)
-            if acr is None:
-                members[date_str]={}
-    
-            cr=members[date_str].get(mid,None)
-            if cr is None:
-                cr=members[date_str][mid]=CountRow(row,breakTime)
-            else:
-                members[date_str][mid].updateAccess(row)    
-        '''
         members = self.__collectCountRows(activity,room)
         countValues = []
         for aDay in members.values():  # id->cr list
@@ -715,6 +736,34 @@ class BarModel():
         y_values = list(theHourDict.values())
         return (x_values, y_values)        
     
+    def listDaysPerPerson(self):
+        #This is the readable output for further investigations:
+        #stmt = "SELECT m.id,m.last_name AS mitglied_id, COUNT(DISTINCT DATE(z.access_date)) AS access_days FROM Zugang z JOIN Mitglieder m ON z.mitglied_id = m.id GROUP BY m.id ORDER BY access_days DESC"
+        #someweird artefact , if days and people are reversed
+        timetable = SetUpTSVDB.TIMETABLE
+        mbrTable = SetUpTSVDB.MAINTABLE
+        stmt = f"""WITH access_counts AS (
+            SELECT 
+                m.id AS mitglied_id, 
+                COUNT(DISTINCT DATE(z.access_date)) AS access_days
+            FROM {timetable} z
+            JOIN {mbrTable} m ON z.mitglied_id = m.id
+            GROUP BY m.id
+        )
+        SELECT 
+            access_days, 
+            COUNT(*) AS people_count
+        FROM access_counts
+        GROUP BY access_days
+        ORDER BY access_days ASC"""
+        rows = self.atomicSelect(stmt)
+        xPeopleCount=[]
+        yAccessDays=[] 
+        for row in rows:
+            yAccessDays.append(row[0])
+            xPeopleCount.append(row[1])
+        return (xPeopleCount, yAccessDays)            
+    
     # returns a {date-> {id -> rowCount} ] double dict 
     def __collectCountRows(self, activity,room):
         timetable = SetUpTSVDB.TIMETABLE
@@ -753,12 +802,12 @@ class BarModel():
         return (x_values, y_values)
         
     # show pic and names of those that are curently in the activity +#TOSO AND ROOM
-    def currentVisitorPictures(self, activity,room = None, dwellMinutes=-1):
+    def currentVisitorPictures(self, activity,room = None, checkout = True, dwellMinutes=-1):
         mbrTable = SetUpTSVDB.MAINTABLE
         timetable = SetUpTSVDB.TIMETABLE
         #daysplit = "13"  # time between morning and afternoon
 
-        members = {}
+        
         #Warning: Class scope, will break on multiple sessions!
         AccessRow.dwellMinutes = dwellMinutes  # Automatic checkout, negative means: we don't care (Sauna)
         picFolder = self.dbSystem.PICPATH + "/"
@@ -779,6 +828,35 @@ class BarModel():
             Log.warning("Picture retrieval failed")
             return [{'name':"Fehler - bitte umgehend melden!",'image_path': 'halt.png'}]
         Log.info("Visitor rows:%d", len(rows))
+        
+        '''
+        WE need a different approach for Course and Kraftraum:
+        The delta minutes and no toggling for Group (2 courses in the same room:
+        '''
+        members = self._buildCheckOutMembers(rows) if checkout else self._buildGroupMembers(rows)
+        present = [item for item in members.values() if item.isInPlace()]
+        people = []
+        for row in present:
+            people.append({'name': row.data[1] + " " + row.data[2] + "(" + row.checkInTimeString() + ")", 'image_path': picFolder + row.data[3]}) 
+        #Log.info("Checked in:%d", len(people))
+        return people
+
+    def _buildGroupMembers(self,rows,someDateTime=datetime.now()):
+        members = {}
+        for row in rows:
+            mid = row[0]
+            acr = members.get(mid, None)
+            if acr is None:
+                # Log.debug("Visitor add: %d",mid)
+                ar = AccessRow(row)
+                if ar.isInTime(someDateTime):      
+                    members[mid] = AccessRow(row)
+            else:
+                Log.info("Group CKI out ignore %d @ %s"%(ar.id,ar.da))   
+        return members
+     
+    def _buildCheckOutMembers(self,rows):
+        members = {}
         for row in rows:
             mid = row[0]
             acr = members.get(mid, None)
@@ -788,15 +866,9 @@ class BarModel():
             else:
                 members[mid].toggleChecked(row[4])
                 # Log.debug("Visitor toggle: %s",members[mid].checked)
-        
-        present = [item for item in members.values() if item.isInPlace()]     
-        people = []
-        for row in present:
-            #print("pic:",picFolder + row.data[3])
-            people.append({'name': row.data[1] + " " + row.data[2] + "(" + row.checkInTimeString() + ")", 'image_path': picFolder + row.data[3]}) 
-        Log.info("Checked in:%d", len(people))
-        return people
+        return members
 
+           
     def debugAllUsers(self):
         picFolder = self.dbSystem.PICPATH + "/"
         mbrTable = SetUpTSVDB.MAINTABLE
