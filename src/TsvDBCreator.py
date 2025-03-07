@@ -540,10 +540,8 @@ class Konfig():
         self.configs=[]
         for row in rows:
             self.configs.append(KonfigEntry(row))
-            print("KonfigList:",row)
     
     def entryAt(self,indx):
-        print("retrun konfig at:",indx)
         return self.configs[indx]   
     
     def allActivities(self):
@@ -561,6 +559,8 @@ class Konfig():
     def configForUserGroup(self,group):
         return next((c for c in self.configs if c.isValidForGroup(group) and c.isValidInTime()),None) 
     
+    def configForUserGroupAndRoom(self,group,room):
+        return next((c for c in self.configs if c.isValidForGroup(group) and c.isValidInTime() and c.room==room),None)
 
     
             

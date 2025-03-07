@@ -18,7 +18,6 @@ from datetime import datetime
 import TsvDBCreator
 
 WIN = None
-LOCATION = TsvDBCreator.LOC_KRAFTRAUM
 
 from RegModel import Registration
 
@@ -139,11 +138,12 @@ class QElidedLabel(QtWidgets.QLabel):
 # #Main App Window. 
 class MainFrame(QtWidgets.QMainWindow):
     
-    def __init__(self, qapp, idx):
+    def __init__(self, qapp, idx,roomName):
         self._isStarted = False
         self.__qapp = qapp
         self.model = Registration()
         self._defaultActivityIdx = idx;
+        self._roomLocation = roomName
         self.qtQueueRunning = False
         super(MainFrame, self).__init__()
         self.setWindowIcon(getAppIcon())
@@ -217,7 +217,7 @@ class MainFrame(QtWidgets.QMainWindow):
         self.ckiframe.setLineWidth(1)
         
         ckiLbl = QtWidgets.QLabel(self)
-        ckiLbl.setText("Check in")
+        ckiLbl.setText(f"Check in {self._roomLocation}")
         ckiLbl.setStyleSheet("QLabel { font: bold; color:#07A002;}");  # dark theme: #0AFF02
         # self.ui_ckiDisplay=QtWidgets.QLabel(self)
         self.ui_ckiDisplay = QElidedLabel(self)
@@ -327,9 +327,12 @@ class MainFrame(QtWidgets.QMainWindow):
         if mbr:
             now = datetime.now().isoformat()
             Log.info("Member:%s CKI/CKO", mbr.primKeyString())
-            cfgEntry = self.currentLocationConfig() 
-            self.model.saveAccessDate(mbr, now, cfgEntry)
-            self._clearFields()
+            cfgEntry = self.currentLocationConfig().configForUserGroup(mbr.access)
+            if cfgEntry:
+                self.model.saveAccessDate(mbr, now, cfgEntry)
+                self._clearFields()
+            else:
+                Log.warning("No location entry found for CKI. Why is button enabled?")
 
     def _onActivityChanged(self, _):
         mbr = self.ui_SearchEdit.currentData()
@@ -348,19 +351,20 @@ class MainFrame(QtWidgets.QMainWindow):
             entry = member.searchName()
             self.ui_SearchEdit.addItem(entry, member)
     
-    #store all configs for Room Kraftraum? Else we would have to select Room and actitivity       
+    #store all configs for Room Kraftraum Else we would have to select Room and actitivity       
     def fillActivityCombo(self):
         # themes=self.model.configs.allActivities()
         allConfig = self.model.configs.configs
         cfgDic = {}
         for cfg in allConfig:
-            # No prepaid support yet:
-            if cfg.room != LOCATION:
+            # No prepaid support or rooms yet:
+            if cfg.room != self._roomLocation and cfg.activity != TsvDBCreator.ACTIVITY_SAUNA:
                 continue
-            #TODO - we need a list of configs behind that activity. not just the first one
+            #far future: selective checkin for every room: comboText= cfg.activity+"->"+cfg.room
             res = cfgDic.get(cfg.activity, [])
             res.append(cfg)
             cfgDic[cfg.activity] = res
+
             
         for key, value in cfgDic.items():
             kx = TsvDBCreator.Konfig([])
@@ -477,14 +481,20 @@ class MainFrame(QtWidgets.QMainWindow):
         self.ui_ckiButton.setEnabled(areEnabled)
         self.ui_blockButton.setEnabled(areEnabled)
 
-    def _updateCKIButton(self, ckiCount):
-        self.ui_ckiButton.setEnabled(True)
+    def _updateCKIButton(self, ckiCount,activity):
         if (ckiCount % 2) == 0:
             self.ui_ckiButton.setIcon(QtGui.QIcon("./web/static/checkin.png"))
             self.ui_ckiButton.setText("Checkin")
         else:
-            self.ui_ckiButton.setIcon(QtGui.QIcon("./web/static/checkout.png"))
-            self.ui_ckiButton.setText("Checkout")
+            if activity in Registration.CHECKABLE_ACTIVITY:
+                self.ui_ckiButton.setIcon(QtGui.QIcon("./web/static/checkout.png"))
+                self.ui_ckiButton.setText("Checkout")
+            else:
+                self.ui_ckiButton.setEnabled(False)
+                return                
+        self.ui_ckiButton.setEnabled(True)    
+            
+            
     
     def _updateBlockButton(self, mbr):
         self.ui_blockButton.setEnabled(True)
@@ -510,17 +520,27 @@ class MainFrame(QtWidgets.QMainWindow):
         blockState = "Zugang gesperrt"
         ckiText = "-"
         if foundEntry:    
-            res = self.model.todaysAccessDateStrings(mbr.id, foundEntry.activity)
+            res = self.model.todaysAccessDateStrings(mbr.id, foundEntry.activity,foundEntry.room)
             ckiText = "-" if len(res) == 0 else ','.join(res) 
             #!self.ui_ckiDisplay.setText(ckiText)
+            accessError = self.model.isValidAboAccess(mbr,foundEntry)
+            if accessError is not None:
+                Log.warning("Abo data:%s",accessError)
+                blockState = "Sauna Abo abgelaufen"
+                ckiText= "Sauna Abo neu kaufen"
+                self.ui_Blocked.setText(blockState)
+                self.ui_ckiDisplay.setText(ckiText)
+                self.ui_ckiButton.setEnabled(False)
+                return                
+            
             feeError = self.model.haveFeesBeenPaid(mbr, foundEntry.paySection)
             if not feeError:
-                self._updateCKIButton(len(res))
+                self._updateCKIButton(len(res),foundEntry.activity)
                 blockState = "Zugang gültig"
             else:
                 Log.warning("Member access not valid")
-                if feeError:
-                    ckiText = feeError.printReason()
+                ckiText = feeError.printReason()
+                self.ui_ckiButton.setEnabled(False)
         else:
             ckiText = "Kein Zugang für Bereich %s : Ticket nicht für aktuellen Zeitpunkt oder Ort"% (primentry.activity)
             self.ui_ckiButton.setEnabled(False)
@@ -599,6 +619,7 @@ def parse():
     parser = argparse.ArgumentParser(description="MemberControl")
     parser.add_argument('-d', dest="debug", action='store_true', help="Debug logs")
     parser.add_argument('-k', dest="konfig", type=int, default=0, help="Default Konfig (Table Konfig index)")
+    parser.add_argument('-r', dest="room", type=str, default=TsvDBCreator.LOC_KRAFTRAUM, help="Room from Konfig (Kraftraum)")
     # parser.add_argument('-r', dest="rfidMode", action='store_true', help="RFID MODE")
     return parser.parse_args()    
 
@@ -626,7 +647,8 @@ def main(args):
         app = QApplication(argv)
         app.setWindowIcon(getAppIcon())
         actIndex = args.konfig
-        WIN = MainFrame(app, actIndex)  # keep python reference!
+        room = args.room
+        WIN = MainFrame(app, actIndex,room)  # keep python reference!
         # ONLY windoze, if ever: app.setStyleSheet(winStyle())
         # app.setStyle(QtWidgets.QStyleFactory.create("Fusion"));
         app.exec()

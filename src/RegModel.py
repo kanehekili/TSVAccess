@@ -75,6 +75,7 @@ class RFIDController(RegisterController):
 class Registration():
     SAVEPIC = "/tmp/tsv.screenshot.png"   
     NOT_FOUND="Picture not found"
+    CHECKABLE_ACTIVITY=[TsvDBCreator.LOC_KRAFTRAUM] #only these activities need a checkout!
 
     def __init__(self):
         # self.accesscodes = []
@@ -125,10 +126,10 @@ class Registration():
         return self.memberList
     
     # used by memberControl
-    def todaysAccessDateStrings(self, mbrID, activity):
+    def todaysAccessDateStrings(self, mbrID, activity,room):
         table = SetUpTSVDB.TIMETABLE
         daysplit = "13:30:00"  # see TsvAuswertung
-        stmt = "select access_date from %s where mitglied_id =%d and activity='%s' AND %s" % (table, mbrID, activity, TsvDBCreator.halfDayStatement("access_date",daysplit))
+        stmt = "select access_date from %s where mitglied_id =%d and activity='%s' and room='%s' AND %s" % (table, mbrID, activity, room,TsvDBCreator.halfDayStatement("access_date",daysplit))
         rows = self.db.select(stmt)
         timeData = []
         for row in rows:
@@ -284,7 +285,7 @@ class Registration():
         return pic
 
     # used by member control
-    def isValidAccess(self, mbr, cfgEntry):
+    def isValidAboAccess(self, mbr, cfgEntry):
         Log.info("Validation for:%d section:%s", mbr.id, cfgEntry.paySection)
         if cfgEntry.activity == TsvDBCreator.ACTIVITY_SAUNA:
             if mbr.currentAbo[0] is None:
@@ -292,11 +293,14 @@ class Registration():
                 if mbr.currentAbo[0] is None:
                     mbr.currentAbo = ("Empty", 0)
             Log.info("Abo data %s count %d", mbr.currentAbo[0], mbr.currentAbo[1])
-            return mbr.currentAbo[0] == cfgEntry.paySection and mbr.currentAbo[1] > 0
-        # ÜL,KR in Group?
-        #check the corret weekday and current time within that range
-        
-        return mbr.access in cfgEntry.groups
+            if mbr.currentAbo[0] == cfgEntry.paySection and mbr.currentAbo[1] > 0:
+                return None
+            else:
+                return "Keine Sauna Abo Punkte -Neu kaufen!"
+        if mbr.access in cfgEntry.groups:
+            return None
+        else:
+            return "Zugang nicht möglich"
     
     def haveFeesBeenPaid(self,mbr,paySections):
         #needs to be live! if not mbr.fees:
