@@ -21,16 +21,6 @@ WIN = None
 
 from RegModel import Registration
 
-'''
-Unbelievable windows crap: To get your icon into the task bar:
-'''
-if os.name == 'nt':
-    import ctypes
-    myappid = 'Member.tsv.access'  # arbitrary string
-    cwdll = ctypes.windll  # @UndefinedVariable
-    cwdll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
-
-
 class VideoWidget(QtWidgets.QFrame):
     """ A class for rendering video coming from OpenCV """
     # trigger = pyqtSignal(float, float, float)
@@ -138,11 +128,10 @@ class QElidedLabel(QtWidgets.QLabel):
 # #Main App Window. 
 class MainFrame(QtWidgets.QMainWindow):
     
-    def __init__(self, qapp, idx,roomName):
+    def __init__(self, qapp,roomName):
         self._isStarted = False
         self.__qapp = qapp
         self.model = Registration()
-        self._defaultActivityIdx = idx;
         self._roomLocation = roomName
         self.qtQueueRunning = False
         super(MainFrame, self).__init__()
@@ -370,7 +359,7 @@ class MainFrame(QtWidgets.QMainWindow):
             kx = TsvDBCreator.Konfig([])
             kx.configs=value
             self.ui_ActivityCombo.addItem(key,kx )
-        self.ui_ActivityCombo.setCurrentIndex(self._defaultActivityIdx)
+        #self.ui_ActivityCombo.setCurrentIndex(0)
             
     def makeGridLayout(self):
         # fromRow(y) - fromColumn(x)  rowSpan(height) columnSpan(width), ggf alignment
@@ -523,28 +512,32 @@ class MainFrame(QtWidgets.QMainWindow):
             res = self.model.todaysAccessDateStrings(mbr.id, foundEntry.activity,foundEntry.room)
             ckiText = "-" if len(res) == 0 else ','.join(res) 
             #!self.ui_ckiDisplay.setText(ckiText)
-            accessError = self.model.isValidAboAccess(mbr,foundEntry)
-            if accessError is not None:
-                Log.warning("Abo data:%s",accessError)
-                blockState = "Sauna Abo abgelaufen"
-                ckiText= "Sauna Abo neu kaufen"
-                self.ui_Blocked.setText(blockState)
-                self.ui_ckiDisplay.setText(ckiText)
+            aboOK,aboMsg = self.model.isValidAboAccess(mbr,foundEntry)
+            if not aboOK:
+                Log.warning("Abo data:%s",aboMsg)
                 self.ui_ckiButton.setEnabled(False)
+                self._displayUpdateResult(aboMsg, ckiText)
                 return                
             
             feeError = self.model.haveFeesBeenPaid(mbr, foundEntry.paySection)
             if not feeError:
+                blockState= "Zugang gültig "
+                if foundEntry.paySection in TsvDBCreator.PREPAID_INDICATOR:
+                    blockState += "[",aboMsg,"]"     
                 self._updateCKIButton(len(res),foundEntry.activity)
-                blockState = "Zugang gültig"
-            else:
-                Log.warning("Member access not valid")
-                ckiText = feeError.printReason()
-                self.ui_ckiButton.setEnabled(False)
-        else:
-            ckiText = "Kein Zugang für Bereich %s : Ticket nicht für aktuellen Zeitpunkt oder Ort"% (primentry.activity)
+                self._displayUpdateResult(blockState, ckiText)
+                return
+            Log.warning("Member invalid fee")
             self.ui_ckiButton.setEnabled(False)
-           
+            self._displayUpdateResult("Nicht bezahlt",ckiText)
+            return
+        else:
+            ckiText = "Kein Zugang für Bereich %s:Ticket nicht für aktuellen Zeitpunkt oder Ort"% (primentry.activity)
+            self.ui_ckiButton.setEnabled(False)
+            self._displayUpdateResult(blockState, ckiText)
+        Log.warning("member update fail:%s",ckiText)   
+
+    def _displayUpdateResult(self,blockState,ckiText):
         self.ui_Blocked.setText(blockState)
         self.ui_ckiDisplay.setText(ckiText)
 
@@ -618,9 +611,7 @@ def handle_exception(exc_type, exc_value, exc_traceback):
 def parse():
     parser = argparse.ArgumentParser(description="MemberControl")
     parser.add_argument('-d', dest="debug", action='store_true', help="Debug logs")
-    parser.add_argument('-k', dest="konfig", type=int, default=0, help="Default Konfig (Table Konfig index)")
     parser.add_argument('-r', dest="room", type=str, default=TsvDBCreator.LOC_KRAFTRAUM, help="Room from Konfig (Kraftraum)")
-    # parser.add_argument('-r', dest="rfidMode", action='store_true', help="RFID MODE")
     return parser.parse_args()    
 
 
@@ -646,9 +637,8 @@ def main(args):
         argv = sys.argv
         app = QApplication(argv)
         app.setWindowIcon(getAppIcon())
-        actIndex = args.konfig
         room = args.room
-        WIN = MainFrame(app, actIndex,room)  # keep python reference!
+        WIN = MainFrame(app,room)  # keep python reference!
         # ONLY windoze, if ever: app.setStyleSheet(winStyle())
         # app.setStyle(QtWidgets.QStyleFactory.create("Fusion"));
         app.exec()

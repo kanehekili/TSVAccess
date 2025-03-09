@@ -294,13 +294,10 @@ class Registration():
                     mbr.currentAbo = ("Empty", 0)
             Log.info("Abo data %s count %d", mbr.currentAbo[0], mbr.currentAbo[1])
             if mbr.currentAbo[0] == cfgEntry.paySection and mbr.currentAbo[1] > 0:
-                return None
+                return (True,f"Abo: {mbr.currentAbo[1]}")
             else:
-                return "Keine Sauna Abo Punkte -Neu kaufen!"
-        if mbr.access in cfgEntry.groups:
-            return None
-        else:
-            return "Zugang nicht möglich"
+                return (False,"Keine Sauna Abo Punkte -Neu kaufen!")
+        return (True,"OK")
     
     def haveFeesBeenPaid(self,mbr,paySections):
         #needs to be live! if not mbr.fees:
