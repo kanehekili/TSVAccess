@@ -375,20 +375,25 @@ Why only two persons?:
 |  4022 | Ursula     | Schleich         | Schleich-4022.png          | 2025-02-20 18:27:23 |
 | 22591 | Alexandra  | Rothmann         | Rothmann-22591.png         | 2025-02-20 18:09:35 |
 '''
-def testSKR():
-    testime = '2025-02-24 18:01:00'
-    testime = '2025-02-20 18:01:00'
+def testGroupCKI():
+    #testime = '2025-02-24 18:01:00'
+    testime = '2025-02-27 10:10:00' #Do
+    testime = '2025-03-10 10:05:00' #Mo
+    room="Spiegelsaal"
     bm = BarModel()
     #def currentVisitorPictures(self, activity,room = None, checkout = True, dwellMinutes=-1):
     #people = bm.currentVisitorPictures(TsvDBCreator.ACTIVITY_GYM,TsvDBCreator.LOC_KRAFTRAUM,checkout=False)
-    stmt = "SELECT id,first_name,last_name,picpath,access_date FROM Mitglieder m JOIN Zugang z ON m.id = z.mitglied_id WHERE DATE(z.access_date) = DATE('"+testime+"') AND activity='GroupFitnesse' AND room='Spiegelsaal' ORDER By z.access_date DESC"
+    stmt = "SELECT id,first_name,last_name,picpath,access_date FROM Mitglieder m JOIN Zugang z ON m.id = z.mitglied_id WHERE DATE(z.access_date) = DATE('"+testime+"') AND activity='GroupFitnesse' AND room='"+room+"' ORDER By z.access_date ASC"
     rows = bm.atomicSelect(stmt)
     testdate = datetime.strptime(testime, '%Y-%m-%d %H:%M:%S')
-    members =bm._buildGroupMembers(rows,testdate) #(id > member)
+    members =bm._buildGroupMembers(rows,testdate,30) #(id > member)
     print("####### ",testime, ' #############')
+    cnt=0
     for p in members.values():
-        print(p.data[1],p.data[2],p.checkInTimeString())
-          
+        if p.da <= testdate:
+            print(p.data[1],p.data[2],p.checkInTimeString())
+            cnt+=1
+    print("######### Count:",cnt," ###########")
 
 def testTimeSpan():
     table="Zugang"
@@ -569,5 +574,5 @@ if __name__ == '__main__':
     #nextDay()
     #sendEmail()
     #countBlockUsage()
-    testSKR()
+    testGroupCKI()
     pass

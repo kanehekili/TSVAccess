@@ -513,7 +513,6 @@ def plotFigTestWorking():
 
 # model for the access row part - checkin/checkout
 class AccessRow():
-    dwellMinutes = -1  # we dont care
     PRE_MIN_FULL=40
     POST_MIN_FULL=15
     PRE_MIN_HALF=10
@@ -540,16 +539,11 @@ class AccessRow():
     def isInPlace(self):
         if not self.checked:
             return False  # has gone
-        if AccessRow.dwellMinutes < 0:
-            return self.checked
-        now = datetime.now()
-        delta = now - self.da
-        secs = delta.total_seconds()
-        mins = secs / 60
-        return mins < AccessRow.dwellMinutes
+        return True
      
     #CKI must be within 10/15 mins before/after :00 or :30 (Group fitnesse only)  
     #This way we can differentiate between adjacent courses in the same room 
+    #Not  working: replaced with timeSlot
     def isInTime(self,aDatetime):
         reference_time = aDatetime
         #hour = reference_time.hour
@@ -561,7 +555,14 @@ class AccessRow():
         else: #halbe stunde
             startTime = reference_time.replace(minute=self.PRE_MIN_HALF)
             endTime = reference_time.replace(minute=self.POST_MIN_HALF)       
-        return self.da >= startTime and self.da < endTime         
+        return self.da >= startTime and self.da < endTime    
+    
+    #second approach. Simply check those that live for minsOfLife Minutes... After that they are gone 
+    def isInTimeSlot(self,aDatetime,minsOfLife):     
+        delta = aDatetime - self.da
+        secs = delta.total_seconds()
+        mins = secs / 60
+        return mins < minsOfLife
         
     def __lt__(self, other):
         return self.da < other.da
@@ -802,14 +803,13 @@ class BarModel():
         return (x_values, y_values)
         
     # show pic and names of those that are curently in the activity +#TOSO AND ROOM
-    def currentVisitorPictures(self, activity,room = None, checkout = True, dwellMinutes=-1):
+    def currentVisitorPictures(self, activity,room = None, checkout = True):
         mbrTable = SetUpTSVDB.MAINTABLE
         timetable = SetUpTSVDB.TIMETABLE
         #daysplit = "13"  # time between morning and afternoon
 
         
         #Warning: Class scope, will break on multiple sessions!
-        AccessRow.dwellMinutes = dwellMinutes  # Automatic checkout, negative means: we don't care (Sauna)
         picFolder = self.dbSystem.PICPATH + "/"
         halfPart = TsvDBCreator.halfDayStatement("z.access_date", "13:30:00")
         if not room:
@@ -833,7 +833,9 @@ class BarModel():
         WE need a different approach for Course and Kraftraum:
         The delta minutes and no toggling for Group (2 courses in the same room:
         '''
-        members = self._buildCheckOutMembers(rows) if checkout else self._buildGroupMembers(rows)
+        timeNow = datetime.now()
+        minsOfLife = 30
+        members = self._buildCheckOutMembers(rows,timeNow,minsOfLife) if checkout else self._buildGroupMembers(rows)
         present = [item for item in members.values() if item.isInPlace()]
         people = []
         for row in present:
@@ -841,15 +843,16 @@ class BarModel():
         #Log.info("Checked in:%d", len(people))
         return people
 
-    def _buildGroupMembers(self,rows,someDateTime=datetime.now()):
+    def _buildGroupMembers(self,rows,someDateTime,minsOfLife):
         members = {}
+        Log.info("Verify group @ %s",someDateTime)
         for row in rows:
             mid = row[0]
             acr = members.get(mid, None)
             if acr is None:
                 # Log.debug("Visitor add: %d",mid)
                 ar = AccessRow(row)
-                if ar.isInTime(someDateTime):      
+                if ar.isInTimeSlot(someDateTime,minsOfLife):      
                     members[mid] = AccessRow(row)
             else:
                 Log.info("Group CKI out ignore %d @ %s"%(ar.id,ar.da))   
