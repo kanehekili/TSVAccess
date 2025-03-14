@@ -23,6 +23,7 @@ import traceback,mimetypes
 import smtplib,ssl,struct
 from email.message import EmailMessage
 from ast import literal_eval
+import csv
 
 # Allowed access rooms: Display only
 LOC_KRAFTRAUM = "Kraftraum"
@@ -337,6 +338,9 @@ class SetUpTSVDB():
        uuid INT UNSIGNED NOT NULL
     )   
     """
+    #select per month: 
+    #SELECT * from RegisterList where month(register_date)=9; (September)
+    
     #overview for abos
     ABOTABLE="AboList"
     TABLE9= """
@@ -346,9 +350,20 @@ class SetUpTSVDB():
       section VARCHAR(100)
     )
     """
-    
-    #select per month: 
-    #SELECT * from RegisterList where month(register_date)=9; (September)
+
+    KURSTABLE="Kurslist"
+    TABLE10="""
+    CREATE OR REPLACE TABLE Kurslist (
+      kurs_id TINYINT PRIMARY KEY,
+      display_Name VARCHAR(50) NOT NULL,
+      paySection VARCHAR(50) NOT NULL,      
+      activity VARCHAR(50) NOT NULL,
+      room VARCHAR(50) NOT NULL,
+      weekday TINYINT NOT NULL,
+      from_Time TIME NOT NULL,
+      to_Time TIME NOT NULL
+    )    
+    """
     
     ######
     # HOOK
@@ -384,6 +399,8 @@ class SetUpTSVDB():
         self.db.createTable(self.TABLE6)
         self.db.createTable(self.TABLE7)
         self.db.createTable(self.TABLE8)
+        self.db.createTable(self.TABLE9)
+        self.db.createTable(self.TABLE10)
         self.db.close()        
 
     def _fillConfigTable(self):
@@ -437,6 +454,34 @@ class SetUpTSVDB():
         self.db.insertMany(table, fields, entries)  
         print(" Accesspoints need to be restarted after update !")
     
+    def _fillCourseTable(self,rows):
+        DayTranslate={"Mo":0,"Di":1,"Mi":2, "Do":3,"Fr":4,"Sa":5,"So":6}
+        self.db.createTable(self.TABLE10)
+        table=self.KURSTABLE
+        fields = ('kurs_id','paySection','display_Name','activity','room',"weekday","from_Time", "to_Time")
+        entries=[]
+        cnt=0
+        for row in rows:
+            dbRow=[cnt,SECTION_FIT]
+            weekday = DayTranslate[row[3]]
+            row[3]=weekday
+            dbRow.extend(row)
+            entries.append(dbRow)
+            cnt +=1
+        #entries.append((0,SECTION_FIT,ACTIVITY_GYM, "Dojo",0,"08:45:00","09:30:00"))
+        self.db.insertMany(table, fields, entries)  
+        print(" Course Table updated !")
+     
+    def _importFromCSV(self,pathName):
+        entries=[]
+        
+        #with open(pathName,"r", encoding='utf-8') as csvfile:
+        with open(pathName,"r") as csvfile:            
+            reader = csv.reader(csvfile, delimiter=';', quotechar='|')
+            for row in reader:
+                if len(row[0])>1 and row[0][1] != '#':
+                    entries.append(row)
+        return entries
     
     def _fillMailTable(self):
         self.db.createTable(self.TABLE7)
@@ -618,6 +663,21 @@ def updateConfigTable(dbAccess):
         s.db.close()
 #TODO switchLocation(host,loctableID)    
 
+def updateCoursesTable(dbAccess, filepath):
+    target=dbAccess.HOST
+    res = input("Change Kurse on server ***%s***? [Y/N]"%(target))
+    if not (res == "Y"):
+        print("Abort")
+        return
+    s = SetUpTSVDB(dbAccess)
+    try:
+        entries = s._importFromCSV(filepath)
+        s._fillCourseTable(entries)
+    except Exception:
+        traceback.print_exc()
+    finally:
+        s.db.close()
+
 def updateMailTable(dbAccess):
     s = SetUpTSVDB(dbAccess)
     try:
@@ -638,7 +698,7 @@ def rfidFromTableToAssaAbloy(decimalString):
 def parseOptions(args):
     
     try:
-        opts, args = getopt.getopt(args[1:], "rkmst:c:", ["convert","reset", "updateLocation", "updateMail" "updateScheme","transponder"])
+        opts, args = getopt.getopt(args[1:], "rkmst:c:g:", ["convert","reset", "updateLocation", "updateMail" "updateScheme","transponder","groupCourses"])
         if len(opts) == 0:
             printUsage()
     except getopt.GetoptError:
@@ -652,6 +712,8 @@ def parseOptions(args):
             basicSetup(dbAccess)
         elif o in ("-k", "--updateKonfig"):
             updateConfigTable(dbAccess)
+        elif o in ("-g", "--groupCourses"):
+            updateCoursesTable(dbAccess,a)    
         elif o in ("-m", "--updateMail"):
             updateMailTable(dbAccess)            
         elif o in ("-s", "--updateScheme"):
@@ -667,6 +729,7 @@ def printUsage():
     print("Creator commands: \n"\
           "\t-r > !reset the database! (--reset) \n"
           "\t-k > update konfig (--updateKonfig) \n"
+          "\t-g filename > update Courses (--groupCourses) \n"
           "\t-s > !update the database! (--updateScheme) \n"
           "\t-t filename > read transponder (--transponder) \n"
           "\t-c decimal rfid > convert rfid to AA (--convert) \n"

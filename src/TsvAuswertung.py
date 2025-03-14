@@ -205,7 +205,7 @@ def dashboard():
         listDataRight.append(data)    
     
     #Technik
-    entries=(('config','Konfig'),('registrationS','Chips'),('aboList','Abos'),('sectionS','Abteilungen'))   
+    entries=(('config','Konfig'),('courses',"Kurse"),('registrationS','Chips'),('aboList','Abos'),('sectionS','Abteilungen'))   
     listData=[] 
     for entry in entries:
         data = {"href":entry[0],"title":entry[1]}
@@ -435,6 +435,20 @@ def manageConfiguration():
     
     return render_template('config.html', logo_path=logo_path, configHeaders=configHeaders, configData=configData, locHeaders=locHeaders, locData=locData)
 
+@app.route('/courses', methods=["GET", "POST"])
+def showCourses():
+    logo_path = "tsv_logo_100.png"
+    configHeaders = ['ID', 'Name', 'Aktivität', 'Raum', "Wochentag", "Von" ,"Bis"]
+    fields = ['kurs_id', 'display_Name', 'activity', 'room', 'weekday','from_Time','to_Time']
+    configData = []
+    configRows = barModel.courseTable(fields)
+    for row in configRows:
+        entry = {}
+        for idx in range(0, len(fields)):
+            entry[fields[idx]] = row[idx]
+        configData.append(entry)
+    
+    return render_template('course.html', logo_path=logo_path, configHeaders=configHeaders, configData=configData, locHeaders=[], locData=[])
 
 @app.route('/registrationS', methods=["GET", "POST"])
 def showChipRegistration():
@@ -929,6 +943,19 @@ class BarModel():
     def configTable(self):
         stmt = "SELECT * from Konfig"
         return self.atomicSelect(stmt)
+    
+    def courseTable(self,fields):
+        data = ",".join(fields)
+        stmt = "SELECT "+data+" from Kurslist"
+        return self.atomicSelect(stmt)
+    
+    def getCurrentCourses(self,searchdate):
+        #returns (13, 'Rückenfit', 'Fit & Fun', 'GroupFitnesse', 'Spiegelsaal', 3, datetime.timedelta(seconds=64800), datetime.timedelta(seconds=68400))
+        prebuffer = "0:15:0"
+        stmt = """SELECT * FROM Kurslist WHERE WEEKDAY('{0}') = weekday AND activity = '{2}' AND (
+               TIME('{0}') BETWEEN SUBTIME(from_Time,'{1}') AND to_time); """.format(searchdate,prebuffer,TsvDBCreator.ACTIVITY_GYM)
+         
+        return self.atomicSelect(stmt)        
     
     def registerTable(self):
         # list only NON Assa Abloy keys
