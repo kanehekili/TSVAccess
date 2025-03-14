@@ -835,7 +835,7 @@ class BarModel():
         '''
         timeNow = datetime.now()
         minsOfLife = 30
-        members = self._buildCheckOutMembers(rows,timeNow,minsOfLife) if checkout else self._buildGroupMembers(rows)
+        members = self._buildCheckOutMembers(rows) if checkout else self._buildGroupMembers(rows,timeNow,minsOfLife)
         present = [item for item in members.values() if item.isInPlace()]
         people = []
         for row in present:
