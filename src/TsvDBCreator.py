@@ -466,21 +466,30 @@ class SetUpTSVDB():
             weekday = DayTranslate[row[3]]
             row[3]=weekday
             dbRow.extend(row)
-            entries.append(dbRow)
-            cnt +=1
+            if len(dbRow) != len(fields):
+                print("Row failed:",row)
+            else:
+                entries.append(dbRow)
+                cnt +=1
         #entries.append((0,SECTION_FIT,ACTIVITY_GYM, "Dojo",0,"08:45:00","09:30:00"))
         self.db.insertMany(table, fields, entries)  
         print(" Course Table updated !")
-     
-    def _importFromCSV(self,pathName):
+    
+    '''
+    Read from csv. Usually csv has a trailing delimiter that is interpreted as empty column. IF the last entry is missing 
+    set hasTrailingDelimiter to False
+    We expect ';' as delimiter.
+    '''
+    def _importFromCSV(self,pathName,hasTrailingDelimiter=True):
         entries=[]
         
-        #with open(pathName,"r", encoding='utf-8') as csvfile:
-        with open(pathName,"r") as csvfile:            
-            reader = csv.reader(csvfile, delimiter=';', quotechar='|')
+        with open(pathName,"r", encoding='utf-8') as csvfile:
+        #with open(pathName,"r",newline="") as csvfile:            
+            reader = csv.reader(csvfile, delimiter=';')
             for row in reader:
+                rowLen = len(row)-1 if hasTrailingDelimiter else len(row) 
                 if len(row[0])>1 and row[0][1] != '#':
-                    entries.append(row)
+                    entries.append(row[:rowLen])
         return entries
     
     def _fillMailTable(self):
