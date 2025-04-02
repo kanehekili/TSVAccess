@@ -1,0 +1,18 @@
+building:
+create build package
+copy the resources
+pip install --target=libs -r /path/to/requirements.txt
+modify - if necessary:
+    sys.path.insert(0, "libs")  # Add the "libs" folder to the Python path
+    
+package it. 
+
+A base requirements.txt is @ resources
+generate requirements with pip freeze > req.txt
+
+Major update will force a library update:
+
+rm-rf libs/
+pip install --target=libs -r requirements.txt
+
+Each app needs a req.txt for later easy update.

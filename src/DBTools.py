@@ -271,6 +271,21 @@ class OSTools():
                 logging.log(logging.ERROR, "Error: " + str(osError.strerror))
     
     @classmethod
+    def setLibPath(cls,fileInstance):
+        # Get the directory of the current script
+        current_dir = os.path.dirname(os.path.abspath(fileInstance))
+        
+        # Check if running from "src/" (development) or directly from the project root (delivery)
+        if os.path.basename(current_dir) == "src":
+            base_dir = os.path.dirname(current_dir)  # Move up to "root/"
+        else:
+            base_dir = current_dir  # Already at "root/"
+        
+        # Add "lib" to sys.path
+        lib_path = os.path.join(base_dir, "lib")
+        sys.path.insert(0, lib_path)        
+    
+    @classmethod
     def __pairwise(cls,iterable):
         a, b = tee(iterable)
         next(b, None)
