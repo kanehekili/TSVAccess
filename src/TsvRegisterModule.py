@@ -349,6 +349,57 @@ class CheckableComboBox(QtWidgets.QComboBox):
         # TODO
         pass
 
+class ClearableLineEdit(QtWidgets.QLineEdit):
+    clearClicked = pyqtSignal()
+     
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        
+        # Create the clear button
+        self.clear_button = QtWidgets.QToolButton(self)
+        
+        # Use a red X icon or draw it
+        #self.clear_button.setIcon(QtGui.QIcon.fromTheme("edit-delete"))  # System icon
+        self.clear_button.setIcon(QtGui.QIcon('./web/static/dialog-close.png'))
+        self.clear_button.setStyleSheet(""" 
+            QToolButton {
+                border: none;
+                padding: 0px;
+                color: red;
+                font-weight: bold;
+            }
+        """)
+        self.clear_button.setCursor(Qt.CursorShape.ArrowCursor)
+        self.clear_button.setToolTip("Löschen")
+        
+        # Adjust size
+        button_size = self.clear_button.sizeHint()
+        frame_width = self.style().pixelMetric(QtWidgets.QStyle.PixelMetric.PM_DefaultFrameWidth)
+        self.setStyleSheet(f"""
+            QLineEdit {{
+                padding-right: {button_size.width() + frame_width + 1}px;
+            }}
+        """)
+        
+        self.clear_button.setVisible(False)
+        self.clear_button.clicked.connect(self._onClear)
+        self.textChanged.connect(self.update_clear_button)
+
+    def _onClear(self):
+        self.clear()
+        self.clearClicked.emit()
+        
+    def update_clear_button(self, text):
+        self.clear_button.setVisible(bool(text))  # Show if text exists, hide otherwise
+
+    def resizeEvent(self, event):
+        button_size = self.clear_button.sizeHint()
+        frame_width = self.style().pixelMetric(QtWidgets.QStyle.PixelMetric.PM_DefaultFrameWidth)
+        self.clear_button.move(
+            self.rect().right() - frame_width - button_size.width(),
+            (self.rect().bottom() - button_size.height() + 1) // 2
+        )
+        super().resizeEvent(event)
 
 # #Main App Window. 
 class MainFrame(QtWidgets.QMainWindow):
@@ -363,6 +414,7 @@ class MainFrame(QtWidgets.QMainWindow):
         self.capturing = False
         self.photoTaken = False
         self.mbrPhoto = None
+        self.rfid_deleted=False
         self.controller = RFIDController(self) if rfidMode else RegisterController(self)
         
         super(MainFrame, self).__init__()
@@ -429,9 +481,15 @@ class MainFrame(QtWidgets.QMainWindow):
 
         self.ui_RFIDLabel = QtWidgets.QLabel(self)
         self.ui_RFIDLabel.setText("RFID Nummer")
-        self.ui_RFID = QtWidgets.QLineEdit(self)
+        #conditional addon:
+        if self.controller.supportsCamera():
+            self.ui_RFID = QtWidgets.QLineEdit(self)
+            self.ui_RFID.setClearButtonEnabled(True) 
+        else:
+            self.ui_RFID = ClearableLineEdit(self)
+            self.ui_RFID.clearClicked.connect(self._onRFIDCleared)
+        self.ui_RFID.returnPressed.connect(self._onRFIDDone)            
         self.ui_RFID.setToolTip("RFID mit Kartenleser einchecken - Erst draufclicken -dann scannen!")
-        self.ui_RFID.returnPressed.connect(self._onRFIDDone)
 
         self.ui_AccessLabel = QtWidgets.QLabel(self)
         self.ui_AccessLabel.setText("Merkmale:")
@@ -688,9 +746,14 @@ class MainFrame(QtWidgets.QMainWindow):
     def _onRFIDDone(self):
         str_Rfid = self.ui_RFID.text()
         self.controller.handleRFIDChanged(str_Rfid)
-         
+     
+    def _onRFIDCleared(self):
+        self.rfid_deleted = True
+        self.getMessageDialog("RFID Chip wird gelöscht", "Speichern und Fertig!").show()
+        
     # slot if rfid search is active (controller)
     def searchWithRFID(self, str_RFID):
+        self.rfid_deleted = False
         res = next((mbr for mbr in self.model.memberList if mbr.rfidString() == str_RFID), None)
         if res:
             #print("Found:", res.searchName())
@@ -760,8 +823,15 @@ class MainFrame(QtWidgets.QMainWindow):
             msg = msg + "Zugangscode ? \n"
         if not (self.photoTaken or photoSaved):
             msg = msg + "Photo ? \n"
-        if not rfid or len(rfid)>10:
-            msg = msg + "RFID Code (max 10 Zeichen)? \n"
+
+                 
+        if self.rfid_deleted:
+            rfid_int = None
+        else: 
+            if not rfid or len(rfid)>10:
+                msg = msg + "RFID Code (max 10 Zeichen)? \n"
+            else:
+                rfid_int = int(rfid) 
            
         if len(msg) > 0: 
             self.getErrorDialog("Eingabefehler", "Bitte alle Felder ausfüllen", msg, mail=False).show()
@@ -771,7 +841,7 @@ class MainFrame(QtWidgets.QMainWindow):
             self.ui_SaveButton.setEnabled(False)
             QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
             mid = int(idstr)
-            rfid_int = int(rfid)
+            
             # we should update in the correct form
             if mbr is not None:
                 bd = mbr.asDBDate(birthdate)
@@ -830,6 +900,7 @@ class MainFrame(QtWidgets.QMainWindow):
         self.controller.setInitialFocus()
         self.updateEditFields(True) 
         self.ui_Info.hide()
+        self.rfid_deleted = False
          
     # dialogs
     def __getInfoDialog(self, text):

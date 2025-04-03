@@ -848,7 +848,7 @@ class BarModel():
         The delta minutes and no toggling for Group (2 courses in the same room:
         '''
         timeNow = datetime.now()
-        minsOfLife = 30
+        minsOfLife = 44
         members = self._buildCheckOutMembers(rows) if checkout else self._buildGroupMembers(rows,timeNow,minsOfLife)
         present = [item for item in members.values() if item.isInPlace()]
         people = []

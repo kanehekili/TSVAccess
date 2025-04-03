@@ -377,8 +377,7 @@ Why only two persons?:
 '''
 def testGroupCKI():
     #testime = '2025-02-24 18:01:00'
-    testime = '2025-02-27 10:10:00' #Do
-    testime = '2025-03-10 10:05:00' #Mo
+    testime = '2025-03-20 10:31:33' 
     room="Spiegelsaal"
     bm = BarModel()
     #def currentVisitorPictures(self, activity,room = None, checkout = True, dwellMinutes=-1):
@@ -386,14 +385,14 @@ def testGroupCKI():
     stmt = "SELECT id,first_name,last_name,picpath,access_date FROM Mitglieder m JOIN Zugang z ON m.id = z.mitglied_id WHERE DATE(z.access_date) = DATE('"+testime+"') AND activity='GroupFitnesse' AND room='"+room+"' ORDER By z.access_date ASC"
     rows = bm.atomicSelect(stmt)
     testdate = datetime.strptime(testime, '%Y-%m-%d %H:%M:%S')
-    members =bm._buildGroupMembers(rows,testdate,30) #(id > member)
+    members =bm._buildGroupMembers(rows,testdate,45) #(id > member)
     print("####### ",testime, ' #############')
     cnt=0
     for p in members.values():
         if p.da <= testdate:
             print(p.data[1],p.data[2],p.checkInTimeString())
             cnt+=1
-    print("######### Count:",cnt," ###########")
+    print("######### Count:",cnt," total:",len(members)," ###########")
 
 def testTimeSpan():
     table="Zugang"
@@ -559,6 +558,20 @@ def sendEmail():
         server.login("sender", password)
         server.send_message(msg)
          
+def failures():
+    '''
+    Erika Kamlah - kein bild
+    blue:
+    Carola Dowidat
+    Mert Tokmak
+    Brigitte Stöppel
+    Angela Schmid
+    Birgit Klar
+    Christine Rothbauer
+    '''
+    pass
+    
+
 
 if __name__ == '__main__':
     #testAccessNow()

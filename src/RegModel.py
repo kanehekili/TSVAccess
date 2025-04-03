@@ -203,7 +203,10 @@ class Registration():
         data = []
         data.append((now, mbr.id, mbr.rfid))
         self.db.insertMany(SetUpTSVDB.REGISTERTABLE, ('register_date', 'mitglied_id', 'uuid'), data)
-        Log.info("Dispensing NEW Chip %d to member %d", mbr.rfid, mbr.id)
+        if mbr.rfid is None:
+            Log.info("Chip of member %d has been deleted",mbr.id)
+        else:
+            Log.info("Dispensing NEW Chip %d to member %d", mbr.rfid, mbr.id)
         mbr.initialRFID = mbr.rfid
 
     def readAboData(self, mbr):
