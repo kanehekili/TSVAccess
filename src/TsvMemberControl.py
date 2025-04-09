@@ -523,7 +523,7 @@ class MainFrame(QtWidgets.QMainWindow):
             if not feeError:
                 blockState= "Zugang gültig "
                 if foundEntry.paySection in TsvDBCreator.PREPAID_INDICATOR:
-                    blockState += "[",aboMsg,"]"     
+                    blockState = f"{blockState}[{aboMsg}]"
                 self._updateCKIButton(len(res),foundEntry.activity)
                 self._displayUpdateResult(blockState, ckiText)
                 return
