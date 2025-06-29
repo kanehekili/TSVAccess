@@ -6,7 +6,7 @@ Name=TSV Member Control
 #-r may select Kraftraum,Spiegelsaal ....
 Exec=python3 /opt/TSVAccess/TsvMemberControl.py
 Comment=Manuelles Checkin
-Icon=/opt/TSVAccess/web/static/TSV-control.png
+Icon=/opt/TSVAccess/web/static/ckiRedGreen.png
 Categories=GTK;
 Terminal=false
 StartupNotify=true
