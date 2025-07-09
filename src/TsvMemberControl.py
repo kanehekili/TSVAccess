@@ -63,7 +63,7 @@ class VideoWidget(QtWidgets.QFrame):
 
     def showFrame(self, aFrame):
         if aFrame is None:  # showing an error icon...
-            self.showPicture('web/static/TSV-big.png')
+            self.showPicture('web/static/ckiRedGreen.png')
             return
         
     def showPicture(self, path):
@@ -596,7 +596,7 @@ class MainFrame(QtWidgets.QMainWindow):
 
         
 def getAppIcon():
-    return QtGui.QIcon('./web/static/tsv_logo_100.png')
+    return QtGui.QIcon('./web/static/ckiRedGreen.png')
 
 
 def handle_exception(exc_type, exc_value, exc_traceback):
