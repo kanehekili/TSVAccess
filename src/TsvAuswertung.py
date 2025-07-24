@@ -959,7 +959,7 @@ class BarModel():
     
     def registerTable(self):
         # list only NON Assa Abloy keys
-        stmt = "select id,register_date,last_name,CAST(birth_date AS DATE),access,r.uuid from Mitglieder m LEFT JOIN AssaAbloy a on a.uuid=m.uuid join RegisterList r on m.id=r.mitglied_id where a.uuid IS NULL and month(register_date)>month(CURDATE())-3 ORDER BY r.register_date ASC"
+        stmt = "select id,register_date,last_name,CAST(birth_date AS DATE),access,r.uuid from Mitglieder m LEFT JOIN AssaAbloy a on a.uuid=m.uuid join RegisterList r on m.id=r.mitglied_id where a.uuid IS NULL and register_date  >= DATE_SUB(NOW(), INTERVAL 180 DAY) ORDER BY r.register_date ASC"
         return self.atomicSelect(stmt)
     
     def aboTable(self):
