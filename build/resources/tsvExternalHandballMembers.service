@@ -1,0 +1,6 @@
+[Unit]
+Description=TSV external info service for handball
+
+[Service]
+ExecStart=/usr/bin/python3 /opt/tsvserver/ExternalMailService.py --handballMembers
+ 

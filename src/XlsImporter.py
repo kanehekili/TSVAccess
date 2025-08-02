@@ -196,7 +196,7 @@ class MainFrame(QtWidgets.QMainWindow):
             json.dump(data, jsonFile)
 
     def _configPath(self):
-        folder= OSTools.joinPathes(OSTools().getHomeDirectory(),".config")
+        folder= OSTools.joinPathes(OSTools.getHomeDirectory(),".config")
         OSTools.ensureDirectory(folder)
         return OSTools.joinPathes(folder,"xlsimporter.json")         
 

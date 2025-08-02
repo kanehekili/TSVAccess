@@ -218,6 +218,19 @@ class Connector():
             self.dbConnection.rollback()
             Log.warn("SELECT: %s"%(sqlError))     
 
+    def selectAsJson(self,stmt):
+        try:
+            Log.info(stmt)  
+            with self._getCursor() as cursor:
+                cursor.execute(stmt)
+                columns = [desc[0] for desc in cursor.description]
+                rows = cursor.fetchall()
+                return [dict(zip(columns, row)) for row in rows]
+        except mysql.Error as sqlError:
+            self.dbConnection.rollback()
+            Log.warn("SELECT: %s"%(sqlError))     
+        
+
                            
     def close(self):
         if self.dbConnection is not None:
@@ -233,6 +246,13 @@ class OSTools():
     @classmethod
     def fileExists(cls, path):
         return os.path.isfile(path)
+    
+    @classmethod
+    def removeFile(cls,path):
+        if os.path.exists(path):
+            os.remove(path)
+            return True
+        return False
     
     @classmethod
     def setMainWorkDir(cls,dirpath):
@@ -254,7 +274,8 @@ class OSTools():
             res = os.path.join(res, tail)
         return res
     
-    def getHomeDirectory(self):
+    @classmethod  
+    def getHomeDirectory(cls):
         return os.path.expanduser("~")
     
     @classmethod
@@ -313,7 +334,7 @@ class OSTools():
         if logConsole: #aka debug/development
             folder = OSTools.getActiveDirectory()    
         else:
-            folder= OSTools.joinPathes(OSTools().getHomeDirectory(),".config",logName)
+            folder= OSTools.joinPathes(OSTools.getHomeDirectory(),".config",logName)
             OSTools.ensureDirectory(folder)
         logPath = OSTools.joinPathes(folder,logName+".log") 
         fh= RotatingFileHandler(logPath,maxBytes=logSize,backupCount=5)

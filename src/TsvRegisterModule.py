@@ -219,12 +219,6 @@ class VideoWidget(QtWidgets.QFrame):
         else:
             self.imageRatio = float(ratio)       
 
-    '''
-    def updateUI(self, frameNumber, framecount, timeinfo):
-        self.trigger.emit(frameNumber, framecount, timeinfo)
-    '''
-
-
 # https://gis.stackexchange.com/questions/350148/qcombobox-multiple-selection-pyqt5
 class CheckableComboBox(QtWidgets.QComboBox):
 

@@ -87,12 +87,6 @@ class VideoWidget(QtWidgets.QFrame):
         else:
             self.imageRatio = float(ratio)       
 
-    '''
-    def updateUI(self, frameNumber, framecount, timeinfo):
-        self.trigger.emit(frameNumber, framecount, timeinfo)
-    '''
-
-
 class QElidedLabel(QtWidgets.QLabel):
 
     def __init__(self, parent):

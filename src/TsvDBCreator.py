@@ -183,6 +183,16 @@ class DBAccess():
         if not mailer.isConnected:
             return
         mailer.sendEmail(recipientList, subject, text,attachment)
+
+'''
+Encoder class for converting datetime entries into json - example at Scrap.py
+'''
+class DateTimeEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, datetime):
+            return obj.isoformat() #ISO 8601: YYYY-MM-DDTHH:MM:SS
+            # return obj.strftime("%Y-%m-%d %H:%M:%S") #individual alternative 
+        return super().default(obj)
         
 '''
 Mailer for this project:
@@ -261,13 +271,19 @@ class SetUpTSVDB():
     TIMETABLE="Zugang"   
     #Extended: ALTER TABLE Zugang ADD room varchar(50) NOT NULL DEFAULT "Kraftraum";
     #Extended: ALTER TABLE Zugang CHANGE location activity VARCHAR(100) NOT NULL;
+    #Extended: removed line: FOREIGN KEY(mitglied_id) REFERENCES Mitglieder(id) ON DELETE CASCADE
+    #we want zugangs data keep forever - statistics... 
+    ''' We need to alter the Zugang table, in order to delete members, but not their behaviour and counts
+    1) SELECT CONSTRAINT_NAME FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS WHERE TABLE_NAME = 'Zugang' AND CONSTRAINT_TYPE = 'FOREIGN KEY';
+    gets the contraint key : Zugang_ibfk_1
+    2) ALTER TABLE Zugang DROP FOREIGN KEY Zugang_ibfk_1;  -- Replace with actual name
+    '''    
     TABLE2 = """
         CREATE OR REPLACE TABLE Zugang (
           mitglied_id INT,
           access_date DATETIME,
           activity VARCHAR(100),
-          room VARCHAR(50),
-          FOREIGN KEY(mitglied_id) REFERENCES Mitglieder(id) ON DELETE CASCADE
+          room VARCHAR(50)
         )
         """
     BEITRAGTABLE="BEITRAG"
@@ -511,7 +527,30 @@ class SetUpTSVDB():
         table=self.MAILTABLE
         self.db.insertMany(table, fields, data)
     
+    def eliminateDeadMembers(self):
+        wd = DBAccess.path;
+        picHook=OSTools.joinPathes("web","static") #flask legacy
+        picFolder = DBAccess.PICPATH
+        fullPath=OSTools.joinPathes(wd,picHook,picFolder)
+        #We might have to check if payuntil_date is not null???
+        stmt = "SELECT id,picpath FROM Mitglieder m WHERE m.flag = 1"
+        rows = self.db.select(stmt)
+        count = len(rows)
+        print("Found ",count, "entries")
+        for data in rows:
+            mbrid = data [0]
+            picid = data[1]
+            if picid:
+                pic = OSTools.joinPathes(fullPath,picid)
+                ok = OSTools.removeFile(pic)
+                #if ok:
+                #stmt = "DELETE from Mitglieder where id = %s;"%(mbrid)
+                print("deleted %s pic %s success:%s "%(mbrid,pic,ok))
 
+        stmt = "DELETE from Mitglieder where flag =1";
+        self.db.select(stmt)
+        
+        
 def basicSetup(dbAccess):
     s = SetUpTSVDB(dbAccess)
     s.resetDatabase()
@@ -703,11 +742,17 @@ def rfidFromTableToAssaAbloy(decimalString):
     unpacked_num = struct.unpack('<I', packed_num)
     res = hex(unpacked_num[0])
     print("Big Int Decimal %d to AA little engine:%s"%(decimal,res))
+
+#remove memebers with flag=1. Remove their pictures as well.
+def cleanDeadMembers(dbAccess):
+    s = SetUpTSVDB(dbAccess)
+    s.eliminateDeadMembers()
+    
     
 def parseOptions(args):
     
     try:
-        opts, args = getopt.getopt(args[1:], "rkmst:c:g:", ["convert","reset", "updateLocation", "updateMail" "updateScheme","transponder","groupCourses"])
+        opts, args = getopt.getopt(args[1:], "drkmst:c:g:", ["deleteMembers","convert","reset", "updateLocation", "updateMail" "updateScheme","transponder","groupCourses"])
         if len(opts) == 0:
             printUsage()
     except getopt.GetoptError:
@@ -731,6 +776,8 @@ def parseOptions(args):
             updateAssaAbloy(dbAccess,a)
         elif o in ("-c", "--convert"):
             rfidFromTableToAssaAbloy(a)
+        elif o in ("-d", "--deleteMembers"):
+            cleanDeadMembers(dbAccess)
         else:
             printUsage()
 
@@ -742,6 +789,7 @@ def printUsage():
           "\t-s > !update the database! (--updateScheme) \n"
           "\t-t filename > read transponder (--transponder) \n"
           "\t-c decimal rfid > convert rfid to AA (--convert) \n"
+          "\t-d > delete Members (--deleteMembers) \n"
           )
     
 

@@ -1,0 +1,11 @@
+[Unit]
+Description=TSV external info timer for handball
+
+[Timer]
+OnCalendar=Tue *-*-* 21:00:00
+Persistent=true
+Unit=tsvExternalHandballMembers.service
+
+[Install]
+WantedBy=timers.target
+ 
