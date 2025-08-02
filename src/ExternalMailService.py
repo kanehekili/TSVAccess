@@ -9,8 +9,8 @@ import json,io,getopt, sys
 
 
 class HandballMembersWeekly():
-    #RECEIPIENTS = ["mathias.wegmann@tsv-weilheim.com","sylvester.wolf@handamball.de"]
-    RECEIPIENTS = ["mathias.wegmann@tsv-weilheim.com"]
+    RECEIPIENTS = ["mathias.wegmann@tsv-weilheim.com","sylvester.wolf@handamball.de"]
+    #RECEIPIENTS = ["mathias.wegmann@tsv-weilheim.com"]
     def __init__(self):
         self.dbSystem=DBAccess()
         self.db = self.dbSystem.connectToDatabase()
