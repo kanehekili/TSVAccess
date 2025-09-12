@@ -15,12 +15,16 @@ path3="$path1/build/resources"
 cd $path2
 cp ExternalMailService.py /opt/tsvserver/;
 cd $path3
-cp -u tsvExternalHandballMembers.* /etc/systemd/system/;
+cp -u tsvExternal* /etc/systemd/system/;
 exec systemctl enable tsvExternalHandballMembers.timer;
 exec systemctl start tsvExternalHandballMembers.timer;
+exec systemctl enable tsvExternalDLDaily.timer;
+exec systemctl start tsvExternalDL.timer;
+exec systemctl enable tsvExternalDLWeekly.timer;
+exec systemctl start tsvExternalDLWeekly.timer;
 echo "#########################################################################"
 echo "#                  Ensure you have installed                            #"                     
 echo "#   the "installServer" script                                          #"
-echo "#   service tsvExternalHandballMembers.timer should be enabled          #"
+echo "#   This installs all external services												          #"
 echo "#########################################################################"
 echo "External service installed."

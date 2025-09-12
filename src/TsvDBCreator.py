@@ -710,7 +710,10 @@ def updateConfigTable(dbAccess):
     finally:
         s.db.close()
 #TODO switchLocation(host,loctableID)    
-
+'''
+#Kurs;Aktivität;Raum;Wochentag;Von;Bis;
+Faszien;GroupFitnesse;Spiegelsaal;Mo;9:00;10:00;
+'''
 def updateCoursesTable(dbAccess, filepath):
     target=dbAccess.HOST
     res = input("Change Kurse on server ***%s***? [Y/N]"%(target))

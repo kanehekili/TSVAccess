@@ -40,6 +40,7 @@ app = Flask(__name__,
 '''
 MODE_MEAN = "Durchschnitt"
 MODE_MEDIAN = "Median"
+LOOKBACK_DAYS = 365 #access date selects like median
 
 @app.route('/' + TsvDBCreator.ACTIVITY_KR)
 def statisticsKraftraum():
@@ -784,7 +785,7 @@ class BarModel():
         timetable = SetUpTSVDB.TIMETABLE
         breakTime = 13
         members = {}
-        stmt = "SELECT mitglied_id,access_date from %s where activity='%s' and room='%s'"%(timetable,activity,room)
+        stmt = "SELECT mitglied_id,access_date from %s where activity='%s' and room='%s' AND access_date >= DATE_SUB(CURDATE(), INTERVAL 365 DAY)"%(timetable,activity,room)
         rows = self.atomicSelect(stmt)
         for row in rows:
             # date_str = datetime.strptime(row[0], '%Y-%m-%d %H:%M:%S.%f').strftime('%Y-%m-%d')
@@ -925,15 +926,20 @@ class BarModel():
     
     def _countBlockUsage(self,dbi,activity,blockStart,blockEnd,weekday):
         table="Zugang"
-        stmt = "SELECT DATE(access_date) AS aDate, COUNT(DISTINCT mitglied_id) AS cnt FROM %s WHERE activity = '%s' AND HOUR(access_date) >= %d AND HOUR(access_date) < %d AND WEEKDAY(access_date) = %d GROUP BY DATE(access_date) ORDER BY DATE(access_date)"%(table,activity,blockStart,blockEnd,weekday)
+        #stmt = "SELECT DATE(access_date) AS aDate, COUNT(DISTINCT mitglied_id) AS cnt FROM %s WHERE activity = '%s' AND HOUR(access_date) >= %d AND HOUR(access_date) < %d AND WEEKDAY(access_date) = %d GROUP BY DATE(access_date) ORDER BY DATE(access_date)"%(table,activity,blockStart,blockEnd,weekday)
+        stmt = "SELECT DATE(access_date) AS aDate, COUNT(DISTINCT mitglied_id) AS cnt FROM %s WHERE activity = '%s' AND HOUR(access_date) >= %d AND HOUR(access_date) < %d AND WEEKDAY(access_date) = %d AND access_date >= DATE_SUB(CURDATE(), INTERVAL %d DAY) GROUP BY DATE(access_date) ORDER BY DATE(access_date)"%(table,activity,blockStart,blockEnd,weekday,LOOKBACK_DAYS)
         return dbi.select(stmt)
     
     def _calcMeanBlockUsage(self,rows):
+        if not rows:
+            return 0
         summaries = [row[1] for row in rows]
         return statistics.mean(summaries)
     
     def _calcMedianBlockUsage(self,rows):
         #list comprehension, we don't need the dates.  
+        if not rows:
+            return 0
         summaries = [row[1] for row in rows]
         return statistics.median(summaries)
     '''

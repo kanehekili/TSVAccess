@@ -1,0 +1,11 @@
+[Unit]
+Description=TSV external timer for weekly median access
+
+[Timer]
+OnCalendar=Tue *-*-* 22:00:00
+Persistent=true
+Unit=tsvExternalDLWeekly.service
+
+[Install]
+WantedBy=timers.target
+ 

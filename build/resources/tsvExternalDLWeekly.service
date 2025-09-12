@@ -1,0 +1,6 @@
+[Unit]
+Description=TSV external info service weekly median access
+
+[Service]
+ExecStart=/usr/bin/python3 /opt/tsvserver/ExternalMailService.py --dl_weekly
+ 

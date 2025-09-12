@@ -3,7 +3,7 @@ Created on Apr 3, 2023
 
 @author: matze
 '''
-from DBTools import Connector
+from TsvDBCreator import DBAccess
 from datetime import datetime, timedelta
 #from faker import Faker
 import json
@@ -11,7 +11,6 @@ from TsvAccessModule import RaspberryFAKE
 import smtplib,ssl
 from email.message import EmailMessage
 from TsvAuswertung import BarModel
-import TsvDBCreator
 
 '''
 def setupDB():
@@ -28,8 +27,8 @@ def setupDB():
 '''
 
 def openConnector(dbName="TsvDB"):
-    db = Connector()
-    db.connect(dbName)
+    dbAccess = DBAccess()
+    db = dbAccess.connectToDatabase()
     return db        
 
 
