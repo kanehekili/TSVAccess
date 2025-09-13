@@ -9,6 +9,9 @@ import TsvDBCreator
 import json,io,getopt, sys
 from datetime import datetime
 import paramiko
+import logging
+logging.getLogger("paramiko").setLevel(logging.INFO)
+
 from pathlib import Path
 import TsvAuswertung
 
@@ -89,7 +92,7 @@ class DatenliebeBasic():
             return True
             
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"DL Service Error: {e}")
             return False    
         
 class DatenliebeCurrent(DatenliebeBasic):
@@ -113,13 +116,14 @@ class DatenliebeCurrent(DatenliebeBasic):
               )
             GROUP BY mitglied_id
             HAVING COUNT(*) = 1
-        )
+        ) AS sub;
         """
         #stmt = self.__testStatement()
-        print(stmt)
         result = self.db.select(stmt)
-        print("result:",result)
-        count= result[0][0]
+        if result:
+            count= result[0][0]
+        else:
+            count=0
         data={}
         data["current"]=count
         return json.dumps(data)
