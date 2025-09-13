@@ -19,7 +19,7 @@ cp -u tsvExternal* /etc/systemd/system/;
 exec systemctl enable tsvExternalHandballMembers.timer;
 exec systemctl start tsvExternalHandballMembers.timer;
 exec systemctl enable tsvExternalDLDaily.timer;
-exec systemctl start tsvExternalDL.timer;
+exec systemctl start tsvExternalDLDaily.timer;
 exec systemctl enable tsvExternalDLWeekly.timer;
 exec systemctl start tsvExternalDLWeekly.timer;
 echo "#########################################################################"
