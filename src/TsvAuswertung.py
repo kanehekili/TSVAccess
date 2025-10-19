@@ -26,6 +26,8 @@ import sys
 import TsvDBCreator
 import time
 import statistics
+import requests
+import TsvOmoc
 
 OSTools.setupRotatingLogger("TSVAuswertung", True)
 Log = DBTools.Log
@@ -181,6 +183,14 @@ def visitorsSauna():
     pv='/'
     return render_template('access.html', parentView=pv, people=people, logo_path=logo_path, dynamic_activity=TsvDBCreator.ACTIVITY_SAUNA, location_count=len(people))
 
+@app.route('/omocsz')  # current omoc at sz
+def omocSZ():
+    logo_path = "tsv_logo_100.png"
+    data = barModel.readOmocSZ()
+    today = datetime.now()
+    date_str = today.strftime("%d.%m.%y") 
+    return render_template('omoc.html',courses=data['rooms'],day_start=data['start'],day_end=data['end'],logo_path=logo_path, today_str=date_str)
+
 # hook to more sites
 
 '''
@@ -188,8 +198,8 @@ Root and tools
 '''
 
 
-@app.route('/')
-def dashboard():
+@app.route('/old')
+def dashboard2():
     logo_path = "tsv_logo_100.png"
     #Zugang
     entries=(('accessKR','Kraftraum '),('accessSA','Sauna '),('groupRooms','Group '))
@@ -212,6 +222,42 @@ def dashboard():
         data = {"href":entry[0],"title":entry[1]}
         listData.append(data) 
     return render_template('dashboard2.html', logo_path=logo_path, headerRight="Statistik",listDataRight=listDataRight, headerLeft="Aktiv",listDataLeft=listDataLeft, headerBottom="Sonstiges",listData=listData)
+
+
+@app.route('/')
+def dashboard():
+    logo_path = "tsv_logo_100.png"
+    #Zugang (left)
+    entries=(('accessKR','Kraftraum '),('accessSA','Sauna '),('groupRooms','Group '))
+    listDataLeft=[]
+    for entry in entries:
+        data = {"href":entry[0],"title":entry[1]}
+        listDataLeft.append(data)
+    
+    #Statistik (right)
+    entries=(('krStatistics','Kraftraum '),('Sauna','Sauna '),('groupStatistics','Group '))
+    listDataRight=[]
+    for entry in entries:
+        data = {"href":entry[0],"title":entry[1]}
+        listDataRight.append(data)    
+    
+    #Technik (unten links)
+    entries=(('config','Konfig'),('courses',"Kurse"),('registrationS','Chips'),('aboList','Abos'))   
+    listDataBL=[] 
+    for entry in entries:
+        data = {"href":entry[0],"title":entry[1]}
+        listDataBL.append(data)
+        
+    #Info (unten rechts)
+    entries=(('sectionS','Abteilungen'),('omocsz','Omoc'))   
+    listDataBR=[] 
+    for entry in entries:
+        data = {"href":entry[0],"title":entry[1]}
+        listDataBR.append(data)
+
+    return render_template('dashboardQuad.html', logo_path=logo_path, headerRight="Statistik",listDataRight=listDataRight, headerLeft="Aktiv",listDataLeft=listDataLeft, headerBL="Technik",listDataBL=listDataBL,headerBR="Info",listDataBR=listDataBR)
+
+
 
 @app.route('/groupRooms')
 def groupRooms():
@@ -976,6 +1022,13 @@ class BarModel():
         stmt = "Select host_name,config from Location"
         return self.atomicSelect(stmt)
 
+    def readOmocSZ(self):
+        omocR = TsvOmoc.OmocRest(self)
+        omocEvents = omocR.getCurrent(True,TsvOmoc.OmocRest.FILTER_SZ)
+        of = TsvOmoc.OmocFormatter(omocEvents)
+        return of.resultDic
+
+        
         
 def main():
     global barModel

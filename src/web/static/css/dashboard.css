@@ -1,0 +1,121 @@
+* {
+    -webkit-box-sizing: border-box;
+    box-sizing: border-box;
+}
+body {
+    background-color: #D0D0D0; 
+    font-family: 'Khula', sans-serif;
+    color: black;
+    margin: 0;
+  padding: 1em 1em;
+}
+
+  /* CSS for the header */
+  h1 {
+    align-items: flex-start;
+    display: flex;
+    font-size:3em;  
+    margin-bottom: unset;
+    margin-top: unset;
+  }
+
+   .inside {
+      list-style-position: inside;
+      font-family: 'Khula', sans-serif;
+      /*padding of list item to outer left/right. Default is 40/0*/
+        padding: 1em;
+        padding-top:2em;
+      padding-bottom:0; /*remove paddong of last item*/
+    }
+
+
+      li {
+      	color:#ececec; 
+      	font-size:2em;
+      	padding:1em;
+      	margin-bottom:0.5em;
+     	background: linear-gradient(180deg, rgba(113,173,255,1) 7%, rgba(1,1,150,1) 100%);
+     	background: linear-gradient(0deg, rgba(65,0,0,1) 0%, rgba(255,70,70,1) 86%);
+      	border-radius:9px;
+      }
+      li:active {
+        background: linear-gradient(180deg, rgba(1,1,150,1) 7%, rgba(113,173,255,1) 100%);
+        background: linear-gradient(0deg, rgba(255,70,70,1) 14%, rgba(65,0,0,1) 100%);
+      }
+  	li a{
+  	    padding:0;
+	  	text-decoration: none; 
+	    color:#ececec;  
+    }
+
+    /* Create two equal columns that floats next to each other */
+    .column {
+      float: left;
+      width: 50%;
+      padding: 10px;
+    }
+
+    /* Clear floats after the columns */
+    .row:after {
+      content: "";
+      display: table;
+      clear: both;
+    }
+
+	.center {
+	  margin: auto;
+	  width: 60%;
+	  padding: 10px;
+	}
+
+    .blockBorder {
+      text-align: center;
+      border: 1px solid darkgray;
+      border-radius:10px;
+    }
+    
+   .blockBorder .header {
+      font-size: 2em;
+	  position:absolute;
+	  margin-top: -1.6em;
+	  margin-left:10px;
+	  color:white;
+	  background:cadetblue;
+	  border-radius:10px;
+	  padding:2px 10px; /*padding around text*/
+	}
+
+	@media (any-pointer: coarse) {
+	    body{
+			padding: 1em 1em;	    
+	    }
+	    h1{
+	    	font-size:5em;
+	    }
+		li {
+			font-size:3em;
+		}
+		.center {
+			width: 95%;
+		}
+	    
+	    .blockBorder .header {
+           font-size: 3em;
+  	       margin-top:-1.5em;
+
+        }
+        
+        .blockBorder {
+           border: 4px solid black;
+        }
+        .inside {
+        padding: 1em;
+        padding-top:2em;
+        padding-bottom:0; /*remove paddong of last item*/
+        }
+	}
+
+
+  .logo-container {
+    margin-left: auto;
+  }

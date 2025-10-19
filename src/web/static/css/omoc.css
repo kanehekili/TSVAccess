@@ -1,0 +1,103 @@
+* {
+    -webkit-box-sizing: border-box;
+    box-sizing: border-box;
+}
+/* Header */
+h1{
+	align-items: flex-start;
+	display: flex;
+	font-size:3em;  
+	margin-bottom: unset;
+	margin-top: unset;
+	background: #F10010;
+	padding: 0.3em 0.3em;
+}
+
+.logo-container {
+  margin-left: auto;    /* push logo to the right */
+}
+
+
+
+body {
+  margin: 0;
+  font-family: sans-serif;
+  background: #FFE2E2;
+  border-bottom-width: 1px;
+  border-bottom-style: dotted;  
+}
+
+/* Scrollable schedule wrapper */
+.schedule-wrapper {
+  overflow-x: auto;  /* horizontal scroll */
+}
+
+/* Schedule layout */
+.schedule-container {
+  display: flex;
+  min-width: 600px;  /* default minimum to avoid collapse */
+}
+
+.time-column {
+  width: 70px;
+  border-right: 1px solid #ccc;
+}
+
+.time-slot {
+  height: 45px;           /* 15 minutes => 30px */
+  font-size: 20px;
+  font-weight: bold;
+  color: #333;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: center;
+}
+
+.courses-column {
+  position: relative;
+  min-height: calc((var(--day-end) - var(--day-start)) * 3px);
+}
+
+.course-block {
+  position: absolute;
+  left: calc(var(--slot-index, 0) * 180px);  /* override if using multiple columns */
+  width: 180px;  /* adjust as needed */
+  top: calc((var(--start) - var(--day-start)) * 3px + 15px);
+  height: calc((var(--end) - var(--start)) * 3px);
+
+  /* random pastel background using CSS filter trick */
+  background: hsl(calc(45 * var(--slot-index, 0)), 70%, 85%);
+  border: 1px solid #999;
+  box-sizing: border-box;
+  padding: 4px;
+  color: #000;
+  font-size: 20px;
+  overflow: hidden;
+}
+
+.course-text {
+  line-height: 1.2em;
+}
+
+/* Responsive adjustments for portrait mobile */
+@media (any-pointer: coarse) {	
+  h1 {
+    font-size: 2em;
+  }
+  .logo-container img {
+	height: 2.0em; 
+	}
+  
+  .schedule-container {
+    min-width: 500px;  /* allow horizontal scroll on small screens */
+  }
+
+  .course-block {
+    width: 120px;      /* narrower blocks for small screens */
+	left: calc(var(--slot-index, 0) * 120px);  /* override if using multiple columns */
+  }
+
+  .time-column {
+    width: 5em;
+  }
+}

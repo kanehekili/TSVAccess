@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Schedule</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/> 
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/omoc.css') }}">
+</head>
+<body>
+	<!-- Header -->
+	<h1>
+	 <span>TSV aktuell {{ today_str }} &nbsp;</span>
+	  <div class="logo-container">
+		<a href="/" data-toogle="back" title="Zurück zum Dashboard">
+		<img src="{{ logo_path }}" alt="Logo">
+		</a>
+	  </div>
+	</h1>	
+	
+	<!-- Scrollable Schedule Wrapper -->
+	<div class="schedule-wrapper">
+		<div class="schedule-container">
+		  <div class="time-column">
+			{% for minute in range(day_start, day_end, 15) %}
+			  <div class="time-slot">
+			    {{ "%02d:%02d" % (minute // 60, minute % 60) }}
+			  </div>
+			{% endfor %}
+		  </div>
+	
+		  <div class="courses-column"
+		       style="--day-start: {{ day_start }}; --day-end: {{ day_end }};">
+		    {% for course in courses %}
+		      <div class="course-block"
+			     style="
+				    --start: {{ course.display_start }};
+				    --end: {{ course.display_end }};
+				    --slot-index: {{ course.slot_index }};
+		           ">
+		        <div class="course-text">
+		          {{ course.name }}<br>
+		          ({{ course.room }})
+		        </div>
+		      </div>
+		    {% endfor %}
+		  </div>
+	  </div>
+	</div>
+	<script>
+	   $(function () { $("[data-toggle='back']").tooltip(); });
+	</script> 
+</body>
+</html>

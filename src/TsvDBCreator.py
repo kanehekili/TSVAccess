@@ -343,6 +343,17 @@ class SetUpTSVDB():
        addText VARCHAR(150)
     )
     """    
+    
+    OMOCTABLE="OmocConfig"
+    TABLE11 = """
+    CREATE OR REPLACE TABLE OmocConfig (
+    id VARCHAR(50),
+    token VARCHAR(50),
+    passwd VARCHAR(50),
+    url VARCHAR(100)
+    )
+    """
+    
     #will be set whenever a "new" token has been issued - just for Abrechnung
     #Alter table RegisterList add uuid INT UNSIGNED NOT NULL DEFAULT 0;
     #fix zeros: update RegisterList r inner join Mitglieder m on r.mitglied_id = m.id set r.uuid=m.uuid where r.uuid=0;
@@ -526,6 +537,25 @@ class SetUpTSVDB():
         data=[(server,port,sender,passwd,mailTo,mailErr,"TSV Access")]    
         table=self.MAILTABLE
         self.db.insertMany(table, fields, data)
+    
+    def _fillOmocTable(self):
+        self.db.createTable(self.TABLE11)
+        
+        path = OSTools.getLocalPath(__file__)
+        cfg = OSTools.joinPathes(path, "data", "omoc.json")
+        with open(cfg, "r") as jr:
+            dic = json.load(jr)
+            uid=dic["USERID"]
+            token=dic["TOKEN"]
+            passwd=dic["PASSWD"]
+            url=dic["URL"]
+
+            
+        fields=('id','token','passwd','url')
+        data=[(uid,token,passwd,url)]    
+        table=self.OMOCTABLE
+        self.db.insertMany(table, fields, data)
+        
     
     def eliminateDeadMembers(self):
         wd = DBAccess.path;
@@ -737,6 +767,15 @@ def updateMailTable(dbAccess):
         traceback.print_exc()
     finally:
         s.db.close()
+
+def updateOmocTable(dbAccess):
+    s = SetUpTSVDB(dbAccess)
+    try:
+        s._fillOmocTable()
+    except Exception:
+        traceback.print_exc()
+    finally:
+        s.db.close()    
         
 #Convert the big endian to little endian, which assa abloy needs    
 def rfidFromTableToAssaAbloy(decimalString):
@@ -755,7 +794,7 @@ def cleanDeadMembers(dbAccess):
 def parseOptions(args):
     
     try:
-        opts, args = getopt.getopt(args[1:], "drkmst:c:g:", ["deleteMembers","convert","reset", "updateLocation", "updateMail" "updateScheme","transponder","groupCourses"])
+        opts, args = getopt.getopt(args[1:], "drkmost:c:g:", ["deleteMembers","convert","reset", "updateLocation", "updateMail","updateOmoc" "updateScheme","transponder","groupCourses"])
         if len(opts) == 0:
             printUsage()
     except getopt.GetoptError:
@@ -772,7 +811,9 @@ def parseOptions(args):
         elif o in ("-g", "--groupCourses"):
             updateCoursesTable(dbAccess,a)    
         elif o in ("-m", "--updateMail"):
-            updateMailTable(dbAccess)            
+            updateMailTable(dbAccess)      
+        elif o in ("-o", "--updateOmoc"):
+            updateOmocTable(dbAccess)            
         elif o in ("-s", "--updateScheme"):
             updateScheme(dbAccess) #Removes data from Zutritt and Beitrag! 
         elif o in ("-t", "--transponder"):
@@ -789,6 +830,8 @@ def printUsage():
           "\t-r > !reset the database! (--reset) \n"
           "\t-k > update konfig (--updateKonfig) \n"
           "\t-g filename > update Courses (--groupCourses) \n"
+          "\t-m > update the mail credentials (--updateMail) \n"
+          "\t-o > update the omoc credentials (--updateOmoc) \n"
           "\t-s > !update the database! (--updateScheme) \n"
           "\t-t filename > read transponder (--transponder) \n"
           "\t-c decimal rfid > convert rfid to AA (--convert) \n"

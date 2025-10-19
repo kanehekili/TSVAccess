@@ -1,0 +1,35 @@
+* {
+    -webkit-box-sizing: border-box;
+    box-sizing: border-box;
+}
+body {
+    background-color: #272b34;
+    font-family: 'Khula', sans-serif;
+    color: white;
+    margin:0;
+	padding: 1em 1em;
+}
+
+  /* CSS for the header */
+  h1 {
+  	margin-top:0;
+	margin-bottom:0;
+    align-items: flex-start;
+    display: flex;
+    font-size:3em;  
+  }
+
+	@media (any-pointer: coarse) {
+		h1 {
+			font-size:2em;  
+		}
+	}
+
+  .logo-container {
+    margin-left: auto;
+  }
+  table,th,td {
+     padding: 10px;
+     border: 1px solid yellow;
+     border-collapse: collapse;
+  }

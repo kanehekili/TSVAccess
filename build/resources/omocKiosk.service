@@ -1,0 +1,9 @@
+[Unit]
+Description=Run OmocKiosk script
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/omocKiosk/OmocKiosk.py
+
+[Install]
+WantedBy=multi-user.target

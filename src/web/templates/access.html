@@ -2,75 +2,9 @@
 <html>
 <head>
     <title>TSV Zugang</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/access.css') }}">
 </head>    
-    <style>
-	* {
-	    -webkit-box-sizing: border-box;
-	    box-sizing: border-box;
-	}
-	body {
-	    background-color: #272b34;
-	    font-family: 'Khula', sans-serif;
-	    color: white;
-	    margin: 0;
-	  padding: 1em 1em;
-	}	    
-	  /* CSS for the header */
-		  h1 {
-	    	margin-top:0;
-	    	margin-bottom:0;		  
-		    color:white;
-		    align-items: flex-start;
-		    display: flex;
-		    font-size:3em;  
-		  }
-		
-		  .logo-container {
-		    margin-left: auto;
-		  }
-		.portrait {
-		    width: 200px;
-		    display: inline-block;
-		    text-align: center;
-		    margin: 10px;
-		}
-		
-	     .portrait p{
-		 	font-size:1.2em;	
-		    line-height: 1;	   
-		    color:white;
-		 }
-		
-		@media (any-pointer: coarse) {
-			h1 {
-			    margin-top:1em;
-				font-size:2em;  
-			}
-		   .portrait {
-		       width: 400px;
-		   }
-		   .portrait p{
-		       font-size:3em;	
-		       line-height: 1;	   
-		   }
-		   .location {
-		      font-size:1.8em;
-		      line-height: 1;
-		   }
-		}
-		
-		.portrait img {
-		  display: block;
-		  width: 100%;
-		  height: auto;
-		}
-		
-		hr.divrounded {
-		  border-top: 8px solid #bbb;
-		  border-radius: 5px;
-		}		
-		
-    </style>          
+      
 
 <body>
     <h1>

@@ -556,6 +556,37 @@ def sendEmail():
         server.starttls(context=context)
         server.login("sender", password)
         server.send_message(msg)
+
+def testOmoc():
+    bm = BarModel()
+    res = bm.readOmoc()
+    for entry in res:
+        print(entry)
+    pick = res[0]
+    for key,val in pick.items():
+        print(key,">",val)
+
+import TsvOmoc
+
+def testOmoc2():    
+    bm = BarModel()
+    omocR = TsvOmoc.OmocRest(bm)
+    print("######### SZ ONLY")
+    res = omocR.getCurrent(True,TsvOmoc.OmocRest.FILTER_SZ)
+    for omocEntry in res:
+        print(omocEntry)
+
+    print("######### ZOTSE ONLY")
+    res = omocR.getCurrent(True,TsvOmoc.OmocRest.FILTER_ZOTZE)
+    for omocEntry in res:
+        print(omocEntry)
+        
+    print("######### Hallen ONLY")
+    res = omocR.getCurrent(True,TsvOmoc.OmocRest.FILTER_HALLEN)
+    for omocEntry in res:
+        print(omocEntry)
+
+        
          
 def failures():
     '''
@@ -586,5 +617,6 @@ if __name__ == '__main__':
     #nextDay()
     #sendEmail()
     #countBlockUsage()
-    testGroupCKI()
+    #testGroupCKI()
+    testOmoc2()
     pass

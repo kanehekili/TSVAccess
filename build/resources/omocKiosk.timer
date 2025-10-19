@@ -1,0 +1,10 @@
+[Unit]
+Description=Run OmocKiosk every 15 minutes from 08:00 to 22:00, 7 days a week
+
+[Timer]
+OnCalendar=08:00..22:00/15
+Persistent=true
+Unit=omocKiosk.service
+
+[Install]
+WantedBy=timers.target

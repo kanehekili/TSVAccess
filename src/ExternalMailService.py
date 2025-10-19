@@ -208,7 +208,9 @@ def parseOptions(args):
 def printUsage():
     print("External service commands: \n"\
           "\t-h > (--handballMembers) \n"
-          "This module may contain multiple services - so a switch is mandatory\n"
+          "\t-a > (--dl_daily) Every 15 min \n"
+          "\t-b > (--dl_weekly) Weekly median \n"
+          "This module contains multiple services - so a switch is mandatory\n"
           )
 
 if __name__ == '__main__':

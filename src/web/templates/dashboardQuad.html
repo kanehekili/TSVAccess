@@ -42,15 +42,26 @@
              </ul>
           </div>   
        </div>
-  
-   <nav class="center">
-    <ul class="inside blockBorder">
-    <div class="header">{{ headerBottom }}</div>
-      {% for row in listData %}
-        <li onclick="location.href='{{row['href']}}'"><a> {{row['title']}} </a></li>
-      {% endfor %}
-    </ul>
-  </nav>     
+
+	<div class="row">
+		<div class="column">	     
+    		<ul class="inside blockBorder">
+    			<div class="header">{{ headerBL }}</div>
+      			{% for row in listDataBL %}
+        			<li onclick="location.href='{{row['href']}}'"><a> {{row['title']}} </a></li>
+      			{% endfor %}
+    		</ul>
+		</div>
+		
+		<div class="column "> 
+		<ul class="inside blockBorder">
+	       <div class="header">{{ headerBR }}</div>
+	         {% for row in listDataBR %}
+	             <li onclick="location.href='{{row['href']}}'"><a> {{row['title']}} </a></li>
+	         {% endfor %}
+	      </ul>
+	   </div>   
+	</div>		
       
 </body>
 

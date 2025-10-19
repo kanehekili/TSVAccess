@@ -2,7 +2,7 @@
 Description=TSV external timer for 15 min current access
 
 [Timer]
-OnCalendar=*:0/15
+OnCalendar=Mon..Sun 09..21:00/15
 Persistent=true
 Unit=tsvExternalDLDaily.service
 
