@@ -8,7 +8,7 @@ Show graphs per Month or year.
 # https://www.geeksforgeeks.org/create-a-bar-chart-from-a-dataframe-with-plotly-and-flask/
 # https://github.com/alanjones2/Flask-Plotly/tree/main/plotly
 # using  plotly and flask. 
-from flask import Flask, render_template, request,send_file,make_response  # , has_request_context, session, url_for
+from flask import Flask, render_template, request,send_file  # , has_request_context, session, url_for
 import openpyxl
 from io import BytesIO
 import werkzeug
@@ -26,7 +26,6 @@ import sys
 import TsvDBCreator
 import time
 import statistics
-import requests
 import TsvOmoc
 
 OSTools.setupRotatingLogger("TSVAuswertung", True)
@@ -109,12 +108,6 @@ def testVerweilzeitKraftraum():
 '''
 Group section
 '''
-'''
-@app.route('/' + TsvDBCreator.ACTIVITY_GYM)
-def statisticsGroupFitnesse():
-    return statisticsTemplate(TsvDBCreator.ACTIVITY_GYM)
-'''
-
 @app.route('/' + TsvDBCreator.ACTIVITY_GYM+"SKR")
 def statisticsGFRoom1():
     return statisticsTemplate(TsvDBCreator.ACTIVITY_GYM,TsvDBCreator.LOC_KRAFTRAUM,pv='/groupStatistics')
@@ -169,8 +162,6 @@ def visitorsGFN():
 '''
 SAUNA SECTION -> TsvDBCreator.ACTIVITY_SAUNA == Sauna
 '''
-
-
 @app.route('/' + TsvDBCreator.ACTIVITY_SAUNA)
 def statisticsSauna():
     return statisticsTemplate(TsvDBCreator.ACTIVITY_SAUNA,TsvDBCreator.LOC_SAUNA)
@@ -186,10 +177,17 @@ def visitorsSauna():
 @app.route('/omocsz')  # current omoc at sz
 def omocSZ():
     logo_path = "tsv_logo_100.png"
-    data = barModel.readOmocSZ()
+    data = barModel.readOmocSZ(False)
     today = datetime.now()
     date_str = today.strftime("%d.%m.%y") 
     return render_template('omoc.html',courses=data['rooms'],day_start=data['start'],day_end=data['end'],logo_path=logo_path, today_str=date_str)
+
+@app.route('/omocszk')  # current omoc at sz
+def omocSZKiosk():
+    img_io = barModel.omocKioskImage()
+    return send_file(img_io, mimetype='image/png')
+
+
 
 # hook to more sites
 
@@ -1022,12 +1020,18 @@ class BarModel():
         stmt = "Select host_name,config from Location"
         return self.atomicSelect(stmt)
 
-    def readOmocSZ(self):
+    def readOmocSZ(self,replaceCSS=False):
         omocR = TsvOmoc.OmocRest(self)
         omocEvents = omocR.getCurrent(True,TsvOmoc.OmocRest.FILTER_SZ)
-        of = TsvOmoc.OmocFormatter(omocEvents)
-        return of.resultDic
-
+        resultDic = TsvOmoc.OmocFormatter().browserData(omocEvents,replaceCSS)
+        #resultDic = TsvOmoc.OmocFormatter().generatetest(omocEvents)
+        return resultDic
+    
+    def omocKioskImage(self):
+        printer = TsvOmoc.OmocPrinter(1920,1080) #fullhd
+        omocR = TsvOmoc.OmocRest(self)
+        omocEvents = omocR.getCurrent(True,TsvOmoc.OmocRest.FILTER_SZ)
+        return printer.getImageBytes(omocEvents) #image_io!
         
         
 def main():

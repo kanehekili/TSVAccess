@@ -586,7 +586,13 @@ def testOmoc2():
     for omocEntry in res:
         print(omocEntry)
 
-        
+def testOmocPrinter():
+    bm = BarModel()
+    printer = TsvOmoc.OmocPrinter(1920,1080) #fullhd
+    omocR = TsvOmoc.OmocRest(bm)
+    omocEvents = omocR.getCurrent(True,TsvOmoc.OmocRest.FILTER_SZ)
+    imgIO = printer.getImageBytes(omocEvents) #image_io!
+    printer.testSave(imgIO)       
          
 def failures():
     '''
@@ -618,5 +624,6 @@ if __name__ == '__main__':
     #sendEmail()
     #countBlockUsage()
     #testGroupCKI()
-    testOmoc2()
+    #testOmoc2()
+    testOmocPrinter()
     pass

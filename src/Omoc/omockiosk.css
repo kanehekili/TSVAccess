@@ -1,0 +1,64 @@
+* {
+    -webkit-box-sizing: border-box;
+    box-sizing: border-box;
+}
+/* Header */
+h1{
+	align-items: flex-start;
+	display: flex;
+	font-size:3em;  
+	margin-bottom: unset;
+	margin-top: unset;
+	background: #F10010;
+	padding: 0.3em 0.3em;
+}
+
+.logo-container {
+  margin-left: auto;    /* push logo to the right */
+}
+
+
+
+body {
+  margin: 0;
+  font-family: sans-serif;
+  background: #FFE2E2;
+  border-bottom-width: 1px;
+  border-bottom-style: dotted;  
+}
+
+/* Scrollable schedule wrapper */
+.schedule-wrapper {
+  
+}
+
+/* Schedule layout */
+.schedule-container {
+  display: flex;
+  min-width: 600px;  /* default minimum to avoid collapse */
+}
+
+.time-column {
+  width: 70px;
+  border-right: 1px solid #ccc;
+}
+
+.courses-column {
+  position: relative;
+}
+
+.time-slot {
+  height: 45px;           /* 15 minutes => 30px */
+  font-size: 20px;
+  font-weight: bold;
+  color: #333;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: center;
+}
+
+
+.course-text {
+  line-height: 1.2em;
+}
+

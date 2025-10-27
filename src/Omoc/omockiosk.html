@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Schedule</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/> 
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/omockiosk.css') }}">
+</head>
+<body>
+	<!-- Header -->
+	<h1>
+	 <span>TSV aktuell {{ today_str }} &nbsp;</span>
+	  <div class="logo-container">
+		<a href="/" data-toogle="back" title="Zurück zum Dashboard">
+		<img src="{{ logo_path }}" alt="Logo">
+		</a>
+	  </div>
+	</h1>	
+	
+	<!-- Scrollable Schedule Wrapper -->
+	<div class="schedule-wrapper">
+		<div class="schedule-container">
+		  <div class="time-column">
+			{% for minute in range(day_start, day_end, 15) %}
+			  <div class="time-slot">
+			    {{ "%02d:%02d" % (minute // 60, minute % 60) }}
+			  </div>
+			{% endfor %}
+		  </div>
+		  <div class="courses-column">
+		  {% for course in courses %}
+		    <div class="course-block"
+		       style="position:absolute;
+		              top: {{course.top_px}}px;
+		              height: {{course.height_px}}px;
+		              left: {{course.left_px}}px;
+		              width: 180px;
+		              background: {{course.bg_color}};
+		              border: 1px solid #999;
+		              box-sizing:border-box;
+		              padding:4px;
+		              color:#000;
+		              font-size:20px;
+		              overflow:hidden;">
+			    <div class="course-text">					  
+		        {{ course.name }}<br><br>@{{ course.room }}
+			   </div>
+		    </div>
+		  {% endfor %}
+	   </div>
+	   </div>
+	</div>
+</body>
+</html>
