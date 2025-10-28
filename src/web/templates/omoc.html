@@ -20,16 +20,28 @@
 	<!-- Scrollable Schedule Wrapper -->
 	<div class="schedule-wrapper">
 		<div class="schedule-container">
+		  <!-- Time Column with Empty Header Space -->
 		  <div class="time-column">
-			{% for minute in range(day_start, day_end+15, 15) %}
-			  <div class="time-slot">
-			    {{ "%02d:%02d" % (minute // 60, minute % 60) }}
-			  </div>
-			{% endfor %}
+		    <div class="room-header-spacer"></div>
+		    {% for minute in range(day_start, day_end+15, 15) %}
+		      <div class="time-slot">
+		        {{ "%02d:%02d" % (minute // 60, minute % 60) }}
+		      </div>
+		    {% endfor %}
 		  </div>
-	
+
+		  <!-- Courses Column with Room Headers -->
 		  <div class="courses-column"
 		       style="--day-start: {{ day_start }}; --day-end: {{ day_end }};">
+		    
+		    <!-- Room Headers -->
+		    <div class="room-headers">
+		      {% for room, slot_index in room_slots.items() %}
+		        <div class="room-header" style="--slot-index: {{ slot_index }};">
+		          {{ room }}
+		        </div>
+		      {% endfor %}
+		    </div>
 		    {% for course in courses %}
 		      <div class="course-block"
 			     style="

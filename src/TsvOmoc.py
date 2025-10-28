@@ -7,22 +7,22 @@ The omoc rest implementation. Used by the TsvAuswertung, but could be used as st
 if TsvDBCreator is integrated... 
 See @BarModel how to create DB and the connector... 
 '''
-import DBTools,requests
+import DBTools
 from datetime import datetime,timedelta,time
 from TsvDBCreator import SetUpTSVDB
 from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
-import json
+import json,re,requests
 Log = DBTools.Log
 
 class DummyRest(): #Pure test
     def json(self):
-        with open('overnight.json') as data_file:
+        with open('test/overnight.json') as data_file:
             result = json.load(data_file)
         return result
     
     def store(self,jsonString):
-        with open("overnight.json","w") as f:
+        with open("test/overnight.json","w") as f:
             json.dump(jsonString,f)
     
 
@@ -68,7 +68,7 @@ class OmocRest():
             "uhrzeitbis": "2200"
         }
         result = requests.get(self.url, params=params, auth=(self.key, self.pwd))
-        #result=DummyRest() -TEST!
+        #result=DummyRest() #-TEST!
         OmocResult.CACHED_RESULT = OmocResult().parseOmocEvents(result.json(),calculatedCSS,search)
         OmocRest.LAST_CHECK = now
         return OmocResult.CACHED_RESULT
@@ -137,30 +137,36 @@ class OmocFormatter():
         now_min = current_time.hour * 60 + current_time.minute
         block_min = (now_min // 15) * 15
     
-        # Sort courses by start
-        courses = sorted(courses, key=lambda c: (c["start"], c["end"]))
-        slots_end_time = []
-    
+        # Group courses by room first
+        rooms = {}
         for course in courses:
-            # slot index
-            placed = False
-            for idx, end_time in enumerate(slots_end_time):
-                if end_time <= course["start"]:
-                    course["slot_index"] = idx
-                    slots_end_time[idx] = course["end"]
-                    placed = True
-                    break
-            if not placed:
-                course["slot_index"] = len(slots_end_time)
-                slots_end_time.append(course["end"])
+            room = course.get("room", "Unknown")
+            if room not in rooms:
+                rooms[room] = []
+            rooms[room].append(course)    
     
-            # display_start = max(start, now)
-            start_min = course["start"].hour * 60 + course["start"].minute
-            end_min = course["end"].hour * 60 + course["end"].minute
-            course["display_start"] = max(start_min, block_min)
-            course["display_end"] = end_min
+        # Sort rooms by the earliest start time of their first course
+        sorted_rooms = sorted(rooms.items(), key=lambda x: min(c["start"] for c in x[1]))
+        
+        # Assign slot_index based on room order
+        for slot_index, (room, room_courses) in enumerate(sorted_rooms):
+            for course in room_courses:
+                course["slot_index"] = slot_index
+                # Sort courses within each room by start time if needed
+                #room_courses.sort(key=lambda c: (c["start"], c["end"]))
+                # display_start = max(start, now)
+                start_min = course["start"].hour * 60 + course["start"].minute
+                end_min = course["end"].hour * 60 + course["end"].minute
+                course["display_start"] = max(start_min, block_min)
+                course["display_end"] = end_min
     
-        return courses
+        room_slots = {}
+        for slot_index, (room, room_courses) in enumerate(sorted_rooms):
+            tmp = room.split('-')
+            hRoom = tmp[-1]
+            room_slots[hRoom] = slot_index
+    
+        return (courses,room_slots)
 
     #this replaces the css code, which the kiosk can't work with. An example for lightweight css - not used
     def compute_inline_layout(self, courses, day_start_minutes):
@@ -216,7 +222,7 @@ class OmocFormatter():
     def browserData(self,omocEvents,replaceCSS=False):#replace css was a try to get the kiosk running. Calculated css, unused
         resultDic={}
         now = datetime.now()
-        #now = datetime(2025,10,25,8,0) #FAKE
+        #now = datetime(2025,10,24,17,0) #FAKE
         start= now.time()
         end_dt = now + timedelta(hours=5)
         end = end_dt.time()
@@ -236,7 +242,7 @@ class OmocFormatter():
                 dic['end'] = timeTo
                 rawData.append(dic)
                 Log.info("name: %s raum:%s zeit: %s -%s",evt.title,evt.rooms[0],timeFrom,timeTo)
-        data = self.assign_slots(rawData,start)
+        data,roomslots = self.assign_slots(rawData,start)
         day_start, day_end = self.get_time_bounds(rawData,start)
         if day_end > self.dayEnd:
             day_end = day_end-self.dayEnd
@@ -246,7 +252,8 @@ class OmocFormatter():
         else:    
             resultDic["rooms"]=data
         resultDic["start"] = day_start
-        resultDic["end"] = day_end     
+        resultDic["end"] = day_end    
+        resultDic["roomslots"]=roomslots 
         
         return resultDic   
     
@@ -360,6 +367,7 @@ class OmocPrinter():
         self.course_col_width = 180
         self.course_cols = 7
         self.slot_height = 45   # 15 minutes per row
+        self.roomHeight = self.slot_height*1.2
         self.header_height = 100
         self.bg_color = (255, 226, 226)
         self.time_color = (50, 50, 50)
@@ -367,6 +375,7 @@ class OmocPrinter():
         self.font_path = "/usr/share/fonts/TTF/DejaVuSans.ttf"
         self.font_header_size = 40
         self.font_small_size = 20
+        self.font_room_size = 18
         self.padding = 4
         self.line_spacing = 2
         self.colSlotTopOffset = 4
@@ -375,6 +384,7 @@ class OmocPrinter():
         
         self.font_header = ImageFont.truetype(self.font_path_bold, self.font_header_size)
         self.font_time= ImageFont.truetype(self.font_path_bold, self.font_small_size)
+        self.font_room= ImageFont.truetype(self.font_path_bold, self.font_room_size)
         self.font_small = ImageFont.truetype(self.font_path, self.font_small_size)
        
         self.colors = [
@@ -390,11 +400,11 @@ class OmocPrinter():
     
     def getImageBytes(self,omocEvents):
         draw,img= self._createImage()
-        printerData,startMin,endMin,slots =self._prepareTimeValues(omocEvents)
+        printerData,startMin,slots =self._prepareTimeValues(omocEvents)
         self._createHeader(draw,img)
-        #startMin,endMin,slots = self._computeTimeRange(printerData,timeFrom,timeTo)
+        roomSlots = self._assign_slots(printerData)
         self._drawTimeRows(draw,startMin,slots)
-        self._assign_slots(printerData)
+        self._drawRoomHeader(draw, roomSlots)
         self._drawCourseColumns(draw,printerData,startMin)
         imgIO = BytesIO()
         img.save(imgIO, 'PNG')
@@ -426,7 +436,7 @@ class OmocPrinter():
     def _prepareTimeValues(self,omocEvents):
         evtData=[]
         refDate = datetime.now()
-        #refDate = datetime(2025,10,25,8,5) #FAKE
+        #refDate = datetime(2025,10,24,17,0) #FAKE
         self.todayString = refDate.strftime("%d.%m.%y") 
         startTime = refDate.time()
         endTime = refDate.time()
@@ -434,7 +444,7 @@ class OmocPrinter():
         for evt in omocEvents:
             tFrom = evt.safeStartTime(refDate.date())
             tTo = evt.safeEndTime(refDate.date())
-            if tTo >= startTime and tFrom < endTime: 
+            if tTo >= startTime and tFrom < endMaxTime: 
                 entry = self.PrinterData(evt,tFrom,tTo)
                 evtData.append(entry)
                 endTime=max(endTime,tTo)
@@ -443,40 +453,31 @@ class OmocPrinter():
         endMin = (endTime.hour*60 + endTime.minute) //14 *15
         totalSlots = ((endMin - startMin ) // 15)+1 
         totalSlots = max(totalSlots,len(self.colors))               
-        return (evtData,startMin,endMin,totalSlots)    
-    '''
-    def _computeTimeRange(self,printerData):
-        #startMin = min(c["start"].hour*60 + c["start"].minute for c in omocEvents)
-        #end_min_raw = max(c["end"].hour*60 + c["end"].minute for c in omocEvents)
-        startMin = min(evt.timeFrom.hour*60 + evt.timeFrom.minute for evt in printerData)
-        end_min_raw = max(evt.timeTo.hour*60 + evt.timeTo.minute for evt in printerData)
-        # round up to next 15-minute slot
-        totalSlots = ((end_min_raw - startMin) // 15)+1
-        return(startMin,totalSlots)
-    '''
+        return (evtData,startMin,totalSlots)    
     
     def _assign_slots(self,omocExtended):
-        # Sort courses by start
-        courses = sorted(omocExtended, key=lambda c: (c.timeFrom, c.timeTo))
-        slots_end_time = []
-    
-        for printerData in courses:
-            # slot index
-            placed = False
-            for idx, end_time in enumerate(slots_end_time):
-                if end_time <= printerData.timeFrom and idx < len(self.colors): #not more than 8 slots.
-                    printerData.slot = idx
-                    slots_end_time[idx] = printerData.timeTo
-                    placed = True
-                    break
-            if not placed:
-                printerData.slot = len(slots_end_time)
-                slots_end_time.append(printerData.timeTo)
-    
-    
+        # Group courses by room first
+        rooms = {}
+        roomSlots = []
+        for pd in omocExtended:
+            room = pd.evt.rooms[0]
+            if room not in rooms:
+                rooms[room] = []
+            rooms[room].append(pd)
+        # Sort rooms by the earliest start time of their first course
+        sortedRooms = sorted(rooms.items(), key=lambda x: min(c.timeFrom for c in x[1]))
+        # Assign slot_index based on room order
+        for slot_index, (room, pdList) in enumerate(sortedRooms):
+            for pd in pdList:
+                pd.slot = slot_index
+                tmp = room.split('-')
+                hRoom = tmp[-1]
+                roomSlots.append((hRoom,pd))           
+        return roomSlots       
+         
     def _drawTimeRows(self,draw,startMin,slots):
         for i in range(slots):
-            y = self.header_height + i*self.slot_height
+            y = self.header_height + i*self.slot_height + self.roomHeight
             mins = startMin + i*15
             if mins >= self.dayEnd:
                 mins = mins -self.dayEnd 
@@ -484,7 +485,74 @@ class OmocPrinter():
             draw.rectangle([0,y,self.time_col_width,y+self.slot_height], outline=(200,200,200), fill=(230,230,230))
             draw.text((5, y+5), t_text, font=self.font_time, fill=self.time_color)  
     
-    def _drawBoxText(self,draw, text, box, font, fill=(0,0,0), padding=6, lineSpacing=3):
+    def _drawRoomHeader(self,draw,roomSlots):
+        for room,pd in roomSlots:
+            top = self.header_height
+            left = self.time_col_width + pd.slot*self.course_col_width 
+            right = left + self.course_col_width - 5
+            bottom = top + self.slot_height*1.3
+            bg = self.colors[pd.slot % len(self.colors)]
+            draw.rectangle([left, top, right, bottom],fill=(230,230,230), outline=(0,0,0))
+            self._drawBoxText(draw, room, (left, top, right, bottom), self.font_room, fill=(0,0,0), padding=4)
+    
+    def _drawBoxText(self, draw, text, box, font, fill=(0,0,0), padding=6, lineSpacing=3):
+        x0, y0, x1, y1 = box
+        max_width = x1 - x0 - 2 * padding
+    
+        # Force newline before '@'
+        text = text.replace("@", "\n@")
+    
+        # Split into paragraphs
+        paragraphs = text.splitlines()
+        lines = []
+    
+        for para in paragraphs:
+            # Split on word boundaries, keeping delimiters
+            # This splits on spaces, hyphens, slashes, etc. but keeps them
+            tokens = re.findall(r'\S+[\s\-/]?|\s+', para)
+            tokens = re.findall(r'[^\s\-/_.]+[\s\-/_.]*', para)
+            
+            line = ""
+            for token in tokens:
+                token = token.rstrip()  # Remove trailing whitespace from token
+                if not token:
+                    continue
+                    
+                test_line = line + (" " if line and not line.endswith(('-', '/')) else "") + token
+                
+                if draw.textlength(test_line, font=font) <= max_width:
+                    line = test_line
+                else:
+                    if line:
+                        lines.append(line.rstrip())
+                    
+                    # Handle token that's too long for one line
+                    if draw.textlength(token, font=font) > max_width:
+                        chunk = ""
+                        for ch in token:
+                            if draw.textlength(chunk + ch, font=font) > max_width:
+                                lines.append(chunk)
+                                chunk = ch
+                            else:
+                                chunk += ch
+                        line = chunk if chunk else ""
+                    else:
+                        line = token
+            
+            if line:
+                lines.append(line.rstrip())
+
+            # vertical placement
+            line_height = font.size + 2 + lineSpacing
+            ypos = y0 + padding
+            for l in lines:
+                if ypos + line_height > y1 - padding:
+                    break
+                draw.text((x0 + padding, ypos), l, font=font, fill=fill)
+                ypos += line_height                
+    
+    
+    def _drawBoxTextx(self,draw, text, box, font, fill=(0,0,0), padding=6, lineSpacing=3):
         x0, y0, x1, y1 = box
         max_width = x1 - x0 - 2 * padding
      
@@ -531,18 +599,15 @@ class OmocPrinter():
                 break
             draw.text((x0 + padding, ypos), l, font=font, fill=fill)
             ypos += line_height
-    
+             
 
     def _drawCourseColumns(self,draw,pData,startMin):
         for c in pData:
-            #TODO Übernachtung von 18:00 bis 11:00 nächsten TAG. FAIL!
             t1 = (c.timeFrom.hour*60 + c.timeFrom.minute -startMin) 
             t2 = (c.timeTo.hour*60 + c.timeTo.minute - startMin)
             xt1 = max(t1,0)
-            #start_px = self.header_height + ((c.timeFrom.hour*60 + c.timeFrom.minute) - startMin)//15 * self.slot_height
-            #end_px   = self.header_height + ((c.timeTo.hour*60 + c.timeTo.minute) - startMin)//15 * self.slot_height
-            start_px = self.header_height + xt1//15 * self.slot_height
-            end_px   = self.header_height + t2//15 * self.slot_height
+            start_px = self.header_height + xt1//15 * self.slot_height + self.roomHeight
+            end_px   = self.header_height + t2//15 * self.slot_height + self.roomHeight
             top = start_px + self.colSlotTopOffset
             bottom = end_px + self.colSlotTopOffset
             left = self.time_col_width + c.slot*self.course_col_width #no index yet - calculate it
@@ -550,16 +615,10 @@ class OmocPrinter():
             
             bg = self.colors[c.slot % len(self.colors)]
             draw.rounded_rectangle([left, top, right, bottom],radius=4, fill=bg, outline=(0,0,0))
-            
-            # wrapped text inside box
-            #text = f"{c['name']} @{c['room']}"
+
             text = f"{c.evt.title} @{c.evt.rooms[0]}"
             self._drawBoxText(draw, text, (left, top, right, bottom), self.font_small, fill=(0,0,0), padding=4)
-        
-        # Extend background below last course
-        
-        #if last_course_bottom < self.screenHeight:
-        #    draw.rectangle([0, last_course_bottom, self.screenWidth, self.screenHeight], fill=self.bg_color)        
+      
     
     def testSave(self,imgIO):
         with open("omoc.png","wb") as fileImage:

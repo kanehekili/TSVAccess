@@ -13,7 +13,7 @@ path1="$(dirname "$DIR")"
 path2="$path1/src"
 path3="$path1/build/resources"
 cd $path2
-cp DBTools.py TsvDBCreator.py TsvAuswertung.py /opt/tsvserver/;
+cp DBTools.py TsvDBCreator.py TsvAuswertung.py TsvOmoc.py /opt/tsvserver/;
 cp -r web /opt/tsvserver/
 cd $path3
 cp -u tsvauswertung.service /etc/systemd/system/;
@@ -24,4 +24,5 @@ echo "#   python-mysql-connector, rsync ,sshpass                           #"
 echo "#   pip install flask,plotly, openpyxl                               #"
 echo "######################################################################"
 echo "!set .config.json manually - enable & start tsv services"
+echo "!set mail and omoc credentials with TsvDBCreator"
 echo "App installed."

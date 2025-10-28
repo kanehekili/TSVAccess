@@ -180,7 +180,7 @@ def omocSZ():
     data = barModel.readOmocSZ(False)
     today = datetime.now()
     date_str = today.strftime("%d.%m.%y") 
-    return render_template('omoc.html',courses=data['rooms'],day_start=data['start'],day_end=data['end'],logo_path=logo_path, today_str=date_str)
+    return render_template('omoc.html',courses=data['rooms'],day_start=data['start'],day_end=data['end'],room_slots=data['roomslots'],logo_path=logo_path, today_str=date_str)
 
 @app.route('/omocszk')  # current omoc at sz
 def omocSZKiosk():
