@@ -30,18 +30,21 @@
 		    {% endfor %}
 		  </div>
 
-		  <!-- Courses Column with Room Headers -->
+		  <div class="content-wrapper">
+		  
+		  <!-- Room Headers -->
+		  <div class="room-headers">
+		    {% for room, slot_index in room_slots.items() %}
+		      <div class="room-header" style="--slot-index: {{ slot_index }};">
+		        {{ room }}
+		      </div>
+		    {% endfor %}
+		  </div>
+		  
+		  <!-- Courses Column without Room Headers -->
 		  <div class="courses-column"
 		       style="--day-start: {{ day_start }}; --day-end: {{ day_end }};">
-		    
-		    <!-- Room Headers -->
-		    <div class="room-headers">
-		      {% for room, slot_index in room_slots.items() %}
-		        <div class="room-header" style="--slot-index: {{ slot_index }};">
-		          {{ room }}
-		        </div>
-		      {% endfor %}
-		    </div>
+
 		    {% for course in courses %}
 		      <div class="course-block"
 			     style="
@@ -55,7 +58,8 @@
 		        </div>
 		      </div>
 		    {% endfor %}
-		  </div>
+		  </div> <!--courses-column-->
+		  </div> <!-- contentwrapper-->  
 	  </div>
 	</div>
 	<script>

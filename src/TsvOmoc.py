@@ -16,13 +16,13 @@ import json,re,requests
 Log = DBTools.Log
 
 class DummyRest(): #Pure test
-    def json(self):
-        with open('test/overnight.json') as data_file:
+    def json(self,path="test/omoctest.json"):
+        with open(path) as data_file:
             result = json.load(data_file)
         return result
     
-    def store(self,jsonString):
-        with open("test/overnight.json","w") as f:
+    def store(self,jsonString,path="test/omoctest.json"):
+        with open(path,"w") as f:
             json.dump(jsonString,f)
     
 
@@ -441,6 +441,8 @@ class OmocPrinter():
         startTime = refDate.time()
         endTime = refDate.time()
         endMaxTime = (refDate+timedelta(hours=5)).time()
+        if endMaxTime < startTime:
+            endMaxTime = time.max
         for evt in omocEvents:
             tFrom = evt.safeStartTime(refDate.date())
             tTo = evt.safeEndTime(refDate.date())
