@@ -105,14 +105,22 @@ body {
   box-sizing: border-box;
   padding: 4px;
   color: #000;
-  font-size: 20px;
+  
   overflow: hidden;
 }
 
 .course-text {
-  line-height: 1.2em;
+  font-size: 24px;	
+  line-height: 1.4em;
   overflow-wrap: break-word;  /* Break long words */
   word-wrap: break-word;      /* Older browsers */
+}
+
+.course-time {
+  line-height: 2.2em;
+  color: blue;
+  font-size: 20px;
+  font-weight: bold;
 }
 
 /* Responsive adjustments for portrait mobile */

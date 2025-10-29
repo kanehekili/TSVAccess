@@ -9,7 +9,7 @@
 <body>
 	<!-- Header -->
 	<h1>
-	 <span>TSV Aktuell: {{ today_str }} &nbsp;</span>
+	 <span>TSV Aktuell: {{ today_str }}&nbsp;</span>
 	  <div class="logo-container">
 		<a href="/" data-toogle="back" title="Zurück zum Dashboard">
 		<img src="{{ logo_path }}" alt="Logo">
@@ -53,9 +53,11 @@
 				    --slot-index: {{ course.slot_index }};
 		           ">
 		        <div class="course-text">
-		          {{ course.name }}<br><br>
-		          @{{ course.room }}
+		          {{ course.name }}
 		        </div>
+				<div class="course-time">
+					{{"%02d:%02d-%02d:%02d" % (course.start.hour, course.start.minute,course.end.hour, course.end.minute)}}
+				</div>
 		      </div>
 		    {% endfor %}
 		  </div> <!--courses-column-->
