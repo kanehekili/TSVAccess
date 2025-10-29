@@ -69,7 +69,7 @@ class OmocRest():
         }
         result = requests.get(self.url, params=params, auth=(self.key, self.pwd))
         #result=DummyRest() #-TEST!
-        OmocResult.CACHED_RESULT = OmocResult().parseOmocEvents(result.json(),calculatedCSS,search)
+        OmocResult.CACHED_RESULT = OmocResult().parseOmocEvents(result.json('test/multiCol.json'),calculatedCSS,search)
         OmocRest.LAST_CHECK = now
         return OmocResult.CACHED_RESULT
 
@@ -436,7 +436,7 @@ class OmocPrinter():
     def _prepareTimeValues(self,omocEvents):
         evtData=[]
         refDate = datetime.now()
-        #refDate = datetime(2025,10,24,17,0) #FAKE
+        #refDate = datetime(2025,10,24,8,0) #FAKE
         self.todayString = refDate.strftime("%d.%m.%y") 
         startTime = refDate.time()
         endTime = refDate.time()
@@ -497,18 +497,19 @@ class OmocPrinter():
             draw.rectangle([left, top, right, bottom],fill=(230,230,230), outline=(0,0,0))
             self._drawBoxText(draw, room, (left, top, right, bottom), self.font_room, fill=(0,0,0), padding=4)
     
-    def _drawBoxText(self, draw, text, box, font, fill=(0,0,0), padding=6, lineSpacing=3):
+    def _drawBoxText(self, draw, text, box, font, fill=(0,0,0), alternateFill=(0,0,255),padding=6, lineSpacing=3):
         x0, y0, x1, y1 = box
         max_width = x1 - x0 - 2 * padding
     
         # Force newline before '@'
-        text = text.replace("@", "\n@")
+        text = text.replace("@", "\n")
     
         # Split into paragraphs
         paragraphs = text.splitlines()
-        lines = []
-    
+        
+        lineCursor = y0
         for para in paragraphs:
+            lines = []
             # Split on word boundaries, keeping delimiters
             # This splits on spaces, hyphens, slashes, etc. but keeps them
             tokens = re.findall(r'\S+[\s\-/]?|\s+', para)
@@ -546,62 +547,20 @@ class OmocPrinter():
 
             # vertical placement
             line_height = font.size + 2 + lineSpacing
-            ypos = y0 + padding
+            ypos = lineCursor + padding
+            if lineCursor > y0:
+                fnt = self.font_time
+                col = alternateFill
+            else:
+                fnt = font
+                col=fill
             for l in lines:
                 if ypos + line_height > y1 - padding:
                     break
-                draw.text((x0 + padding, ypos), l, font=font, fill=fill)
-                ypos += line_height                
+                draw.text((x0 + padding, ypos), l, font=fnt, fill=col)
+                ypos += line_height   
+            lineCursor = ypos + padding             
     
-    
-    def _drawBoxTextx(self,draw, text, box, font, fill=(0,0,0), padding=6, lineSpacing=3):
-        x0, y0, x1, y1 = box
-        max_width = x1 - x0 - 2 * padding
-     
-        # Force newline before '@'
-        text = text.replace("@", "\n@")
-    
-        # Split into paragraphs (each paragraph wraps separately)
-        paragraphs = text.splitlines()
-        lines = []
-    
-        for para in paragraphs:
-            words = para.split()
-            line = ""
-            for word in words:
-                test_line = line + (" " if line else "") + word
-                if draw.textlength(test_line, font=font) <= max_width:
-                    line = test_line
-                else:
-                    if line:
-                        lines.append(line)
-                    # handle long words
-                    if draw.textlength(word, font=font) > max_width:
-                        chunk = ""
-                        for ch in word:
-                            if draw.textlength(chunk + ch, font=font) > max_width:
-                                lines.append(chunk)
-                                chunk = ch
-                            else:
-                                chunk += ch
-                        if chunk:
-                            line = chunk
-                        else:
-                            line = ""
-                    else:
-                        line = word
-            if line:
-                lines.append(line)
-    
-        # vertical placement
-        line_height = font.size + 2 + lineSpacing
-        ypos = y0 + padding
-        for l in lines:
-            if ypos + line_height > y1 - padding:
-                break
-            draw.text((x0 + padding, ypos), l, font=font, fill=fill)
-            ypos += line_height
-             
 
     def _drawCourseColumns(self,draw,pData,startMin):
         for c in pData:
@@ -618,8 +577,9 @@ class OmocPrinter():
             bg = self.colors[c.slot % len(self.colors)]
             draw.rounded_rectangle([left, top, right, bottom],radius=4, fill=bg, outline=(0,0,0))
 
-            text = f"{c.evt.title} @{c.evt.rooms[0]}"
-            self._drawBoxText(draw, text, (left, top, right, bottom), self.font_small, fill=(0,0,0), padding=4)
+            #text = f"{c.evt.title} @{c.evt.rooms[0]}"
+            text = f"{c.evt.title}@{c.timeFrom.isoformat(timespec='minutes')} - {c.timeTo.isoformat(timespec='minutes')}"
+            self._drawBoxText(draw, text, (left, top, right, bottom), self.font_small,fill=(0,0,0), padding=4)
       
     
     def testSave(self,imgIO):
