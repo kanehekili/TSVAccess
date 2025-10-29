@@ -52,7 +52,7 @@ class DatenliebeBasic():
     #main run - overwrite getFilename and runQuery...   
     def run(self):
         data = self.runQuery()
-        fn = self.getFilename()+self.ts+".json"
+        fn = self.getFilename()+".json"
         self._sendJson(fn,data)
         self.db.close()
         
@@ -125,6 +125,7 @@ class DatenliebeCurrent(DatenliebeBasic):
         else:
             count=0
         data={}
+        data["time"] = self.ts
         data["current"]=count
         return json.dumps(data)
     
@@ -178,9 +179,12 @@ class DatenliebeMedian(DatenliebeBasic):
 
     def runQuery(self):
         bm = BarModel()
+        fullData={}
         res = bm.collectBlockUsage('Kraftraum',TsvAuswertung.MODE_MEDIAN)
         #{'9-12': [31, 36, 27, 23, 35, 17, 21], '15-18': [24, 25, 23, 24, 24, 17, 16], '18-20': [27, 30, 26, 25, 21, 8, 10], '20-22': [16, 17, 13, 11, 9, 1, 1]}
-        return json.dumps(res)  
+        fullData["time"] = self.ts
+        fullData["data"] = res
+        return json.dumps(fullData)  
     
     def getFilename(self):
         return "weekly" 
