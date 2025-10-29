@@ -69,7 +69,7 @@ class OmocRest():
         }
         result = requests.get(self.url, params=params, auth=(self.key, self.pwd))
         #result=DummyRest() #-TEST!
-        OmocResult.CACHED_RESULT = OmocResult().parseOmocEvents(result.json('test/multiCol.json'),calculatedCSS,search)
+        OmocResult.CACHED_RESULT = OmocResult().parseOmocEvents(result.json(),calculatedCSS,search)
         OmocRest.LAST_CHECK = now
         return OmocResult.CACHED_RESULT
 
