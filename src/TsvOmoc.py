@@ -57,8 +57,8 @@ class OmocRest():
         datestr = now.strftime("%d%m%Y")
         if OmocRest.LAST_CHECK and OmocResult.CACHED_RESULT:
             td = now-self.LAST_CHECK
-            if td.seconds < 4*60*60:
-                Log.info("Sending cached result")
+            if td.total_seconds() < 4*60*60:
+                Log.info("Sending cached result (since:%d)",td.total_seconds())
                 return OmocResult.CACHED_RESULT 
         #datestr = "16102025"
         params = {    

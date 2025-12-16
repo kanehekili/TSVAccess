@@ -5,36 +5,42 @@ connector for the remote sewobe RESTfull API
 
 @author: matze
 '''
-import requests
+import requests,json
+from DBTools import OSTools
 
 CODE_OK=200
 REST_BASE_URL = "https://manager23.sewobe.de/"
 #APP_ADRESS = "adressen"              # For data endpoint
-USERNAME_REST = "your_username"            # Case-sensitive
-PASSWORT_REST = "your_password"            # German spelling
-USERNAME = "MSCHOEPF"
-PASSWORD = "sjz4FMaGMNEpX"
 
 class RestConnector():
     session=None
     lastError=None
+    USERNAME = "xxx"
+    PASSWORD = "xxx"
     
     def __init__(self):
-        pass
+        self._credentials()
     
     def login(self):
         function = "REST_LOGIN"
         app = "restlogin"
         login_url = f"{REST_BASE_URL}applikation/{app}/api/{function}" 
         payload = {
-            "USERNAME_REST": USERNAME,
-            "PASSWORT_REST": PASSWORD
+            "USERNAME_REST": RestConnector.USERNAME,
+            "PASSWORT_REST": RestConnector.PASSWORD
         }
         response = requests.post(login_url, data=payload)
         if self._checkResponse(response):
             return self._saveSession(response)
         else:
             return False
+    def _credentials(self):
+        path = OSTools.getLocalPath(__file__)
+        cfg = OSTools.joinPathes(path, "data", "sewbode.json")
+        with open(cfg, "r") as jr:
+            dic = json.load(jr)
+            RestConnector.USERNAME=dic["USER"]
+            RestConnector.PASSWORD=dic["PWD"]
     
     def testGetCountries(self): #just an example on how to retrieve data
         function="GET_LAENDER"

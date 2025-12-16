@@ -273,6 +273,7 @@ class SetUpTSVDB():
     #Extended: ALTER TABLE Zugang CHANGE location activity VARCHAR(100) NOT NULL;
     #Extended: removed line: FOREIGN KEY(mitglied_id) REFERENCES Mitglieder(id) ON DELETE CASCADE
     #we want zugangs data keep forever - statistics... 
+    # add index: CREATE INDEX idx_access_date_mitglied ON Zugang(access_date, mitglied_id);
     ''' We need to alter the Zugang table, in order to delete members, but not their behaviour and counts
     1) SELECT CONSTRAINT_NAME FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS WHERE TABLE_NAME = 'Zugang' AND CONSTRAINT_TYPE = 'FOREIGN KEY';
     gets the contraint key : Zugang_ibfk_1
@@ -283,7 +284,10 @@ class SetUpTSVDB():
           mitglied_id INT,
           access_date DATETIME,
           activity VARCHAR(100),
-          room VARCHAR(50)
+          room VARCHAR(50),
+          INDEX idx_mitglied_id (mitglied_id),
+          INDEX idx_access_date (access_date),
+          INDEX idx_access_date_mitglied (access_date, mitglied_id)          
         )
         """
     BEITRAGTABLE="BEITRAG"
