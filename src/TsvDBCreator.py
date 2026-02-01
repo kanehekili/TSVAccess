@@ -252,7 +252,10 @@ class TSVMailer:
                 
 #Definition and creation of TSV Tables. This class should not be instantiated in prod - just for creation or db manipulation
 class SetUpTSVDB():
-        
+    #The time in hours until certain people are considered checked out
+    WIPE_TIME=4
+    GROUP_WIPETIME=44
+    
     MAINTABLE ="Mitglieder"
     TABLE1 = """
     CREATE OR REPLACE TABLE Mitglieder (
@@ -278,6 +281,9 @@ class SetUpTSVDB():
     1) SELECT CONSTRAINT_NAME FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS WHERE TABLE_NAME = 'Zugang' AND CONSTRAINT_TYPE = 'FOREIGN KEY';
     gets the contraint key : Zugang_ibfk_1
     2) ALTER TABLE Zugang DROP FOREIGN KEY Zugang_ibfk_1;  -- Replace with actual name
+    
+    As update do in SQL:
+    CREATE INDEX idx_access_date_mitglied ON Zugang(access_date, mitglied_id);
     '''    
     TABLE2 = """
         CREATE OR REPLACE TABLE Zugang (

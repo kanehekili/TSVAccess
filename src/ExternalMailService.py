@@ -1,6 +1,6 @@
 '''
 Created on Aug 2, 2025
-
+Easy service classes that are triggered by systemd services.
 @author: matze
 '''
 from TsvDBCreator import DBAccess

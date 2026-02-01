@@ -86,9 +86,9 @@ def daysPerPerson():
     graphJSON = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
     return render_template('plot.html', graphJSON=graphJSON, logo_path=logo_path, dynamic_activity=dynamic_activity,parentView="/krStatistics") 
     
-    
+"""    
 @app.route('/' + TsvDBCreator.ACTIVITY_KR + "Usage")
-def testVerweilzeitKraftraum():
+def testVerweilzeitKraftraum(): #broken!
     # TODO -under construction
     dates, counts = barModel.dailyHoursUsage(TsvDBCreator.ACTIVITY_KR)  # reside time per hour     
     data = [go.Bar(
@@ -104,7 +104,7 @@ def testVerweilzeitKraftraum():
     logo_path = "tsv_logo_100.png"
     dynamic_activity = TsvDBCreator.ACTIVITY_KR
     return render_template('index.html', graphJSON=graphJSON, logo_path=logo_path, dynamic_activity=dynamic_activity)        
-
+"""
 '''
 Group section
 '''
@@ -602,8 +602,8 @@ class AccessRow():
      
     #CKI must be within 10/15 mins before/after :00 or :30 (Group fitnesse only)  
     #This way we can differentiate between adjacent courses in the same room 
-    #Not  working: replaced with timeSlot
-    def isInTime(self,aDatetime):
+    #@deprecated Not  working: replaced with timeSlot
+    def __isInTime(self,aDatetime):
         reference_time = aDatetime
         #hour = reference_time.hour
         minute = reference_time.minute
@@ -630,78 +630,35 @@ class AccessRow():
         return self.da > other.da
 
   
-
+#Helper class for counting check ins. Either CKI in/OUT is one session or only 1xCKI (e.g. Group)
 class CountRow():
     # SELECT mitglied_id,access_date
+    '''
+    Proof of concept for a day:
+    SELECT mitglied_id,COUNT(*) as access_count, MIN(access_date) as first_access, MAX(access_date) as last_access 
+         FROM Zugang WHERE DATE(access_date) = '2026-01-30' and activity ='KRAFTRAUM' GROUP BY mitglied_id ORDER BY mitglied_id;
+    '''
+    
     MAX_PREVVAIL = 4
 
-    def __init__(self, dbRow, breaktime):
+    def __init__(self,dbRow):
         self.id = dbRow[0]
-        self.breakTime = breaktime
         # self.da=dbRow[1] #datetime
-        self.checkArray = [None, None, None, None]  # 0=morning CKI, 1 morning CKO, 2 Aftern CKi. 3 Aftn cko
-        self._checkin(dbRow[1])
+        self.checkCount = 0 #gather all checkins  
+        self.updateAccess()
         self.data = dbRow
         self.checked = True
     
-    def _checkin(self, rowDate):
-        if rowDate.hour < self.breakTime:
-            self.checkArray[0] = rowDate
-        else:
-            self.checkArray[2] = rowDate
+    def updateAccess(self):
+        self.checkCount+=1
+    
+    # crude:  either cki, cko or count every time. 
+    def accessCount(self,isDoubleCheck):
+        if isDoubleCheck:
+            return self.checkCount//2 + self.checkCount%2
+        
+        return self.checkCount
 
-    def _setInternal(self, rowDate, idx):
-            if self.checkArray[idx] is None:
-                self.checkArray[idx] = rowDate
-            else:
-                self.checkArray[idx + 1] = rowDate
-                
-    def _checkDate(self, rowDate):
-        if rowDate.hour < self.breakTime:
-            self._setInternal(rowDate, 0)
-        else:
-            self._setInternal(rowDate, 2)
-        
-    def updateAccess(self, row):
-        self._checkDate(row[1])
-    
-    # crude: either 1x or twice a day. 
-    def accessCount(self):
-        cnt = 0
-        ctxIndx = [0, 2]
-        for idx in ctxIndx:
-            if self.checkArray[idx] is not None:
-                cnt += 1
-        return cnt
-    
-    # crude: if cki but not cko we assume 4 hours
-    
-    def _calcPartHours(self, idx):
-        hours = 0
-        if self.checkArray[idx] is not None:
-            if self.checkArray[idx + 1] is None:
-                hours = CountRow.MAX_PREVVAIL
-            else:
-                hours = self.checkArray[idx + 1].hour - self.checkArray[idx].hour
-        return hours
-    
-    def cumulatedHours(self):
-        hours1 = self._calcPartHours(0)
-        hours2 = self._calcPartHours(2)
-        return hours1 + hours2
-    
-    def morningData(self):
-        # return the morning start date and the partial hours
-        if self.checkArray[0] is None:
-            return None
-        return (self.checkArray[0], self._calcPartHours(0))
-    
-    def afternoonData(self):
-        # return the morning start date and the partial hours
-        if self.checkArray[2] is None:
-            return None
-        return (self.checkArray[2], self._calcPartHours(2))
-        
  
 class BarModel():
 
@@ -753,14 +710,15 @@ class BarModel():
         
         return(fakeData, fakeValue)
     
-    # TODO respect checkin/checkout there is a gracetime 0r 120 seconds between check in and checkout
+    # checkin/checkout there is a gracetime between check in and checkout
     def countPeoplePerDay(self, activity,room):
+        isDoubleCheck = activity == TsvDBCreator.ACTIVITY_KR #doublecheck: Count twice, else count each (Group)
         members = self.__collectCountRows(activity,room)
         countValues = []
         for aDay in members.values():  # id->cr list
             cnt = 0
             for cr in aDay.values():  # cr->list
-                cnt += cr.accessCount()
+                cnt += cr.accessCount(isDoubleCheck)
             countValues.append(cnt)
         
         # Create a Plotly bar chart
@@ -768,9 +726,9 @@ class BarModel():
         y_values = list(countValues)
         return (x_values, y_values)
     
-    # What? Average usage per person? average usage per day? This cumulates... and is wrong!
+    # @DEPRECATED Average usage per person? average usage per day? This cumulates... and is wrong!
     def dailyHoursUsage(self, activity):
-        members = self.__collectCountRows(activity)
+        members = self.__collectCountRows(activity) #broken!
         hourlyCount = {}
         # go from 9:00 to 12, 14 to 22:00
         # startHour=9
@@ -827,7 +785,6 @@ class BarModel():
     # returns a {date-> {id -> rowCount} ] double dict 
     def __collectCountRows(self, activity,room):
         timetable = SetUpTSVDB.TIMETABLE
-        breakTime = 13
         members = {}
         stmt = "SELECT mitglied_id,access_date from %s where activity='%s' and room='%s' AND access_date >= DATE_SUB(CURDATE(), INTERVAL 365 DAY)"%(timetable,activity,room)
         rows = self.atomicSelect(stmt)
@@ -841,9 +798,9 @@ class BarModel():
     
             cr = members[date_str].get(mid, None)
             if cr is None:
-                cr = members[date_str][mid] = CountRow(row, breakTime)
+                cr = members[date_str][mid] = CountRow(row)
             else:
-                members[date_str][mid].updateAccess(row)    
+                members[date_str][mid].updateAccess()    
         return members
     
     def countSectionMembers(self):
@@ -860,16 +817,31 @@ class BarModel():
                 x_values.append(row[0])
                 y_values.append(row[1])
         return (x_values, y_values)
+
+    #list name and days someone forgot to checkout in "Kraftraum"
+    def forgotCheckout(self):
+        mbrTable = SetUpTSVDB.MAINTABLE
+        timetable = SetUpTSVDB.TIMETABLE
+        stmt = f"""SELECT m.id,m.last_name,m.first_name, COUNT(*) as failedCheckout FROM {mbrTable} m
+                JOIN ( SELECT mitglied_id, DATE(access_date) as day_date FROM {timetable}
+                    WHERE access_date >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)
+                    AND activity = 'Kraftraum' GROUP BY mitglied_id, DATE(access_date)
+                    HAVING COUNT(*) % 2 = 1) 
+                forgot ON m.id = forgot.mitglied_id
+                GROUP BY m.id, m.last_name, m.first_name
+                ORDER BY days_not_checked_out DESC;
+              """
+        rows = self.atomicSelect(stmt)
+        #should we show the pics??
         
-    # show pic and names of those that are curently in the activity +#TOSO AND ROOM
+    # show pic and names of those that are curently in the activity
     def currentVisitorPictures(self, activity,room = None, checkout = True):
         mbrTable = SetUpTSVDB.MAINTABLE
         timetable = SetUpTSVDB.TIMETABLE
-        #daysplit = "13"  # time between morning and afternoon
-
-        
-        #Warning: Class scope, will break on multiple sessions!
-        picFolder = self.dbSystem.PICPATH + "/"
+        wipeTime=SetUpTSVDB.WIPE_TIME
+        groupWipeTime=SetUpTSVDB.GROUP_WIPETIME
+        picFolder = DBAccess.PICPATH + "/"
+        '''
         halfPart = TsvDBCreator.halfDayStatement("z.access_date", "13:30:00")
         if not room:
             stmt = f"""SELECT id,first_name,last_name,picpath,access_date FROM {mbrTable} m 
@@ -881,6 +853,19 @@ class BarModel():
             JOIN {timetable} z ON m.id = z.mitglied_id 
             WHERE {halfPart} AND
             activity='{activity}' AND room='{room}' ORDER By z.access_date DESC"""
+        '''
+        if not room:
+            stmt = f"""SELECT m.id, m.first_name, m.last_name, m.picpath,MAX(z.access_date) as last_access,COUNT(*) as access_count
+                        FROM {mbrTable} m JOIN {timetable} z ON m.id = z.mitglied_id
+                        WHERE DATE(z.access_date) = CURDATE() AND z.activity = '{activity}' 
+                        GROUP BY m.id, m.first_name, m.last_name, m.picpath
+                        HAVING COUNT(*) % 2 = 1 AND MAX(z.access_date) >= DATE_SUB(NOW(), INTERVAL {wipeTime} HOUR) 
+                        ORDER BY last_access DESC"""
+        else:###Do we need wipetime for group???
+            stmt = f"""SELECT id,first_name,last_name,picpath,access_date FROM {mbrTable} m 
+                    JOIN {timetable} z ON m.id = z.mitglied_id 
+                    WHERE DATE(z.access_date) = CURDATE() AND z.access_date >= DATE_SUB(NOW(), INTERVAL {wipeTime} HOUR)
+                    AND activity='{activity}' AND room='{room}' ORDER By z.access_date DESC"""            
             
         rows = self.atomicSelect(stmt)
         if rows is None:
@@ -894,7 +879,8 @@ class BarModel():
         '''
         timeNow = datetime.now()
         minsOfLife = 44
-        members = self._buildCheckOutMembers(rows) if checkout else self._buildGroupMembers(rows,timeNow,minsOfLife)
+        #TODO: buildGroupmemebers mit 4*60 (wipe time?) für Kranftraum?
+        members = self._buildCheckOutMembers(rows) if checkout else self._buildGroupMembers(rows,timeNow,groupWipeTime)
         present = [item for item in members.values() if item.isInPlace()]
         people = []
         for row in present:
@@ -902,6 +888,7 @@ class BarModel():
         #Log.info("Checked in:%d", len(people))
         return people
 
+    #the select assumes 4 hours. The filter is crucial... 
     def _buildGroupMembers(self,rows,someDateTime,minsOfLife):
         members = {}
         Log.info("Verify group @ %s",someDateTime)
@@ -916,7 +903,8 @@ class BarModel():
             else:
                 Log.info("Group CKI out ignore %d @ %s"%(ar.id,ar.da))   
         return members
-     
+    
+    #this should be redundant by given select 
     def _buildCheckOutMembers(self,rows):
         members = {}
         for row in rows:
@@ -925,8 +913,8 @@ class BarModel():
             if acr is None:
                 # Log.debug("Visitor add: %d",mid)
                 members[mid] = AccessRow(row)
-            else:
-                members[mid].toggleChecked(row[4])
+            #else:
+            #    members[mid].toggleChecked(row[4])
                 # Log.debug("Visitor toggle: %s",members[mid].checked)
         return members
 

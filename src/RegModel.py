@@ -127,9 +127,12 @@ class Registration():
     
     # used by memberControl
     def todaysAccessDateStrings(self, mbrID, activity,room):
-        table = SetUpTSVDB.TIMETABLE
-        daysplit = "13:30:00"  # see TsvAuswertung
-        stmt = "select access_date from %s where mitglied_id =%d and activity='%s' and room='%s' AND %s" % (table, mbrID, activity, room,TsvDBCreator.halfDayStatement("access_date",daysplit))
+        #daysplit = "13:30:00"  # see TsvAuswertung
+        #stmt = "select access_date from %s where mitglied_id =%d and activity='%s' and room='%s' AND %s" % (table, mbrID, activity, room,TsvDBCreator.halfDayStatement("access_date",daysplit))
+        stmt = f"""SELECT access_date FROM {SetUpTSVDB.TIMETABLE} WHERE mitglied_id = {mbrID} AND
+            DATE(access_date) = CURDATE() AND activity = '{activity}' 
+            AND access_date >= DATE_SUB(NOW(), INTERVAL {SetUpTSVDB.WIPE_TIME} HOUR)"""
+        
         rows = self.db.select(stmt)
         timeData = []
         for row in rows:
