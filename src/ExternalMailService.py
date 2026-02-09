@@ -10,6 +10,7 @@ import json,io,getopt, sys
 from datetime import datetime
 import paramiko
 import logging
+import SewobeConnector
 logging.getLogger("paramiko").setLevel(logging.INFO)
 
 from pathlib import Path
@@ -205,7 +206,9 @@ def parseOptions(args):
         elif o in ("-a","--dl_daily"):
             DatenliebeCurrent().run()
         elif o in ("-b","--dl_weekly"):
-            DatenliebeMedian().run()        
+            DatenliebeMedian().run()   
+        elif o in ("-s","--sewobe"):
+            SewobeConnector()                 
         else:
             printUsage()
 
@@ -214,6 +217,7 @@ def printUsage():
           "\t-h > (--handballMembers) \n"
           "\t-a > (--dl_daily) Every 15 min \n"
           "\t-b > (--dl_weekly) Weekly median \n"
+          "\t-s > (--sewobe) daily update of members\n"
           "This module contains multiple services - so a switch is mandatory\n"
           )
 

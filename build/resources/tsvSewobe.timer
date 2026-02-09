@@ -1,0 +1,10 @@
+[Unit]
+Description=TSV external info timer for handball
+
+[Timer]
+OnCalendar=Mon-Fri *-*-* 22:00:00
+Persistent=true
+Unit=tsvSewobe.service
+
+[Install]
+WantedBy=timers.target

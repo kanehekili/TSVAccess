@@ -11,6 +11,7 @@ from TsvAccessModule import RaspberryFAKE
 import smtplib,ssl
 from email.message import EmailMessage
 from TsvAuswertung import BarModel
+from SewobeConnector import RestConnector,Converter
 
 '''
 def setupDB():
@@ -593,6 +594,17 @@ def testOmocPrinter():
     omocEvents = omocR.getCurrent(True,TsvOmoc.OmocRest.FILTER_SZ)
     imgIO = printer.getImageBytes(omocEvents) #image_io!
     printer.testSave(imgIO)       
+
+def testSewobeOffline():
+    r = RestConnector()
+    jsonDic = r.readMbrJson()
+    result = r.createModel(jsonDic)
+    #r.printMembers(result)
+    c=Converter()
+    c.convert(result)
+    print(len(result))
+    c.close()
+
          
 def failures():
     '''
@@ -625,5 +637,6 @@ if __name__ == '__main__':
     #countBlockUsage()
     #testGroupCKI()
     #testOmoc2()
-    testOmocPrinter()
+    #testOmocPrinter()
+    testSewobeOffline()
     pass
