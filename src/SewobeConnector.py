@@ -99,15 +99,17 @@ class RestConnector():
         data_url = f"{REST_BASE_URL}applikation/{app}/api/{function}"
         params = {"SESSION": self.session, "AUSWERTUNG_ID":6}
         data_response = requests.get(data_url,params=params)
-        
         if self._checkResponse(data_response):
             raw = data_response.json()["ERGEBNIS"]
             if len(raw)==0:
-                print("No data avaliable-SERVERE Error - exiting")
+                Log.error("No data avaliable-SERVERE Error - exiting")
                 return None
-            #entries = raw.values()
+            errCode = raw["STATUSCODE"]
+            if errCode < 0:
+                Log.error("Error %d message: %s",errCode,raw["STATUS"] )
+                return None
+
             return self.createModel(raw)
-        #return list(sMembers.values()) #array of TsvMembers - read from Sewobe
         return None
     
     def _mkDate(self,dateString):
@@ -116,9 +118,6 @@ class RestConnector():
         return datetime.strptime(dateString, '%Y-%m-%d').date().isoformat() 
     
     def createModel(self,jsonDic):
-        if len(jsonDic)==0:
-            print("No data avaliable-SERVERE Error - exiting")
-            return
         sMembers= {} #key=id, value. A TsvMember with its Abteilungs-data (definedfrom Sewobe)
         mbrCount =0        
         entries = jsonDic.values()
@@ -143,7 +142,7 @@ class RestConnector():
                 mbrCount += 1
 
             mbr.addPay(payDate,section) 
-        print("Read %d entries"%(mbrCount))
+        Log.info("Read %d entries from REST",mbrCount)
         return sMembers #dict of TsvMembers - read from Sewobe
         
         
@@ -185,29 +184,34 @@ class RestConnector():
             if errCode < 0:
                 print("Error %d message: %s"%(errCode,raw["STATUS"] ))
                 return
-            erg = raw["ERGEBNIS"]  
-            with open("./Sewobe/data.json", "w") as f:
+            erg = raw["ERGEBNIS"] 
+            path = OSTools.getLocalPath(__file__)
+            target = OSTools.joinPathes(path, "Sewobe", "data.json") 
+            with open(target, "w") as f:
                 json.dump(erg, f)
+            
+            self.createModel(erg)
     
     #Test routine for implementation - prevent hi traffic            
     def readMbrJson(self):
-        with open("../Sewobe/data.json") as f:
+        path = OSTools.getLocalPath(__file__)
+        source = OSTools.joinPathes(path, "Sewobe", "data.json") 
+        with open(source) as f:
             raw = json.load(f)
         return raw
         
     def _saveSession(self,response):     
         try:
             self.session = response.json().get("SESSION")   
-            print("session saved")
         except ValueError:
-            print("Login response is not JSON:", response.text)
+            Log.error("Login response is not JSON: %s", response.text)
             return False
         return True
     
     def _checkResponse(self,response):    
         code = response.status_code
         if code != CODE_OK:
-            print("Error response:", response.text)
+            Log.error("Error response:%s", response.text)
             self.lastError = response.text
             return False
         return True
@@ -254,7 +258,7 @@ class Converter():
         self.db.insertMany(table, fields, sections)
 
     #Statistics. We should create a DB and add some data:
-    #
+    '''
     def makeImportFindings(self, sections,multiSet, mbrCount,rogue):
         txt=[]
         txt.append("<h2>Import Statistik</h2>")
@@ -262,7 +266,7 @@ class Converter():
         for key, cnt in multiSet.items():
             txt.append("<li>%s:%d</li>"%(key,cnt))
         txt.append("<li>Nicht im Hauptverein:%d</li>"%(len(rogue)))
-        txt.append("<li>Statistik Abeteilungen:</li>")
+        txt.append("<li>Statistik Abteilungen:</li>")
         c = Counter(sections)
         txt.append("<ul>")
         for entry in c:
@@ -270,38 +274,39 @@ class Converter():
         txt.append("</ul>")
         txt.append("</ul>")
         self.findingsImport=txt
+    '''
 
     def syncFlags(self,memberDict):
         rows=self._readFlags()
         ids = [data[0] for data in rows] #int
+        existingMemberCount = len(ids)
         currIds=[int(mbr.getID()) for mbr in memberDict.values()]
-        Log.info("Analyze new members:%d vs current members: %d",len(currIds),len(ids))
+        currentMemberCount = len(currIds)
+        Log.info("Analyze actual members:%d vs old/unpurged members: %d",currentMemberCount,existingMemberCount)
         revoked=[]
-        
-        for entry in rows:
-            if entry[0]==18908:
-                print("Wegmann Flag:",entry[1])
-        
-        for idFlag in rows: #0=id, 1=flag.
+       
+        for idFlag in rows: #0=id, 1=flag - data of existing members.
             mbrID = idFlag[0]
             flag = idFlag[1]  #DO NOT overwrite that flag if it has been set? Can be Manual or EOL
             
             if not mbrID in currIds:
+                existingMemberCount-=1
                 if flag == 0: #not flagged yet
-                    #print("!Member lost:%d -will be flagged!"%(idFlag[0]))
                     Log.info("Member lost:%d",mbrID)
                     revoked.append(mbrID)     
             else:
                 validMbr = memberDict.get(str(mbrID),None)
                 if validMbr:
                     validMbr.setFlag(flag) #Save the old flag!
+                    if flag==1:
+                        existingMemberCount-=1
         #the other way:
         newCount=0
         for cid in currIds:
             if not cid in ids:
                 newCount+=1
                 Log.info("%d) New Member:%d",newCount,cid)
-        Log.info("New member count:%d",(newCount))
+        Log.info("New member count:%d checksum:%d",newCount,(existingMemberCount+newCount))
         return revoked  
 
     def close(self):

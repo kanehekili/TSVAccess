@@ -595,6 +595,11 @@ def testOmocPrinter():
     imgIO = printer.getImageBytes(omocEvents) #image_io!
     printer.testSave(imgIO)       
 
+def dumpSewobe():
+    rc = RestConnector()
+    if rc.login():
+        rc.dumpMbrJson()
+    
 def testSewobeOffline():
     r = RestConnector()
     jsonDic = r.readMbrJson()
@@ -638,5 +643,6 @@ if __name__ == '__main__':
     #testGroupCKI()
     #testOmoc2()
     #testOmocPrinter()
+    #dumpSewobe()
     testSewobeOffline()
     pass

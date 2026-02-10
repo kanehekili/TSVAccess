@@ -13,11 +13,13 @@ path1="$(dirname "$DIR")"
 path2="$path1/src"
 path3="$path1/build/resources"
 cd $path2
-cp DBTools.py TsvDBCreator.py TsvAuswertung.py TsvOmoc.py /opt/tsvserver/;
+cp DBTools.py TsvDBCreator.py TsvAuswertung.py TsvOmoc.py ExternalMailService.py SewobeConnector.py /opt/tsvserver/;
 cp -r web /opt/tsvserver/
 cd $path3
 cp -u tsvauswertung.service /etc/systemd/system/;
 cp -u tsvbackup.* /etc/systemd/system/;
+cp -u tsvSewobe.* /etc/systemd/system/;
+cp -u tsvExternal* /etc/systemd/system/;
 echo "######################################################################"
 echo "#                  Ensure you have installed (arch arm):             #"                     
 echo "#   python-mysql-connector, rsync ,sshpass                           #"
