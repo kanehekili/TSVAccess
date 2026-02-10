@@ -2,5 +2,7 @@
 Description=TSV Sewobe member update
 
 [Service]
-ExecStart=/usr/bin/python3 /opt/tsvserver/ExternalMailService.py --sewobe
+Type=oneshot
+WorkingDirectory=/opt/tsvserver
+ExecStart=/usr/bin/python3 /opt/tsvserver/SewobeConnector.py
  

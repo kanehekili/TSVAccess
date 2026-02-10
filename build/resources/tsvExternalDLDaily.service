@@ -2,5 +2,6 @@
 Description=TSV external info service quarter hour current access
 
 [Service]
+Type=oneshot
 ExecStart=/usr/bin/python3 /opt/tsvserver/ExternalMailService.py --dl_daily
  

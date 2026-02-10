@@ -41,7 +41,7 @@ class RestConnector():
             return False
     def _credentials(self):
         path = OSTools.getLocalPath(__file__)
-        cfg = OSTools.joinPathes(path, "data", "sewbode.json")
+        cfg = OSTools.joinPathes(path, "data", "sewobe.json")
         with open(cfg, "r") as jr:
             dic = json.load(jr)
             RestConnector.USERNAME=dic["USER"]
@@ -100,16 +100,18 @@ class RestConnector():
         params = {"SESSION": self.session, "AUSWERTUNG_ID":6}
         data_response = requests.get(data_url,params=params)
         if self._checkResponse(data_response):
-            raw = data_response.json()["ERGEBNIS"]
-            if len(raw)==0:
-                Log.error("No data avaliable-SERVERE Error - exiting")
-                return None
+            raw = data_response.json()
             errCode = raw["STATUSCODE"]
             if errCode < 0:
                 Log.error("Error %d message: %s",errCode,raw["STATUS"] )
                 return None
-
-            return self.createModel(raw)
+                         
+            result = raw["ERGEBNIS"]
+            if len(result)==0:
+                Log.error("No data avaliable-SERVERE Error - exiting")
+                return None
+            
+            return self.createModel(result)
         return None
     
     def _mkDate(self,dateString):
@@ -359,7 +361,7 @@ class TsvMember():
     def display(self):
         return self.baseData,">",self.payData
 
-def main():
+def run():
     rc = RestConnector()
     if rc.login():
         result = rc.members()
@@ -370,7 +372,7 @@ def main():
 
 if __name__ == '__main__':
     try:
-        main()
+        run()
     except Exception as ex:
         Log.exception("Error in main:")    
     
