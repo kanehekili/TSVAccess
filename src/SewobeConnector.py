@@ -8,6 +8,7 @@ connector for the remote sewobe RESTfull API
 import requests,json
 import DBTools
 from DBTools import OSTools
+import TsvDBCreator
 from TsvDBCreator import DBAccess,SetUpTSVDB
 from datetime import datetime
 from collections import Counter
@@ -22,6 +23,7 @@ Log = DBTools.Log
 class RestConnector():
     session=None
     lastError=None
+    FITSECTION="Fit´n Fun"
     
     def __init__(self):
         self._credentials()
@@ -127,6 +129,8 @@ class RestConnector():
             data = dic["DATENSATZ"]
             mid=data["MITGLIEDSNUMMER"]
             section = data['ABTEILUNGSNAME']
+            if section == self.FITSECTION:
+                section = TsvDBCreator.SECTION_FIT            
             payDate = self._mkDate(data['AUSTRITT(ABTEILUNG)']) #str: 2099-12-31  
             ###we are creating aor appending a TsvMember. We do not pass all vars to a new method - not nice code
             mbr = sMembers.get(mid,None)
@@ -294,21 +298,33 @@ class Converter():
             if not mbrID in currIds:
                 existingMemberCount-=1
                 if flag == 0: #not flagged yet
-                    Log.info("Member lost:%d",mbrID)
+                    #Log.info("Member lost:%d",mbrID)
                     revoked.append(mbrID)     
             else:
                 validMbr = memberDict.get(str(mbrID),None)
                 if validMbr:
                     validMbr.setFlag(flag) #Save the old flag!
                     if flag==1:
-                        existingMemberCount-=1
+                        print("Rogue:",validMbr.display())
+                        
+                        
         #the other way:
         newCount=0
+        hvCount=0
         for cid in currIds:
             if not cid in ids:
                 newCount+=1
                 Log.info("%d) New Member:%d",newCount,cid)
+            validMbr = memberDict.get(str(cid),None)
+            if validMbr and validMbr.getFlag()==0 and validMbr.payData.get("Hauptverein",None) is None:
+                hvCount+=1
+                #Log.info("Member not in HV:%s", validMbr.baseData)
+            
+            
+        Log.info("Lost %d members - flags will be updated",len(revoked))
+        Log.info("Members not in Hauptverein:%d",hvCount)
         Log.info("New member count:%d checksum:%d",newCount,(existingMemberCount+newCount))
+        
         return revoked  
 
     def close(self):
@@ -332,7 +348,10 @@ class TsvMember():
 
     def setFlag(self,flag):
         self.baseData[6] = flag
-        
+    
+    def getFlag(self):
+        return self.baseData[6]
+    
     #if that section is already there and with empty pay - it it invalid - latest pay counts, empty rules
     def addPay(self,payDate,section):
         pd = self.payData.get(section,None)

@@ -18,8 +18,10 @@ cp -r web /opt/tsvserver/
 cd $path3
 cp -u tsvauswertung.service /etc/systemd/system/;
 cp -u tsvbackup.* /etc/systemd/system/;
+cp -u backup.sh sync.sh /root/bin/;
+chmod +x /root/bin/backup.sh;
+chmod +x /root/bin/sync.sh;
 cp -u tsvSewobe.* /etc/systemd/system/;
-cp -u tsvExternal* /etc/systemd/system/;
 echo "######################################################################"
 echo "#                  Ensure you have installed (arch arm):             #"                     
 echo "#   python-mysql-connector, rsync ,sshpass                           #"
@@ -27,4 +29,5 @@ echo "#   pip install flask,plotly, openpyxl                               #"
 echo "######################################################################"
 echo "!set .config.json manually - enable & start tsv services"
 echo "!set mail and omoc credentials with TsvDBCreator"
+echo "Enable backup and sewobe timer manually! -create sewobe.json"
 echo "App installed."

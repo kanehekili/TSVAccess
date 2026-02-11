@@ -485,6 +485,7 @@ class SetUpTSVDB():
         entries.append((12,"tsvaccess7",7)) #Special Sa
         entries.append((13,"tsvaccess7",8)) #Special Mo
         entries.append((14,"tsvaccess7",9)) #Special Do
+        entries.append((15,"tsvaccess1",0)) #Special Do
         
         #entries.append((9,"msi",0))
         #entries.append((10,"msi",7))
