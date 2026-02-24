@@ -139,7 +139,7 @@ class RestConnector():
                 gender = "M" if anr=="Herr" else "F"
                 nn = data["NACHNAME"]
                 fn = data["VORNAME"]
-                access = data["MULTIFELD_3"]# str
+                access = data["MULTIFELD_3"].upper()# str
                 #endv = self._mkdate(data['AUSTRITT(VEREIN)']) #STR  2099-12-31
                 birthdate= self._mkDate(data['GEBURTSDATUM']) #STR  2099-12-31
                     
