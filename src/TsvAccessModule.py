@@ -35,11 +35,11 @@ class RFIDAccessor():
     def __init__(self,args):
         self.eastereggs = [2229782266]
         self.writeTimer=None
-        self.stopper=None
+        self.stopEvent=None
         self.configuredDevice = args.configuredDevice
         # we might use a time between 8 and 22:00self.latestLocCheck=None
         self.condLock = threading.Condition()
-        self.stopper=Event()
+        self.stopEvent=Event()
         if RaspiTools.RASPI:
             self.gate = RaspberryGPIO(args.invert,args.buzz)
             self.reader = MFRC522Reader()
@@ -61,6 +61,7 @@ class RFIDAccessor():
         #self.db._getCursor().execute("SET SESSION MAX_STATEMENT_TIME=1000")
         self.readLocation()
         self.spawnNetControl()
+        self.spawnKeepAlive()
         return self.dbSystem.isConnected(self.db)
     
     def _waitForConnection(self):
@@ -260,8 +261,14 @@ class RFIDAccessor():
         return False
     
     def spawnNetControl(self):
-        netCrtl = Repeater(self.stopper,10,self.__superviseConnection)
+        netCrtl = Repeater(self.stopEvent,60*15,self.__superviseConnection)
+        netCrtl.daemon = True
         netCrtl.start()
+    
+    def spawnKeepAlive(self):
+        keepalive = Repeater(self.stopEvent, 7200, self.db.pingConnection)
+        keepalive.daemon = True
+        keepalive.start()  
     
     def __superviseConnection(self):
         ret = self.db.pingHost()
@@ -272,8 +279,8 @@ class RFIDAccessor():
 
     def shutDown(self):
         self.running=False
-        if self.stopper: #None, if it couldn't even start the connection
-            self.stopper.set() #stop ping control
+        if self.stopEvent: #None, if it couldn't even start the connection
+            self.stopEvent.set() #stop ping control
         with self.condLock:            
             self.condLock.notify_all()
         self.dbSystem.close(self.db)
