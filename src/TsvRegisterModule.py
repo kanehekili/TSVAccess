@@ -739,6 +739,7 @@ class MainFrame(QtWidgets.QMainWindow):
     @QtCore.pyqtSlot()
     def _onRFIDDone(self):
         str_Rfid = self.ui_RFID.text()
+        Log.debug("RFID received:%s",str_Rfid)
         self.controller.handleRFIDChanged(str_Rfid)
      
     def _onRFIDCleared(self):
@@ -776,6 +777,18 @@ class MainFrame(QtWidgets.QMainWindow):
         self.ui_RFID.setStyleSheet("")
             
         cleanRfid = str(int(str_Rfid))  # remove any leading zeros
+
+        mbr = self.ui_SearchEdit.currentData()
+        testId = None
+        if mbr:
+            testId = mbr.id
+        if not self.model.verifyRfid(cleanRfid, testId):
+            d = self.getErrorDialog("** RFID **", "Ungültige RFID, bitte einen anderen Token benutzen", "In der Datenbank existiert bereits die RFID Nummer %s und kann nicht nochmal vergeben werden. Nimm den Token und leg ihn weg!" % (cleanRfid))
+            d.show()
+            self.ui_RFID.clear()        
+            return
+        
+        
         if self.model.containsLegacyAA(cleanRfid):
             res = self.getQuestionDialog("Vorsicht!", "Hat der Benuzter einen blauen Chip für Zugang?")
             if not res:
@@ -783,15 +796,7 @@ class MainFrame(QtWidgets.QMainWindow):
                 self.ui_RFID.clear()
                 return
         
-        mbr = self.ui_SearchEdit.currentData()
-        testId = None
-        if mbr:
-            testId = mbr.id
-        
-        if not self.model.verifyRfid(cleanRfid, testId):
-            d = self.getErrorDialog("** RFID **", "Ungültige RFID, bitte einen anderen Token benutzen", "In der Datenbank existiert bereits die RFID Nummer %s und kann nicht nochmal vergeben werden. Nimm den Token und leg ihn weg!" % (cleanRfid))
-            d.show()
-            self.ui_RFID.clear()
+
 
     # persist to database (Speichern)
     # Store & contrl picture only if not in mbr
@@ -858,6 +863,13 @@ class MainFrame(QtWidgets.QMainWindow):
             self._resetInput()
         finally:
             QApplication.restoreOverrideCursor()
+            #Is there a reader prell?
+            '''
+            self.ui_RFID.returnPressed.disconnect(self._onRFIDDone)
+            QtCore.QCoreApplication.processEvents()
+            self.ui_RFID.returnPressed.connect(self._onRFIDDone)                                                                                                                            
+            self.ui_RFID.clear()  # discard anything the reader typed during save
+            '''
             QtCore.QCoreApplication.processEvents()
             self.ui_SaveButton.setEnabled(True)
             
@@ -1362,8 +1374,6 @@ def _rapidCamIndexSearch():
     
     Log.warning("No camera found!")
     return -1
-        
-    
 
 def parse():
     parser = argparse.ArgumentParser(description="Registration")

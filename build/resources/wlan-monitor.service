@@ -1,0 +1,11 @@
+[Unit]
+Description=Log WiFi outages to /var/log/wlan-monitor.log
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/wlan-monitor.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

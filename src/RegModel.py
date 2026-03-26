@@ -335,6 +335,7 @@ class Registration():
  
     def verifyRfid(self, rfidString, testId):
         # check if rfid  alreay exists ->False
+        Log.debug("verifyRfid > user:%s with rfid:%s", str(testId),rfidString) 
         stmt = "SELECT id from " + SetUpTSVDB.MAINTABLE + " where uuid=" + rfidString
         res = self.db.select(stmt)
         if len(res) > 0:
