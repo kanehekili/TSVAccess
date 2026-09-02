@@ -228,10 +228,11 @@ class MainFrame(QtWidgets.QMainWindow):
         self.ui_ckiButton.clicked.connect(self._onCKIClicked)
         self.ui_ckiButton.setToolTip("Ein- oder Auschecken") 
         
-        self.ui_blockButton = QtWidgets.QPushButton("Sperren")
-        self.ui_blockButton.setIcon(QtGui.QIcon("./web/static/halt.png"))
+        self.ui_blockButton = QtWidgets.QPushButton("Mitglied")
+        self.ui_blockButton.setIcon(QtGui.QIcon("./web/static/Ok.png"))
         self.ui_blockButton.clicked.connect(self._onBlockClicked)
-        self.ui_blockButton.setToolTip("Nur ändern in Absprache mit GS!")
+        self.ui_blockButton.setToolTip("Status aus dem Sewobe-Import")
+        self.ui_blockButton.setEnabled(False) #flag is owned by the Sewobe import - display only
         
         '''
         Abo -> just an idea  
@@ -462,7 +463,7 @@ class MainFrame(QtWidgets.QMainWindow):
     def setButtons(self, areEnabled):
         # TODO: cki and cko should depend current day: odd=cki, even= cki
         self.ui_ckiButton.setEnabled(areEnabled)
-        self.ui_blockButton.setEnabled(areEnabled)
+        #self.ui_blockButton.setEnabled(areEnabled) #stays disabled - flag is import owned
 
     def _updateCKIButton(self, ckiCount,activity):
         if (ckiCount % 2) == 0:
@@ -480,13 +481,13 @@ class MainFrame(QtWidgets.QMainWindow):
             
     
     def _updateBlockButton(self, mbr):
-        self.ui_blockButton.setEnabled(True)
+        #self.ui_blockButton.setEnabled(True) #stays disabled - flag is import owned
         if mbr.flag == 0:
-            self.ui_blockButton.setIcon(QtGui.QIcon("./web/static/halt.png"))
-            self.ui_blockButton.setText("Sperren")
-        else:
             self.ui_blockButton.setIcon(QtGui.QIcon("./web/static/Ok.png"))
-            self.ui_blockButton.setText("Entsperren")
+            self.ui_blockButton.setText("Mitglied")
+        else:
+            self.ui_blockButton.setIcon(QtGui.QIcon("./web/static/halt.png"))
+            self.ui_blockButton.setText("Kein Mitglied")
             
         # setIcon
     
@@ -571,16 +572,22 @@ class MainFrame(QtWidgets.QMainWindow):
         if mbr:
             Log.debug("Member selected:%s", mbr.primKeyString())
             self.setMemberFields(mbr)
+            self._updateBlockButton(mbr) #status display - must match the selection in any case
             if not (mbr.picpath and self._displayMemberFace(mbr)):
                 Log.warning("Unregistered:%s!", mbr.primKeyString())
                 self.ui_VideoFrame.showFrame(None)
-                self.ui_Blocked.setText("Nicht registriert")
+                self.ui_Blocked.setText("Kein Mitglied" if mbr.flag else "Nicht registriert")
+                self.setButtons(False)
+                return
+
+            if mbr.flag != 0: #not in Sewobe any more - the face stays visible
+                Log.warning("No member:%s!", mbr.primKeyString())
+                self.ui_Blocked.setText("Kein Mitglied")
                 self.setButtons(False)
                 return
 
             # valid
             QTimer.singleShot(0, lambda: self._updateCheckinData(mbr))
-            self._updateBlockButton(mbr)
 
     @QtCore.pyqtSlot()
     def _onNewClicked(self):

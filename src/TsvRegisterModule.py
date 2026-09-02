@@ -409,6 +409,7 @@ class MainFrame(QtWidgets.QMainWindow):
         self.photoTaken = False
         self.mbrPhoto = None
         self.rfid_deleted=False
+        self.rfid_changed=False
         self.controller = RFIDController(self) if rfidMode else RegisterController(self)
         
         super(MainFrame, self).__init__()
@@ -482,7 +483,8 @@ class MainFrame(QtWidgets.QMainWindow):
         else:
             self.ui_RFID = ClearableLineEdit(self)
             self.ui_RFID.clearClicked.connect(self._onRFIDCleared)
-        self.ui_RFID.returnPressed.connect(self._onRFIDDone)            
+        self.ui_RFID.returnPressed.connect(self._onRFIDDone)  
+        self.ui_RFID.textEdited.connect(lambda _: setattr(self, 'rfid_changed', True))          
         self.ui_RFID.setToolTip("RFID mit Kartenleser einchecken - Erst draufclicken -dann scannen!")
 
         self.ui_AccessLabel = QtWidgets.QLabel(self)
@@ -745,10 +747,12 @@ class MainFrame(QtWidgets.QMainWindow):
     def _onRFIDCleared(self):
         self.rfid_deleted = True
         self.getMessageDialog("RFID Chip wird gelöscht", "Speichern und Fertig!").show()
+        self.rfid_changed=False
         
     # slot if rfid search is active (controller)
     def searchWithRFID(self, str_RFID):
         self.rfid_deleted = False
+        self.rfid_changed=False
         res = next((mbr for mbr in self.model.memberList if mbr.rfidString() == str_RFID), None)
         if res:
             #print("Found:", res.searchName())
@@ -769,11 +773,11 @@ class MainFrame(QtWidgets.QMainWindow):
         cnt=len(str_Rfid)
         Log.info("Checking RFID:%s len:%d", str_Rfid, cnt)
         if not str_Rfid:
-            return;
+            return False;
         
         if not str_Rfid.isdigit() or cnt> 10:
             self.ui_RFID.setStyleSheet("QLineEdit { background: rgb(212,0,0); color:white}");
-            return             
+            return False             
         self.ui_RFID.setStyleSheet("")
             
         cleanRfid = str(int(str_Rfid))  # remove any leading zeros
@@ -786,7 +790,7 @@ class MainFrame(QtWidgets.QMainWindow):
             d = self.getErrorDialog("** RFID **", "Ungültige RFID, bitte einen anderen Token benutzen", "In der Datenbank existiert bereits die RFID Nummer %s und kann nicht nochmal vergeben werden. Nimm den Token und leg ihn weg!" % (cleanRfid))
             d.show()
             self.ui_RFID.clear()        
-            return
+            return False
         
         
         if self.model.containsLegacyAA(cleanRfid):
@@ -794,7 +798,9 @@ class MainFrame(QtWidgets.QMainWindow):
             if not res:
                 Log.warning("AssaAbloy RFID chip found: %s", cleanRfid)
                 self.ui_RFID.clear()
-                return
+                return False
+        
+        return True
         
 
 
@@ -840,7 +846,11 @@ class MainFrame(QtWidgets.QMainWindow):
             self.ui_SaveButton.setEnabled(False)
             QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
             mid = int(idstr)
-            
+
+            #Error: check if that RFID is taken by someone else! Bearbeitung only!
+            if self.rfid_changed and not self.rfid_deleted:                                                                                                                                     
+                if not self.verifyRFID(rfid):                                                                                                                                    
+                    return 
             # we should update in the correct form
             if mbr is not None:
                 bd = mbr.asDBDate(birthdate)
@@ -851,8 +861,7 @@ class MainFrame(QtWidgets.QMainWindow):
                 mbr = Mitglied(mid, firstName, lastName, access, None, rfid_int)
                 entry = mbr.searchName()
                 self.ui_SearchEdit.addItem(entry, mbr)
-            #Error: check if that RFID is taken by someone else! Bearbeitung only!
-            #Code here
+ 
             if self.photoTaken:
                 res = self.model.savePicture(mbr)  # posts the pic to remote and adds uri to db...
                 if not res:
@@ -907,6 +916,7 @@ class MainFrame(QtWidgets.QMainWindow):
         self.updateEditFields(True) 
         self.ui_Info.hide()
         self.rfid_deleted = False
+        self.rfid_changed=False
          
     # dialogs
     def __getInfoDialog(self, text):
@@ -1113,8 +1123,9 @@ class AboDialog(QtWidgets.QDialog):
         gridLayout.addWidget(self.saunaCount,1,5,1,1)
 
         self.check_culprit = QtWidgets.QCheckBox("Mitglied sperren")
-        self.check_culprit.setToolTip("Bei Haken wird kein Zugang erlaubt")
+        self.check_culprit.setToolTip("Wird vom Sewobe-Import gesetzt: Haken = nicht mehr Mitglied")
         self.check_culprit.setChecked(self.model.flag > 0)
+        self.check_culprit.setEnabled(False) #flag is owned by the Sewobe import - display only
         culpritBox.addWidget(self.check_culprit)
         aboBox.addLayout(gridLayout)
         aboBox.addLayout(culpritBox)
@@ -1161,7 +1172,7 @@ class AboDialog(QtWidgets.QDialog):
         # Must be possible to change the prepaid data without having checked
         if self.check_sauna.isChecked():
             self.model.abo = (TsvDBCreator.ACTIVITY_SAUNA, 10)
-        self.model.flag = int(self.check_culprit.isChecked() == True)
+        #self.model.flag = int(self.check_culprit.isChecked() == True) #see check_culprit - flag is import owned
         super().accept()
 
 

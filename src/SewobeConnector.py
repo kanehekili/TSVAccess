@@ -290,24 +290,25 @@ class Converter():
         currentMemberCount = len(currIds)
         Log.info("Analyze actual members:%d vs old/unpurged members: %d",currentMemberCount,existingMemberCount)
         revoked=[]
-       
+        returned=0
+
         for idFlag in rows: #0=id, 1=flag - data of existing members.
             mbrID = idFlag[0]
-            flag = idFlag[1]  #DO NOT overwrite that flag if it has been set? Can be Manual or EOL
-            
+            flag = idFlag[1]  #flag>0 was set by a previous import (member was missing)
+
             if not mbrID in currIds:
                 existingMemberCount-=1
                 if flag == 0: #not flagged yet
                     #Log.info("Member lost:%d",mbrID)
-                    revoked.append(mbrID)     
+                    revoked.append(mbrID)
             else:
                 validMbr = memberDict.get(str(mbrID),None)
-                if validMbr:
-                    validMbr.setFlag(flag) #Save the old flag!
-                    if flag==1:
-                        print("Rogue:",validMbr.display())
-                        
-                        
+                if validMbr and flag > 0: #quit and returned - clear the flag of the previous import
+                    returned += 1
+                    Log.info("Returned member:%d (%s) - flag cleared",mbrID,validMbr.getName())
+                    validMbr.setFlag(0)
+
+
         #the other way:
         newCount=0
         hvCount=0
@@ -322,6 +323,7 @@ class Converter():
             
             
         Log.info("Lost %d members - flags will be updated",len(revoked))
+        Log.info("Returned members - flags cleared:%d",returned)
         Log.info("Members not in Hauptverein:%d",hvCount)
         Log.info("New member count:%d checksum:%d",newCount,(existingMemberCount+newCount))
         
